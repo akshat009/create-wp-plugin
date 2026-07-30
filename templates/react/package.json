@@ -1,0 +1,13 @@
+{
+	"name": "{{SLUG}}",
+	"version": "0.1.0",
+	"description": "{{DESCRIPTION}}",
+	"main": "assets/build/index.js",
+	"scripts": {
+		"build": "wp-scripts build --output-path=assets/build",
+		"start": "wp-scripts start --output-path=assets/build"
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^27.0.0"
+	}
+}

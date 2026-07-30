@@ -1,0 +1,27 @@
+{
+  "name": "create-wp-plugin",
+  "version": "1.0.0",
+  "description": "Interactive scaffold generator for modern WordPress plugins — PSR-4, WPCS/VIP standards, PHPUnit, WP-CLI, CI out of the box",
+  "main": "index.js",
+  "bin": {
+    "create-wp-plugin": "index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "wordpress",
+    "plugin",
+    "scaffold",
+    "generator",
+    "cli",
+    "wpcs",
+    "psr-4"
+  ],
+  "author": "Akshat Saxena",
+  "license": "GPL-2.0-or-later",
+  "dependencies": {
+    "prompts": "^2.4.2"
+  }
+}

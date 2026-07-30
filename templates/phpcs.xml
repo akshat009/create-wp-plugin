@@ -1,0 +1,47 @@
+<?xml version="1.0"?>
+<ruleset name="{{PLUGIN_NAME}} Coding Standards">
+	<description>WPCS ruleset for {{PLUGIN_NAME}}.</description>
+
+	<file>./{{SLUG}}.php</file>
+	<file>./src</file>
+	<file>./uninstall.php</file>
+
+	<exclude-pattern>/vendor/</exclude-pattern>
+	<exclude-pattern>/node_modules/</exclude-pattern>
+	<exclude-pattern>/tests/</exclude-pattern>
+	<exclude-pattern>/assets/build/</exclude-pattern>
+
+	<arg value="sp"/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+
+	<rule ref="WordPress-Extra">
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
+		<exclude name="Generic.Formatting.MultipleStatementAlignment"/>
+	</rule>
+	<rule ref="WordPress-Docs"/>
+	<rule ref="WordPress-VIP-Go"/>
+	<rule ref="PHPCompatibilityWP"/>
+
+	<config name="minimum_supported_wp_version" value="6.0"/>
+	<config name="testVersion" value="{{MIN_PHP}}-"/>
+
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="{{PREFIX}}"/>
+				<element value="{{NS}}"/>
+			</property>
+		</properties>
+	</rule>
+
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="{{SLUG}}"/>
+			</property>
+		</properties>
+	</rule>
+</ruleset>
