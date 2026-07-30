@@ -296,7 +296,10 @@ async function main() {
 		console.log('  npm install');
 		console.log('  npm run build');
 	}
-	console.log('  git init\n');
+	console.log('  composer lint');
+	console.log('  composer test');
+	console.log('  git init && git add -A && git commit -m "scaffold"\n');
+	console.log('Note: composer install may prompt to allow dealerdirect/phpcodesniffer-composer-installer — answer yes.\n');
 }
 
 main().catch(err => {

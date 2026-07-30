@@ -15,6 +15,21 @@ npx github:akshat009/create-wp-plugin
 node index.js
 ```
 
+## After Generating
+
+After running the generator, perform the following steps to initialize your project:
+
+```bash
+cd <slug>
+composer install        # installs PHPCS/WPCS/VIP rulesets, PHPUnit (required
+                        # before composer lint / composer test will work)
+composer lint
+composer test
+git init && git add -A && git commit -m "scaffold"
+```
+
+> **Note:** `composer install` may prompt to allow the `dealerdirect/phpcodesniffer-composer-installer` plugin — answer **yes**, as it registers the WPCS/VIP rulesets with PHPCS.
+
 ## Features
 - ⚡ **PSR-4 Autoloading**: Clean `src/` directory layout with automatic fallback.
 - 🎨 **WordPress Coding Standards**: Full WPCS, Docs, VIP Go, and PHPCompatibilityWP integration (`composer lint`).
