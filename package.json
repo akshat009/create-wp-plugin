@@ -7,6 +7,10 @@
     "create-wp-plugin": "index.js"
   },
   "type": "module",
+  "files": [
+    "index.js",
+    "templates/**"
+  ],
   "scripts": {
     "start": "node index.js"
   },

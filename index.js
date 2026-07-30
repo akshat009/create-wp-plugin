@@ -173,6 +173,11 @@ async function main() {
 
 	const templatesDir = path.join(__dirname, 'templates');
 
+	const filenameMappings = {
+		'gitignore.tpl': '.gitignore',
+		'editorconfig.tpl': '.editorconfig'
+	};
+
 	// Copy standard templates
 	writeTemplateFile(path.join(templatesDir, 'plugin-main.php'), `${answers.slug}.php`);
 	writeTemplateFile(path.join(templatesDir, 'composer.json'), 'composer.json');
@@ -181,8 +186,8 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
-	writeTemplateFile(path.join(templatesDir, '.gitignore'), '.gitignore');
-	writeTemplateFile(path.join(templatesDir, '.editorconfig'), '.editorconfig');
+	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), filenameMappings['gitignore.tpl']);
+	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), filenameMappings['editorconfig.tpl']);
 	writeTemplateFile(path.join(templatesDir, 'uninstall.php'), 'uninstall.php');
 	writeTemplateFile(path.join(templatesDir, 'assets/css/main.css'), 'assets/css/main.css');
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
@@ -268,7 +273,7 @@ async function main() {
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
 
 	// Process ci.yml with dynamic node job
-	let ciContent = fs.readFileSync(path.join(templatesDir, '.github/workflows/ci.yml'), 'utf8');
+	let ciContent = fs.readFileSync(path.join(templatesDir, 'github/workflows/ci.yml'), 'utf8');
 	ciContent = ciContent.replace('{{CI_NODE_JOB}}', ciNodeJob);
 	ciContent = processTemplateContent(ciContent);
 	const ciDestPath = path.join(targetDir, '.github/workflows/ci.yml');
