@@ -2,5 +2,9 @@ node_modules/
 package-lock.json
 sample-test-plugin/
 test-plugin/
+test-output/
+test-scaffold/
+scratch/
 .DS_Store
 Thumbs.db
+

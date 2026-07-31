@@ -60,8 +60,7 @@ final class Plugin {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			$this->services['cli'] = new CLI\Commands();
 		}
-{{REACT_ASSETS_REGISTRATION}}
-	}
+{{REACT_ASSETS_REGISTRATION}}	}
 
 	/**
 	 * Register optional plugin modules.
@@ -70,8 +69,7 @@ final class Plugin {
 	 */
 	private function register_modules() {
 		// Register modules here.
-{{MODULE_REGISTRATIONS}}
-	}
+{{MODULE_REGISTRATIONS}}	}
 
 	/**
 	 * Boot all registered services and modules.

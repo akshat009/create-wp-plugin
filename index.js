@@ -29,9 +29,17 @@ function suggestNamespace(name) {
 	return acronym.length >= 2 ? acronym : 'MyPlugin';
 }
 
-function suggestPrefix(namespace) {
-	if (!namespace) return 'myplug';
-	return namespace.toLowerCase();
+function suggestPrefix(name) {
+	if (!name) return 'myplug';
+	const fillers = new Set(['for', 'the', 'and', 'of', 'to', 'a']);
+	const words = name.trim().split(/[\s-_]+/).filter(Boolean);
+	if (words.length === 0) return 'myplug';
+
+	const filtered = words.filter(w => !fillers.has(w.toLowerCase()));
+	const targetWords = filtered.length > 0 ? filtered : words;
+	if (targetWords.length === 1) return targetWords[0].toLowerCase();
+
+	return targetWords.map(w => w.charAt(0).toLowerCase()).join('');
 }
 
 async function main() {
@@ -42,7 +50,6 @@ async function main() {
 			type: 'text',
 			name: 'name',
 			message: '1. Plugin name:',
-			initial: 'Orbit Widgets for Elementor',
 			validate: value => (value.trim().length > 0 ? true : 'Plugin name is required.')
 		},
 		{
@@ -61,25 +68,22 @@ async function main() {
 			type: 'text',
 			name: 'prefix',
 			message: '4. Function/constant prefix:',
-			initial: (prev, values) => suggestPrefix(values.namespace)
+			initial: (prev, values) => suggestPrefix(values.name)
 		},
 		{
 			type: 'text',
 			name: 'authorName',
-			message: '5. Author name:',
-			initial: 'Akshat Saxena'
+			message: '5. Author name:'
 		},
 		{
 			type: 'text',
 			name: 'authorEmail',
-			message: '6. Author email:',
-			initial: 'akshat@example.com'
+			message: '6. Author email:'
 		},
 		{
 			type: 'text',
 			name: 'authorUri',
-			message: '7. Author URI / GitHub URL:',
-			initial: 'https://github.com/akshat009'
+			message: '7. Author URI / GitHub URL:'
 		},
 		{
 			type: 'text',
@@ -129,6 +133,36 @@ async function main() {
 			process.exit(1);
 		}
 	});
+
+	if (!answers.name) {
+		console.log('\nOperation cancelled.');
+		process.exit(1);
+	}
+
+	console.log('\nSummary:');
+	console.log(`  Name:      ${answers.name}`);
+	console.log(`  Slug:      ${answers.slug}`);
+	console.log(`  Namespace: ${answers.namespace}`);
+	console.log(`  Prefix:    ${answers.prefix}`);
+	console.log(`  Author:    ${answers.authorName || '(none)'}`);
+	console.log('');
+
+	const confirm = await prompts({
+		type: 'confirm',
+		name: 'value',
+		message: 'Proceed with these values?',
+		initial: true
+	}, {
+		onCancel: () => {
+			console.log('\nOperation cancelled.');
+			process.exit(1);
+		}
+	});
+
+	if (!confirm.value) {
+		console.log('\nOperation cancelled.');
+		process.exit(0);
+	}
 
 	const targetDir = path.resolve(process.cwd(), answers.outputDir);
 
@@ -239,7 +273,7 @@ async function main() {
 		writeTemplateFile(path.join(templatesDir, 'react/package.json'), 'package.json');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/index.js'), 'assets/src/index.js');
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Assets.php'), 'src/Frontend/Assets.php');
-		reactAssetsRegistration = '\t\t$this->services[\'assets\'] = new Frontend\\Assets();';
+		reactAssetsRegistration = '\t\t$this->services[\'assets\'] = new Frontend\\Assets();\n';
 		readmeReactInstall = '3. Run `npm install` and `npm run build` to compile React assets.\n   > Note: `assets/build` is gitignored and generated during build.';
 		readmeReactScripts = '- `npm run build` — Build React assets for production.\n- `npm run start` — Start React asset dev server in watch mode.';
 
@@ -266,7 +300,7 @@ async function main() {
 	// Process Plugin.php template with dynamic registrations
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
 	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', reactAssetsRegistration);
-	pluginContent = pluginContent.replace('{{MODULE_REGISTRATIONS}}', moduleRegistrations.join('\n'));
+	pluginContent = pluginContent.replace('{{MODULE_REGISTRATIONS}}', moduleRegistrations.length > 0 ? moduleRegistrations.join('\n') + '\n' : '');
 	pluginContent = processTemplateContent(pluginContent);
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
