@@ -32,9 +32,13 @@
 		<properties>
 			<property name="prefixes" type="array">
 				<element value="{{PREFIX}}"/>
+				<element value="{{PREFIX_UPPER}}"/>
 				<element value="{{NS}}"/>
 			</property>
 		</properties>
+	</rule>
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.ShortPrefixPassed">
+		<severity>0</severity>
 	</rule>
 
 	<rule ref="WordPress.WP.I18n">

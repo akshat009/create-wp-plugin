@@ -323,7 +323,7 @@ async function main() {
 \t\t}
 
 \t\tforeach ( glob( __DIR__ . '/Widgets/*.php' ) as $file ) {
-\t\t\t$class_name = __NAMESPACE__ . '\\Widgets\\' . basename( $file, '.php' );
+\t\t\t$class_name = __NAMESPACE__ . '\\\\Widgets\\\\' . basename( $file, '.php' );
 
 \t\t\tif ( ! class_exists( $class_name ) ) {
 \t\t\t\tcontinue;
