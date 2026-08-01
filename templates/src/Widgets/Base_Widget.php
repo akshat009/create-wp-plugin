@@ -26,7 +26,8 @@ class Base_Widget {
 	}
 
 	/**
-	 * Register widgets with Elementor widgets manager.
+	 * Auto-discover and register every concrete widget class in the
+	 * Widgets directory.
 	 *
 	 * @param object $widgets_manager Elementor widgets manager.
 	 * @return void
@@ -36,6 +37,20 @@ class Base_Widget {
 			return;
 		}
 
-		$widgets_manager->register( new Sample_Widget() );
+		foreach ( glob( __DIR__ . '/*.php' ) as $file ) {
+			$class_name = __NAMESPACE__ . '\\' . basename( $file, '.php' );
+
+			if ( ! class_exists( $class_name ) ) {
+				continue;
+			}
+
+			$reflection = new \ReflectionClass( $class_name );
+
+			if ( $reflection->isAbstract() || ! $reflection->isSubclassOf( '\Elementor\Widget_Base' ) ) {
+				continue;
+			}
+
+			$widgets_manager->register( new $class_name() );
+		}
 	}
 }

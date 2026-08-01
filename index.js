@@ -267,11 +267,44 @@ async function main() {
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Base_Widget.php'), 'src/Widgets/Base_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Abstract_Widget.php'), 'src/Widgets/Abstract_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
-		moduleRegistrations.push('\t\t$this->services[\'elementor\'] = new Widgets\\Base_Widget();');
+		moduleRegistrations.push('\t\tadd_action( \'elementor/widgets/register\', array( $this, \'register_widgets\' ) );');
 	}
 	if (selectedModules.includes('woocommerce_hooks')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Woo_Hooks.php'), 'src/Woo/Woo_Hooks.php');
 		moduleRegistrations.push('\t\t$this->services[\'woo\'] = new Woo\\Woo_Hooks();');
+	}
+
+	let elementorWidgetMethods = '';
+	if (selectedModules.includes('elementor_widget')) {
+		elementorWidgetMethods = `\t/**
+\t * Auto-discover and register every concrete widget class in the
+\t * Widgets directory, so adding or deleting a widget file is all
+\t * that's needed — nothing to manually wire up here.
+\t *
+\t * @param object $widgets_manager Elementor widgets manager.
+\t * @return void
+\t */
+\tpublic function register_widgets( $widgets_manager ) {
+\t\tif ( ! class_exists( '\\Elementor\\Widget_Base' ) ) {
+\t\t\treturn;
+\t\t}
+
+\t\tforeach ( glob( __DIR__ . '/Widgets/*.php' ) as $file ) {
+\t\t\t$class_name = __NAMESPACE__ . '\\Widgets\\' . basename( $file, '.php' );
+
+\t\t\tif ( ! class_exists( $class_name ) ) {
+\t\t\t\tcontinue;
+\t\t\t}
+
+\t\t\t$reflection = new \\ReflectionClass( $class_name );
+
+\t\t\tif ( $reflection->isAbstract() || ! $reflection->isSubclassOf( '\\Elementor\\Widget_Base' ) ) {
+\t\t\t\tcontinue;
+\t\t\t}
+
+\t\t\t$widgets_manager->register( new $class_name() );
+\t\t}
+\t}\n\n`;
 	}
 
 	// React setup
@@ -312,6 +345,7 @@ async function main() {
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
 	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', reactAssetsRegistration);
 	pluginContent = pluginContent.replace('{{MODULE_REGISTRATIONS}}', moduleRegistrations.length > 0 ? moduleRegistrations.join('\n') + '\n' : '');
+	pluginContent = pluginContent.replace('{{ELEMENTOR_WIDGET_METHODS}}', elementorWidgetMethods);
 	pluginContent = processTemplateContent(pluginContent);
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });

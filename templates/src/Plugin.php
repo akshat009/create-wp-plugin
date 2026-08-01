@@ -71,7 +71,7 @@ final class Plugin {
 		// Register modules here.
 {{MODULE_REGISTRATIONS}}	}
 
-	/**
+{{ELEMENTOR_WIDGET_METHODS}}	/**
 	 * Boot all registered services and modules.
 	 *
 	 * @return void
