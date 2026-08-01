@@ -12,7 +12,7 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       {{SLUG}}
  * Domain Path:       /languages
- *
+{{ELEMENTOR_HEADERS}} *
  * @package {{NS}}
  */
 

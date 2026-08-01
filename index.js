@@ -173,6 +173,11 @@ async function main() {
 
 	fs.mkdirSync(targetDir, { recursive: true });
 
+	const selectedModules = answers.modules || [];
+	const elementorHeaders = selectedModules.includes('elementor_widget')
+		? ' * Elementor tested up to: 3.25.0\n * Elementor Pro tested up to: 3.25.0\n'
+		: '';
+
 	const replacements = {
 		'{{PLUGIN_NAME}}': answers.name,
 		'{{SLUG}}': answers.slug,
@@ -186,7 +191,8 @@ async function main() {
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
 		'{{YEAR}}': new Date().getFullYear().toString(),
-		'{{AUTHOR_SLUG}}': answers.authorName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'author'
+		'{{AUTHOR_SLUG}}': answers.authorName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'author',
+		'{{ELEMENTOR_HEADERS}}': elementorHeaders
 	};
 
 	function processTemplateContent(content) {
@@ -231,7 +237,6 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), filenameMappings['.vscode/extensions.json']);
 
 	// Selected modules mapping
-	const selectedModules = answers.modules || [];
 	const moduleRegistrations = [];
 
 	if (selectedModules.includes('admin_settings')) {
