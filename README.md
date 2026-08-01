@@ -37,7 +37,7 @@ composer test
 git init && git add -A && git commit -m "scaffold"
 ```
 
-> **Note:** `composer install` may prompt to allow the `dealerdirect/phpcodesniffer-composer-installer` plugin — answer **yes**, as it registers the WPCS/VIP rulesets with PHPCS.
+> **Note:** `composer install` may prompt to allow the `dealerdirect/phpcodesniffer-composer-installer` plugin — answer **yes**, as it registers the WPCS/VIP rulesets with PHPCS. You may also see a message *"No composer.lock file present"* on the first run; this is completely normal and Composer will automatically create the lock file.
 
 ## Features
 - ⚡ **PSR-4 Autoloading**: Clean `src/` directory layout with automatic fallback.

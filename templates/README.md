@@ -8,7 +8,7 @@
 
 ## Installation
 1. Clone or download this repository into your `wp-content/plugins/` directory.
-2. Run `composer install` to install PHP dependencies and setup autoloader.
+2. Run `composer install` to install PHP dependencies and setup autoloader. *(Note: On the first run, seeing "No composer.lock file present" is normal; Composer will generate it automatically).*
 {{README_REACT_INSTALL}}
 
 ## Architecture & Services

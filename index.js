@@ -806,7 +806,8 @@ export function runGenerator(answers) {
 	console.log('  composer lint');
 	console.log('  composer test');
 	console.log('  git init && git add -A && git commit -m "scaffold"\n');
-	console.log('Note: composer install may prompt to allow dealerdirect/phpcodesniffer-composer-installer — answer yes.\n');
+	console.log('Note: composer install may prompt to allow dealerdirect/phpcodesniffer-composer-installer — answer yes.');
+	console.log('      First run note: "No composer.lock file present" is normal; Composer will generate it automatically.\n');
 }
 
 if (process.argv[1] && path.resolve(__filename) === path.resolve(process.argv[1])) {
