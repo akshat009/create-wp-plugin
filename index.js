@@ -556,10 +556,12 @@ export function runGenerator(answers) {
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		writeTemplateFile(path.join(templatesDir, '.vscode/elementor.code-snippets'), '.vscode/elementor.code-snippets');
+		writeTemplateFile(path.join(templatesDir, 'src/Elementor/Dependency_Notice.php'), 'src/Elementor/Dependency_Notice.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
 		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');
-		moduleRegistrations.push('\n\t\tadd_action( \'wp_enqueue_scripts\', array( $this, \'register_widget_assets\' ) );');
+		moduleRegistrations.push('\n\t\t$services[\'elementor_notice\'] = new Elementor\\Dependency_Notice();');
+		moduleRegistrations.push('\t\tadd_action( \'wp_enqueue_scripts\', array( $this, \'register_widget_assets\' ) );');
 		moduleRegistrations.push('\t\tadd_action( \'elementor/editor/after_enqueue_styles\', array( $this, \'register_widget_assets\' ) );');
 		moduleRegistrations.push('\t\tadd_action( \'elementor/widgets/register\', array( $this, \'register_widgets\' ) );');
 	}
@@ -576,6 +578,10 @@ export function runGenerator(answers) {
 \t * @return array List of widget class names.
 \t */
 \tprivate function get_widget_classes(): array {
+\t\tif ( ! did_action( 'elementor/loaded' ) ) {
+\t\t\treturn array();
+\t\t}
+
 \t\tif ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ) {
 \t\t\t$cached = get_transient( '{{PREFIX}}_elementor_widgets' );
 \t\t\tif ( is_array( $cached ) ) {
@@ -612,6 +618,10 @@ export function runGenerator(answers) {
 \t * @return void
 \t */
 \tpublic function register_widget_assets(): void {
+\t\tif ( ! did_action( 'elementor/loaded' ) ) {
+\t\t\treturn;
+\t\t}
+
 \t\t$widget_classes = $this->get_widget_classes();
 
 \t\tforeach ( $widget_classes as $class_name ) {
@@ -649,7 +659,7 @@ export function runGenerator(answers) {
 \t * @return void
 \t */
 \tpublic function register_widgets( $widgets_manager ): void {
-\t\tif ( ! class_exists( '\\\\Elementor\\\\Widget_Base' ) ) {
+\t\tif ( ! did_action( 'elementor/loaded' ) ) {
 \t\t\treturn;
 \t\t}
 
