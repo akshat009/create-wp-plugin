@@ -3,7 +3,6 @@
 		"prefix": "wpelwidget",
 		"scope": "php",
 		"body": [
-			"<?php",
 			"/**",
 			" * ${TM_FILENAME_BASE/_/ /g} Elementor Widget.",
 			" *",
