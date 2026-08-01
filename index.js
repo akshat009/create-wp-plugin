@@ -358,7 +358,7 @@ async function main() {
 			{
 				type: 'confirm',
 				name: 'useReact',
-				message: '10. Use React / Gutenberg build?',
+				message: '10. Include React asset build pipeline (@wordpress/scripts)?',
 				initial: flags.react ? true : (flags['no-react'] ? false : false)
 			},
 			{

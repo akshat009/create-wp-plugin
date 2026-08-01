@@ -1,6 +1,6 @@
 <?php
 /**
- * React / Gutenberg Enqueue Assets Manager.
+ * React Asset Build Pipeline Manager (@wordpress/scripts).
  *
  * @package {{NS}}\Frontend
  */
@@ -24,11 +24,12 @@ class Assets implements Registrable {
 	 * @return void
 	 */
 	public function register(): void {
-		add_action( 'enqueue_block_assets', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		// To enqueue assets in WordPress admin dashboard instead, hook 'admin_enqueue_scripts' here.
 	}
 
 	/**
-	 * Enqueue compiled block / React assets.
+	 * Enqueue compiled React assets.
 	 *
 	 * @return void
 	 */
