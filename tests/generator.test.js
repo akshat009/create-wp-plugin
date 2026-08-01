@@ -149,8 +149,16 @@ test('Non-interactive scaffolding for Elementor variant includes php-elementor.c
 
 	assert.ok(fs.existsSync(path.join(outDir, 'elementor-plugin.php')));
 	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php.code-snippets')));
-	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php-elementor.code-snippets')));
+	const snippetFile = path.join(outDir, '.vscode/php-elementor.code-snippets');
+	assert.ok(fs.existsSync(snippetFile));
+	const snippetContent = fs.readFileSync(snippetFile, 'utf8');
+	const parsedSnippets = JSON.parse(snippetContent);
+	assert.ok(parsedSnippets['Elementor Widget Class']);
+	assert.equal(parsedSnippets['Elementor Widget Class'].prefix, 'wpelwidget');
+	// Ensure no invalid nested tabstop transform syntax like ${3:${TM_...}} remains
+	assert.ok(!snippetContent.includes('${3:${TM_'));
 	assert.ok(fs.existsSync(path.join(outDir, 'src/Elementor/Dependency_Notice.php')));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
+
