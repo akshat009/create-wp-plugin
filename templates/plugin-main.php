@@ -51,6 +51,9 @@ if ( file_exists( {{PREFIX_UPPER}}_PATH . 'vendor/autoload.php' ) ) {
 	);
 }
 
+register_activation_hook( __FILE__, array( '\{{NS}}\Core\Activator', 'run' ) );
+register_deactivation_hook( __FILE__, array( '\{{NS}}\Core\Deactivator', 'run' ) );
+
 /**
  * Bootstrap the plugin orchestrator.
  *

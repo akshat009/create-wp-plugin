@@ -25,10 +25,6 @@ class Scheduler implements Registrable {
 	 */
 	public function register(): void {
 		add_action( '{{PREFIX}}_cron_event', array( $this, 'execute_cron_job' ) );
-
-		if ( ! wp_next_scheduled( '{{PREFIX}}_cron_event' ) ) {
-			wp_schedule_event( time(), 'hourly', '{{PREFIX}}_cron_event' );
-		}
 	}
 
 	/**

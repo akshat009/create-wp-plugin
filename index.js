@@ -490,7 +490,6 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
-	writeTemplateFile(path.join(templatesDir, 'uninstall.php'), 'uninstall.php');
 	writeTemplateFile(path.join(templatesDir, 'assets/css/main.css'), 'assets/css/main.css');
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
 	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
@@ -651,6 +650,58 @@ async function main() {
 	const ciDestPath = path.join(targetDir, '.github/workflows/ci.yml');
 	fs.mkdirSync(path.dirname(ciDestPath), { recursive: true });
 	fs.writeFileSync(ciDestPath, ciContent, 'utf8');
+
+	// Process Activator.php, Deactivator.php, uninstall.php with dynamic bodies
+	const activatorLines = [];
+	const deactivatorLines = [];
+	const uninstallLines = [];
+
+	if (selectedModules.includes('cpt_taxonomy')) {
+		activatorLines.push('\t\t$post_types = new PostTypes\\Post_Types();');
+		activatorLines.push('\t\t$post_types->register_cpt_and_taxonomy();');
+		activatorLines.push('\t\tflush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
+		deactivatorLines.push('\t\tflush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
+	}
+
+	if (selectedModules.includes('cron')) {
+		activatorLines.push('\t\tif ( ! wp_next_scheduled( \'{{PREFIX}}_cron_event\' ) ) {');
+		activatorLines.push('\t\t\twp_schedule_event( time(), \'hourly\', \'{{PREFIX}}_cron_event\' );');
+		activatorLines.push('\t\t}');
+		deactivatorLines.push('\t\twp_clear_scheduled_hook( \'{{PREFIX}}_cron_event\' );');
+		uninstallLines.push('\twp_clear_scheduled_hook( \'{{PREFIX}}_cron_event\' );');
+	}
+
+	if (selectedModules.includes('elementor_widget')) {
+		activatorLines.push('\t\tdelete_transient( \'{{PREFIX}}_elementor_widgets\' );');
+	}
+
+	if (selectedModules.includes('admin_settings')) {
+		uninstallLines.push('\tdelete_option( \'{{PREFIX}}_option_name\' );');
+	}
+
+	const activatorBody = activatorLines.length > 0 ? activatorLines.join('\n') + '\n' : '';
+	const deactivatorBody = deactivatorLines.length > 0 ? deactivatorLines.join('\n') + '\n' : '';
+	const uninstallBody = uninstallLines.length > 0 ? uninstallLines.join('\n') + '\n' : '';
+
+	let activatorContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Activator.php'), 'utf8');
+	activatorContent = activatorContent.replace('{{ACTIVATOR_BODY}}', () => activatorBody);
+	activatorContent = processTemplateContent(activatorContent);
+	const activatorDestPath = path.join(targetDir, 'src/Core/Activator.php');
+	fs.mkdirSync(path.dirname(activatorDestPath), { recursive: true });
+	fs.writeFileSync(activatorDestPath, activatorContent, 'utf8');
+
+	let deactivatorContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Deactivator.php'), 'utf8');
+	deactivatorContent = deactivatorContent.replace('{{DEACTIVATOR_BODY}}', () => deactivatorBody);
+	deactivatorContent = processTemplateContent(deactivatorContent);
+	const deactivatorDestPath = path.join(targetDir, 'src/Core/Deactivator.php');
+	fs.mkdirSync(path.dirname(deactivatorDestPath), { recursive: true });
+	fs.writeFileSync(deactivatorDestPath, deactivatorContent, 'utf8');
+
+	let uninstallContent = fs.readFileSync(path.join(templatesDir, 'uninstall.php'), 'utf8');
+	uninstallContent = uninstallContent.replace('{{UNINSTALL_BODY}}', () => uninstallBody);
+	uninstallContent = processTemplateContent(uninstallContent);
+	const uninstallDestPath = path.join(targetDir, 'uninstall.php');
+	fs.writeFileSync(uninstallDestPath, uninstallContent, 'utf8');
 
 	// Process README.md with dynamic React sections
 	let readmeContent = fs.readFileSync(path.join(templatesDir, 'README.md'), 'utf8');
