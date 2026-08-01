@@ -426,7 +426,7 @@ async function main() {
 
 	const selectedModules = answers.modules || [];
 	const elementorHeaders = selectedModules.includes('elementor_widget')
-		? ' * Elementor tested up to: 3.25.0\n * Elementor Pro tested up to: 3.25.0\n'
+		? ' * Requires Plugins: elementor\n * Elementor tested up to: 3.27.0\n * Elementor Pro tested up to: 3.27.0\n'
 		: '';
 
 	const replacements = {
@@ -523,7 +523,6 @@ async function main() {
 		moduleRegistrations.push('\n\t\t$services[\'cron\'] = new Cron\\Scheduler();');
 	}
 	if (selectedModules.includes('elementor_widget')) {
-		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Base_Widget.php'), 'src/Widgets/Base_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
 		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');
@@ -539,49 +538,23 @@ async function main() {
 	let elementorWidgetMethods = '';
 	if (selectedModules.includes('elementor_widget')) {
 		elementorWidgetMethods = `\t/**
-\t * Auto-register all per-widget stylesheets and scripts so Elementor can load them on demand.
+\t * Get auto-discovered Elementor widget class names (cached via transient unless SCRIPT_DEBUG is active).
 \t *
-\t * @return void
+\t * @return array List of widget class names.
 \t */
-\tpublic function register_widget_assets() {
-\t\tforeach ( glob( {{PREFIX_UPPER}}_PATH . 'assets/css/widgets/*.css' ) as $file ) {
-\t\t\t$slug = basename( $file, '.css' );
-
-\t\t\twp_register_style(
-\t\t\t\t'{{PREFIX}}-' . $slug,
-\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/css/widgets/' . basename( $file ),
-\t\t\t\tarray(),
-\t\t\t\t{{PREFIX_UPPER}}_VERSION
-\t\t\t);
+\tprivate function get_widget_classes(): array {
+\t\tif ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ) {
+\t\t\t$cached = get_transient( '{{PREFIX}}_elementor_widgets' );
+\t\t\tif ( is_array( $cached ) ) {
+\t\t\t\treturn $cached;
+\t\t\t}
 \t\t}
 
-\t\tforeach ( glob( {{PREFIX_UPPER}}_PATH . 'assets/js/widgets/*.js' ) as $file ) {
-\t\t\t$slug = basename( $file, '.js' );
+\t\t$widget_classes = array();
+\t\t$files          = glob( __DIR__ . '/Widgets/*.php' );
+\t\t$files          = is_array( $files ) ? $files : array();
 
-\t\t\twp_register_script(
-\t\t\t\t'{{PREFIX}}-' . $slug,
-\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/js/widgets/' . basename( $file ),
-\t\t\t\tarray( 'jquery' ),
-\t\t\t\t{{PREFIX_UPPER}}_VERSION,
-\t\t\t\ttrue
-\t\t\t);
-\t\t}
-\t}
-
-\t/**
-\t * Auto-discover and register every concrete widget class in the
-\t * Widgets directory, so adding or deleting a widget file is all
-\t * that's needed — nothing to manually wire up here.
-\t *
-\t * @param object $widgets_manager Elementor widgets manager.
-\t * @return void
-\t */
-\tpublic function register_widgets( $widgets_manager ) {
-\t\tif ( ! class_exists( '\\Elementor\\Widget_Base' ) ) {
-\t\t\treturn;
-\t\t}
-
-\t\tforeach ( glob( __DIR__ . '/Widgets/*.php' ) as $file ) {
+\t\tforeach ( $files as $file ) {
 \t\t\t$class_name = __NAMESPACE__ . '\\\\Widgets\\\\' . basename( $file, '.php' );
 
 \t\t\tif ( ! class_exists( $class_name ) ) {
@@ -590,11 +563,70 @@ async function main() {
 
 \t\t\t$reflection = new \\ReflectionClass( $class_name );
 
-\t\t\tif ( $reflection->isAbstract() || ! $reflection->isSubclassOf( '\\Elementor\\Widget_Base' ) ) {
+\t\t\tif ( $reflection->isAbstract() || ! $reflection->isSubclassOf( '\\\\Elementor\\\\Widget_Base' ) ) {
 \t\t\t\tcontinue;
 \t\t\t}
 
-\t\t\t$widgets_manager->register( new $class_name() );
+\t\t\t$widget_classes[] = $class_name;
+\t\t}
+
+\t\tset_transient( '{{PREFIX}}_elementor_widgets', $widget_classes, DAY_IN_SECONDS );
+\t\treturn $widget_classes;
+\t}
+
+\t/**
+\t * Auto-register per-widget stylesheets and scripts derived by convention from widget class names.
+\t *
+\t * @return void
+\t */
+\tpublic function register_widget_assets(): void {
+\t\t$widget_classes = $this->get_widget_classes();
+
+\t\tforeach ( $widget_classes as $class_name ) {
+\t\t\t$short_name = substr( $class_name, strrpos( $class_name, '\\\\' ) + 1 );
+\t\t\t$slug       = strtolower( str_replace( '_', '-', $short_name ) );
+\t\t\t$handle     = '{{PREFIX}}-' . $slug;
+\t\t\t$css_file   = {{PREFIX_UPPER}}_PATH . 'assets/css/widgets/' . $slug . '.css';
+\t\t\t$js_file    = {{PREFIX_UPPER}}_PATH . 'assets/js/widgets/' . $slug . '.js';
+
+\t\t\tif ( file_exists( $css_file ) ) {
+\t\t\t\twp_register_style(
+\t\t\t\t\t$handle,
+\t\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/css/widgets/' . $slug . '.css',
+\t\t\t\t\tarray(),
+\t\t\t\t\t{{PREFIX_UPPER}}_VERSION
+\t\t\t\t);
+\t\t\t}
+
+\t\t\tif ( file_exists( $js_file ) ) {
+\t\t\t\twp_register_script(
+\t\t\t\t\t$handle,
+\t\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/js/widgets/' . $slug . '.js',
+\t\t\t\t\tarray( 'jquery' ),
+\t\t\t\t\t{{PREFIX_UPPER}}_VERSION,
+\t\t\t\t\ttrue
+\t\t\t\t);
+\t\t\t}
+\t\t}
+\t}
+
+\t/**
+\t * Auto-register discovered concrete Elementor widget classes.
+\t *
+\t * @param object $widgets_manager Elementor widgets manager.
+\t * @return void
+\t */
+\tpublic function register_widgets( $widgets_manager ): void {
+\t\tif ( ! class_exists( '\\\\Elementor\\\\Widget_Base' ) ) {
+\t\t\treturn;
+\t\t}
+
+\t\t$widget_classes = $this->get_widget_classes();
+
+\t\tforeach ( $widget_classes as $class_name ) {
+\t\t\tif ( class_exists( $class_name ) ) {
+\t\t\t\t$widgets_manager->register( new $class_name() );
+\t\t\t}
 \t\t}
 \t}\n\n`;
 	}

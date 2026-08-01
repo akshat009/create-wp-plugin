@@ -11,6 +11,17 @@
 2. Run `composer install` to install PHP dependencies and setup autoloader.
 {{README_REACT_INSTALL}}
 
+## Architecture & Services
+This plugin uses a modular composition root orchestrated by `Plugin::get_instance()`.
+- Services implement `{{NS}}\Contracts\Registrable`.
+- Additional services can be injected without modifying core files using the `{{PREFIX}}_services` WordPress filter.
+
+## Elementor Widgets Convention
+Concrete widget classes placed in `src/Widgets/` are automatically discovered:
+- **Class Extension**: Custom widgets extend `\Elementor\Widget_Base` directly.
+- **Naming & Asset Handles**: Underscores in class names convert to hyphens (e.g. `Sample_Widget` in `src/Widgets/Sample_Widget.php` maps to handle `{{PREFIX}}-sample-widget`).
+- **Asset Auto-Discovery**: If `assets/css/widgets/sample-widget.css` or `assets/js/widgets/sample-widget.js` exist, they are auto-registered for elementor on-demand enqueueing.
+
 ## WP-CLI Commands
 - `wp {{PREFIX}} status` — Display plugin version and cache backend.
 - `wp {{PREFIX}} cache clear` — Clear plugin cache.
