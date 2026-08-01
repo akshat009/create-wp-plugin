@@ -551,8 +551,7 @@ async function main() {
 \t\t}
 
 \t\t$widget_classes = array();
-\t\t$files          = glob( __DIR__ . '/Widgets/*.php' );
-\t\t$files          = is_array( $files ) ? $files : array();
+\t\t$files          = glob( __DIR__ . '/Widgets/*.php' ) ?: array(); // phpcs:ignore Universal.Operators.DisallowShortTernary.Found
 
 \t\tforeach ( $files as $file ) {
 \t\t\t$class_name = __NAMESPACE__ . '\\\\Widgets\\\\' . basename( $file, '.php' );
