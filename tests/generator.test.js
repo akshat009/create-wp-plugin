@@ -122,13 +122,13 @@ test('Non-interactive scaffolding for zero-module minimal variant', () => {
 	assert.ok(fs.existsSync(path.join(outDir, 'readme.txt')));
 	assert.ok(fs.existsSync(path.join(outDir, 'languages/.gitkeep')));
 	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php.code-snippets')));
-	assert.ok(!fs.existsSync(path.join(outDir, '.vscode/elementor.code-snippets')));
+	assert.ok(!fs.existsSync(path.join(outDir, '.vscode/php-elementor.code-snippets')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Elementor/Dependency_Notice.php')));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('Non-interactive scaffolding for Elementor variant includes elementor.code-snippets and Dependency_Notice.php', () => {
+test('Non-interactive scaffolding for Elementor variant includes php-elementor.code-snippets and Dependency_Notice.php', () => {
 	const outDir = path.join(__dirname, '../tmp-test-elementor');
 	const mockAnswers = {
 		name: 'Elementor Plugin',
@@ -149,7 +149,7 @@ test('Non-interactive scaffolding for Elementor variant includes elementor.code-
 
 	assert.ok(fs.existsSync(path.join(outDir, 'elementor-plugin.php')));
 	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php.code-snippets')));
-	assert.ok(fs.existsSync(path.join(outDir, '.vscode/elementor.code-snippets')));
+	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php-elementor.code-snippets')));
 	assert.ok(fs.existsSync(path.join(outDir, 'src/Elementor/Dependency_Notice.php')));
 
 	fs.rmSync(outDir, { recursive: true, force: true });

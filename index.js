@@ -555,7 +555,7 @@ export function runGenerator(answers) {
 		moduleRegistrations.push('\n\t\t$services[\'cron\'] = new Cron\\Scheduler();');
 	}
 	if (selectedModules.includes('elementor_widget')) {
-		writeTemplateFile(path.join(templatesDir, '.vscode/elementor.code-snippets'), '.vscode/elementor.code-snippets');
+		writeTemplateFile(path.join(templatesDir, '.vscode/php-elementor.code-snippets'), '.vscode/php-elementor.code-snippets');
 		writeTemplateFile(path.join(templatesDir, 'src/Elementor/Dependency_Notice.php'), 'src/Elementor/Dependency_Notice.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');

@@ -1,6 +1,7 @@
 {
 	"Elementor Widget Class": {
 		"prefix": "wpelwidget",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -89,7 +90,7 @@
 			"\t\t\tarray(",
 			"\t\t\t\t'label' => __( 'Content', '{{SLUG}}' ),",
 			"\t\t\t\t'tab'   => Controls_Manager::TAB_CONTENT,",
-			"\t\t\t)",
+			"\t\t\t),",
 			"\t\t);",
 			"",
 			"\t\t\\$this->add_control(",
@@ -98,7 +99,7 @@
 			"\t\t\t\t'label'       => __( 'Title', '{{SLUG}}' ),",
 			"\t\t\t\t'type'        => Controls_Manager::TEXT,",
 			"\t\t\t\t'default'     => __( 'Default Title', '{{SLUG}}' ),",
-			"\t\t\t)",
+			"\t\t\t),",
 			"\t\t);",
 			"\t\t$0",
 			"",
@@ -109,7 +110,7 @@
 			"\t\t\tarray(",
 			"\t\t\t\t'label' => __( 'Style', '{{SLUG}}' ),",
 			"\t\t\t\t'tab'   => Controls_Manager::TAB_STYLE,",
-			"\t\t\t)",
+			"\t\t\t),",
 			"\t\t);",
 			"",
 			"\t\t\\$this->add_control(",
@@ -120,7 +121,7 @@
 			"\t\t\t\t'selectors' => array(",
 			"\t\t\t\t\t'{{WRAPPER}} .title' => 'color: {{VALUE}};',",
 			"\t\t\t\t),",
-			"\t\t\t)",
+			"\t\t\t),",
 			"\t\t);",
 			"",
 			"\t\t\\$this->end_controls_section();",
