@@ -265,7 +265,6 @@ async function main() {
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Base_Widget.php'), 'src/Widgets/Base_Widget.php');
-		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Abstract_Widget.php'), 'src/Widgets/Abstract_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		moduleRegistrations.push('\t\tadd_action( \'elementor/widgets/register\', array( $this, \'register_widgets\' ) );');
 	}

@@ -7,6 +7,7 @@
 
 namespace {{NS}}\Widgets;
 
+use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,7 +21,7 @@ if ( ! class_exists( '\Elementor\Widget_Base' ) ) {
 /**
  * Class Sample_Widget.
  */
-class Sample_Widget extends Abstract_Widget {
+class Sample_Widget extends Widget_Base {
 
 	/**
 	 * Get widget name.
@@ -59,11 +60,11 @@ class Sample_Widget extends Abstract_Widget {
 	}
 
 	/**
-	 * Register Content tab controls.
+	 * Register controls for the widget.
 	 *
 	 * @return void
 	 */
-	protected function register_content_controls() {
+	protected function register_controls() {
 		$this->start_controls_section(
 			'content_section',
 			array(
@@ -72,19 +73,28 @@ class Sample_Widget extends Abstract_Widget {
 			)
 		);
 
-		$this->add_text_control( 'title', __( 'Title', '{{SLUG}}' ), __( 'Hello World', '{{SLUG}}' ) );
-		$this->add_textarea_control( 'description', __( 'Description', '{{SLUG}}' ), __( 'This is a sample Elementor widget built with {{PLUGIN_NAME}}.', '{{SLUG}}' ) );
-		$this->add_url_control( 'button_link', __( 'Button Link', '{{SLUG}}' ) );
+		$this->add_control(
+			'title',
+			array(
+				'label'       => __( 'Title', '{{SLUG}}' ),
+				'type'        => Controls_Manager::TEXT,
+				'default'     => __( 'Hello World', '{{SLUG}}' ),
+				'placeholder' => __( 'Enter title', '{{SLUG}}' ),
+			)
+		);
+
+		$this->add_control(
+			'description',
+			array(
+				'label'       => __( 'Description', '{{SLUG}}' ),
+				'type'        => Controls_Manager::TEXTAREA,
+				'default'     => __( 'This is a sample Elementor widget built with {{PLUGIN_NAME}}.', '{{SLUG}}' ),
+				'placeholder' => __( 'Enter description', '{{SLUG}}' ),
+			)
+		);
 
 		$this->end_controls_section();
-	}
 
-	/**
-	 * Register Style tab controls.
-	 *
-	 * @return void
-	 */
-	protected function register_style_controls() {
 		$this->start_controls_section(
 			'style_section',
 			array(
@@ -93,8 +103,16 @@ class Sample_Widget extends Abstract_Widget {
 			)
 		);
 
-		$this->add_color_control( 'title_color', __( 'Title Color', '{{SLUG}}' ), '', array( '{{WRAPPER}} .sample-widget-title' => 'color: {{VALUE}};' ) );
-		$this->add_typography_group_control( 'title_typography', '{{WRAPPER}} .sample-widget-title' );
+		$this->add_control(
+			'title_color',
+			array(
+				'label'     => __( 'Title Color', '{{SLUG}}' ),
+				'type'      => Controls_Manager::COLOR,
+				'selectors' => array(
+					'{{WRAPPER}} .sample-widget-title' => 'color: {{VALUE}};',
+				),
+			)
+		);
 
 		$this->end_controls_section();
 	}
@@ -114,15 +132,6 @@ class Sample_Widget extends Abstract_Widget {
 
 			<?php if ( ! empty( $settings['description'] ) ) : ?>
 				<p class="sample-widget-description"><?php echo esc_html( $settings['description'] ); ?></p>
-			<?php endif; ?>
-
-			<?php if ( ! empty( $settings['button_link']['url'] ) ) : ?>
-				<a href="<?php echo esc_url( $settings['button_link']['url'] ); ?>"
-				   class="sample-widget-btn"
-				   <?php echo ! empty( $settings['button_link']['is_external'] ) ? 'target="_blank"' : ''; ?>
-				   <?php echo ! empty( $settings['button_link']['nofollow'] ) ? 'rel="nofollow"' : ''; ?>>
-					<?php esc_html_e( 'Click Here', '{{SLUG}}' ); ?>
-				</a>
 			<?php endif; ?>
 		</div>
 		<?php
