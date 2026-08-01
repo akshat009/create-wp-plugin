@@ -47,6 +47,15 @@ class Rest_Controller implements Registrable {
 				'methods'             => \WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_items' ),
 				'permission_callback' => array( $this, 'get_items_permissions_check' ),
+				'args'                => array(
+					'param' => array(
+						'required'          => false,
+						'sanitize_callback' => 'sanitize_text_field',
+						'validate_callback' => function ( $param ) {
+							return is_string( $param );
+						},
+					),
+				),
 			)
 		);
 	}
@@ -58,8 +67,8 @@ class Rest_Controller implements Registrable {
 	 * @return bool|\WP_Error
 	 */
 	public function get_items_permissions_check( $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// TODO: SECURITY - Perform capability check or return true if public.
-		return current_user_can( 'read' );
+		// Public endpoint. Replace with current_user_can() check if restricted access is required.
+		return true;
 	}
 
 	/**
@@ -68,10 +77,11 @@ class Rest_Controller implements Registrable {
 	 * @param \WP_REST_Request $request REST request object.
 	 * @return \WP_REST_Response|\WP_Error
 	 */
-	public function get_items( $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// TODO: SECURITY - Sanitize parameters and escape response payload.
-		$data = array(
-			'message' => 'Hello from {{PLUGIN_NAME}} REST API',
+	public function get_items( $request ) {
+		$param = $request->get_param( 'param' );
+		$data  = array(
+			'message' => __( 'Hello from {{PLUGIN_NAME}} REST API', '{{SLUG}}' ),
+			'param'   => ! empty( $param ) ? sanitize_text_field( (string) $param ) : null,
 		);
 
 		return rest_ensure_response( $data );

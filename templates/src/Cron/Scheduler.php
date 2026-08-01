@@ -32,7 +32,7 @@ class Scheduler implements Registrable {
 	 *
 	 * @return void
 	 */
-	public function execute_cron_job() {
-		// TODO: SECURITY - Validate background task authorization / parameters.
+	public function execute_cron_job(): void {
+		// Cron task execution logic.
 	}
 }

@@ -43,7 +43,6 @@ class Shortcode implements Registrable {
 			'{{PREFIX}}_display'
 		);
 
-		// TODO: SECURITY - Sanitize attribute inputs ($atts) and escape output HTML.
 		$title = sanitize_text_field( $atts['title'] );
 
 		ob_start();

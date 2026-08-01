@@ -39,12 +39,13 @@ class Post_Types implements Registrable {
 		);
 
 		$cpt_args = array(
-			'labels'       => $cpt_labels,
-			'public'       => true,
-			'has_archive'  => true,
-			'show_in_rest' => true,
-			'supports'     => array( 'title', 'editor', 'thumbnail' ),
-			// TODO: SECURITY - Set custom capability_type if user capabilities are restricted.
+			'labels'          => $cpt_labels,
+			'public'          => true,
+			'has_archive'     => true,
+			'show_in_rest'    => true,
+			'supports'        => array( 'title', 'editor', 'thumbnail' ),
+			'capability_type' => 'post',
+			'map_meta_cap'    => true,
 		);
 
 		register_post_type( '{{PREFIX}}_item', $cpt_args );

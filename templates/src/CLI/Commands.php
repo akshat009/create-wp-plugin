@@ -62,7 +62,11 @@ class Commands implements Registrable {
 	 * @return void
 	 */
 	public function cache_clear( $args = array(), $assoc_args = array() ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// TODO: Implement cache clearing logic for {{PLUGIN_NAME}}.
-		\WP_CLI::log( 'Cache clear stubbed.' );
+		if ( function_exists( 'wp_cache_flush_group' ) ) {
+			wp_cache_flush_group( '{{PREFIX}}' );
+		} else {
+			delete_transient( '{{PREFIX}}_elementor_widgets' );
+		}
+		\WP_CLI::success( __( 'Plugin cache cleared successfully.', '{{SLUG}}' ) );
 	}
 }

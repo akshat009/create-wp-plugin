@@ -33,7 +33,6 @@ class Woo_Hooks implements Registrable {
 	 * @return void
 	 */
 	public function custom_product_summary_note() {
-		// TODO: SECURITY - Sanitize product meta & escape HTML prior to rendering.
 		echo '<div class="' . esc_attr( '{{SLUG}}-woo-note' ) . '">' . esc_html__( 'Special Product Note', '{{SLUG}}' ) . '</div>';
 	}
 }
