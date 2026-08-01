@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Frontend;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Assets.
  */
-class Assets {
+class Assets implements Registrable {
 
 	/**
 	 * Register asset hooks.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( 'enqueue_block_assets', array( $this, 'enqueue_assets' ) );
 	}
 

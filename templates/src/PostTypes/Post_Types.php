@@ -7,6 +7,8 @@
 
 namespace {{NS}}\PostTypes;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Post_Types.
  */
-class Post_Types {
+class Post_Types implements Registrable {
 
 	/**
 	 * Register post types and taxonomies.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( 'init', array( $this, 'register_cpt_and_taxonomy' ) );
 	}
 

@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Ajax;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Ajax_Handler.
  */
-class Ajax_Handler {
+class Ajax_Handler implements Registrable {
 
 	/**
 	 * Register AJAX actions.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( 'wp_ajax_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
 		add_action( 'wp_ajax_nopriv_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
 	}

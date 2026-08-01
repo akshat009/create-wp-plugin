@@ -7,6 +7,8 @@
 
 namespace {{NS}}\CLI;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -18,14 +20,14 @@ if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 /**
  * WP-CLI Commands for {{PLUGIN_NAME}}.
  */
-class Commands {
+class Commands implements Registrable {
 
 	/**
 	 * Register WP-CLI commands.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		\WP_CLI::add_command( '{{PREFIX}} status', array( $this, 'status' ) );
 		\WP_CLI::add_command( '{{PREFIX}} cache clear', array( $this, 'cache_clear' ) );
 	}

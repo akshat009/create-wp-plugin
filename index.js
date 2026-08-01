@@ -480,6 +480,7 @@ async function main() {
 	const templatesDir = path.join(__dirname, 'templates');
 
 	// Copy standard templates
+	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Registrable.php'), 'src/Contracts/Registrable.php');
 	writeTemplateFile(path.join(templatesDir, 'plugin-main.php'), `${answers.slug}.php`);
 	writeTemplateFile(path.join(templatesDir, 'composer.json'), 'composer.json');
 	writeTemplateFile(path.join(templatesDir, 'phpcs.xml'), 'phpcs.xml');
@@ -500,40 +501,40 @@ async function main() {
 
 	if (selectedModules.includes('admin_settings')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Page.php'), 'src/Admin/Settings_Page.php');
-		moduleRegistrations.push('\t\t$this->services[\'admin_settings\'] = new Admin\\Settings_Page();');
+		moduleRegistrations.push('\n\t\t$services[\'admin_settings\'] = new Admin\\Settings_Page();');
 	}
 	if (selectedModules.includes('shortcode')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Shortcode.php'), 'src/Frontend/Shortcode.php');
-		moduleRegistrations.push('\t\t$this->services[\'shortcode\'] = new Frontend\\Shortcode();');
+		moduleRegistrations.push('\n\t\t$services[\'shortcode\'] = new Frontend\\Shortcode();');
 	}
 	if (selectedModules.includes('rest_api')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Rest/Rest_Controller.php'), 'src/Rest/Rest_Controller.php');
-		moduleRegistrations.push('\t\t$this->services[\'rest\'] = new Rest\\Rest_Controller();');
+		moduleRegistrations.push('\n\t\t$services[\'rest\'] = new Rest\\Rest_Controller();');
 	}
 	if (selectedModules.includes('ajax_handler')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Ajax/Ajax_Handler.php'), 'src/Ajax/Ajax_Handler.php');
-		moduleRegistrations.push('\t\t$this->services[\'ajax\'] = new Ajax\\Ajax_Handler();');
+		moduleRegistrations.push('\n\t\t$services[\'ajax\'] = new Ajax\\Ajax_Handler();');
 	}
 	if (selectedModules.includes('cpt_taxonomy')) {
 		writeTemplateFile(path.join(templatesDir, 'src/PostTypes/Post_Types.php'), 'src/PostTypes/Post_Types.php');
-		moduleRegistrations.push('\t\t$this->services[\'post_types\'] = new PostTypes\\Post_Types();');
+		moduleRegistrations.push('\n\t\t$services[\'post_types\'] = new PostTypes\\Post_Types();');
 	}
 	if (selectedModules.includes('cron')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cron/Scheduler.php'), 'src/Cron/Scheduler.php');
-		moduleRegistrations.push('\t\t$this->services[\'cron\'] = new Cron\\Scheduler();');
+		moduleRegistrations.push('\n\t\t$services[\'cron\'] = new Cron\\Scheduler();');
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Base_Widget.php'), 'src/Widgets/Base_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
 		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');
-		moduleRegistrations.push('\t\tadd_action( \'wp_enqueue_scripts\', array( $this, \'register_widget_assets\' ) );');
+		moduleRegistrations.push('\n\t\tadd_action( \'wp_enqueue_scripts\', array( $this, \'register_widget_assets\' ) );');
 		moduleRegistrations.push('\t\tadd_action( \'elementor/editor/after_enqueue_styles\', array( $this, \'register_widget_assets\' ) );');
 		moduleRegistrations.push('\t\tadd_action( \'elementor/widgets/register\', array( $this, \'register_widgets\' ) );');
 	}
 	if (selectedModules.includes('woocommerce_hooks')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Woo_Hooks.php'), 'src/Woo/Woo_Hooks.php');
-		moduleRegistrations.push('\t\t$this->services[\'woo\'] = new Woo\\Woo_Hooks();');
+		moduleRegistrations.push('\n\t\t$services[\'woo\'] = new Woo\\Woo_Hooks();');
 	}
 
 	let elementorWidgetMethods = '';
@@ -609,7 +610,7 @@ async function main() {
 		writeTemplateFile(path.join(templatesDir, 'react/package.json'), 'package.json');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/index.js'), 'assets/src/index.js');
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Assets.php'), 'src/Frontend/Assets.php');
-		reactAssetsRegistration = '\t\t$this->services[\'assets\'] = new Frontend\\Assets();\n';
+		reactAssetsRegistration = '\n\t\t$services[\'assets\'] = new Frontend\\Assets();\n';
 		readmeReactInstall = '3. Run `npm install` and `npm run build` to compile React assets.\n   > Note: `assets/build` is gitignored and generated during build.';
 		readmeReactScripts = '- `npm run build` — Build React assets for production.\n- `npm run start` — Start React asset dev server in watch mode.';
 

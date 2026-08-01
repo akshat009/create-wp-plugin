@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Cron;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Scheduler.
  */
-class Scheduler {
+class Scheduler implements Registrable {
 
 	/**
 	 * Register cron event actions.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( '{{PREFIX}}_cron_event', array( $this, 'execute_cron_job' ) );
 
 		if ( ! wp_next_scheduled( '{{PREFIX}}_cron_event' ) ) {

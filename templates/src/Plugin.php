@@ -32,10 +32,11 @@ final class Plugin {
 
 	/**
 	 * Private constructor for singleton.
+	 *
+	 * @param array|null $services Optional injected services array.
 	 */
-	private function __construct() {
-		$this->register_services();
-		$this->register_modules();
+	private function __construct( array $services = null ) {
+		$this->services = null !== $services ? $services : $this->build_services();
 	}
 
 	/**
@@ -51,34 +52,35 @@ final class Plugin {
 	}
 
 	/**
-	 * Register core services.
+	 * Build built-in services array.
 	 *
-	 * @return void
+	 * @return array
 	 */
-	private function register_services() {
-		// Register services here.
-		if ( defined( 'WP_CLI' ) && WP_CLI ) {
-			$this->services['cli'] = new CLI\Commands();
-		}
-{{REACT_ASSETS_REGISTRATION}}	}
+	private function build_services(): array {
+		$services = array();
 
-	/**
-	 * Register optional plugin modules.
-	 *
-	 * @return void
-	 */
-	private function register_modules() {
-		// Register modules here.
-{{MODULE_REGISTRATIONS}}	}
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			$services['cli'] = new CLI\Commands();
+		}
+{{REACT_ASSETS_REGISTRATION}}{{MODULE_REGISTRATIONS}}
+		return $services;
+	}
 
 {{ELEMENTOR_WIDGET_METHODS}}	/**
 	 * Boot all registered services and modules.
 	 *
 	 * @return void
 	 */
-	public function boot() {
-		foreach ( $this->services as $service ) {
-			if ( method_exists( $service, 'register' ) ) {
+	public function boot(): void {
+		/**
+		 * Filter the services to be registered.
+		 *
+		 * @param array $services Array of Registrable service instances.
+		 */
+		$services = apply_filters( '{{PREFIX}}_services', $this->services );
+
+		foreach ( $services as $service ) {
+			if ( $service instanceof Contracts\Registrable ) {
 				$service->register();
 			}
 		}

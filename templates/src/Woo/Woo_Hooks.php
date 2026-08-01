@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Woo;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Woo_Hooks.
  */
-class Woo_Hooks {
+class Woo_Hooks implements Registrable {
 
 	/**
 	 * Register WooCommerce hooks.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( 'woocommerce_single_product_summary', array( $this, 'custom_product_summary_note' ), 25 );
 	}
 

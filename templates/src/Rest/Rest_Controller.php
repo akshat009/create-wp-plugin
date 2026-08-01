@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Rest;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Rest_Controller.
  */
-class Rest_Controller {
+class Rest_Controller implements Registrable {
 
 	/**
 	 * REST namespace.
@@ -28,7 +30,7 @@ class Rest_Controller {
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 

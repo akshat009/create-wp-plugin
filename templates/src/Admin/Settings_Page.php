@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Admin;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Settings_Page.
  */
-class Settings_Page {
+class Settings_Page implements Registrable {
 
 	/**
 	 * Register admin menu and settings hooks.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
 		add_action( 'admin_init', array( $this, 'register_settings' ) );
 	}

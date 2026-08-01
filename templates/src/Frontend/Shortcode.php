@@ -7,6 +7,8 @@
 
 namespace {{NS}}\Frontend;
 
+use {{NS}}\Contracts\Registrable;
+
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -14,14 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Shortcode.
  */
-class Shortcode {
+class Shortcode implements Registrable {
 
 	/**
 	 * Register shortcode.
 	 *
 	 * @return void
 	 */
-	public function register() {
+	public function register(): void {
 		add_shortcode( '{{PREFIX}}_display', array( $this, 'render_shortcode' ) );
 	}
 
