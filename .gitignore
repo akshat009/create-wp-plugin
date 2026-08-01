@@ -6,6 +6,6 @@ test-output/
 test-scaffold/
 scratch/
 tmp-verify/
+PLAN.md
 .DS_Store
 Thumbs.db
-
