@@ -1,6 +1,6 @@
 <?php
 /**
- * Elementor Widget Base.
+ * Elementor Widgets Manager.
  *
  * @package {{NS}}\Widgets
  */
@@ -22,16 +22,20 @@ class Base_Widget {
 	 * @return void
 	 */
 	public function register() {
-		add_action( 'elementor/widgets/register', array( $this, 'register_widget' ) );
+		add_action( 'elementor/widgets/register', array( $this, 'register_widgets' ) );
 	}
 
 	/**
-	 * Register widget with Elementor widgets manager.
+	 * Register widgets with Elementor widgets manager.
 	 *
 	 * @param object $widgets_manager Elementor widgets manager.
 	 * @return void
 	 */
-	public function register_widget( $widgets_manager ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// TODO: SECURITY - Ensure Elementor is active before instantiating widgets.
+	public function register_widgets( $widgets_manager ) {
+		if ( ! class_exists( '\Elementor\Widget_Base' ) ) {
+			return;
+		}
+
+		$widgets_manager->register( new Sample_Widget() );
 	}
 }
