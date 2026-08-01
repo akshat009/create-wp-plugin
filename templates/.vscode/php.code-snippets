@@ -1,6 +1,7 @@
 {
 	"WordPress OOP Class": {
 		"prefix": "wpclass",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -32,6 +33,7 @@
 	},
 	"WordPress OOP Abstract Class": {
 		"prefix": "wpabstract",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -65,6 +67,7 @@
 	},
 	"WordPress OOP Interface": {
 		"prefix": "wpinterface",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -98,6 +101,7 @@
 	},
 	"WordPress OOP Implements": {
 		"prefix": "wpimplements",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -132,6 +136,7 @@
 	},
 	"WordPress OOP Extends": {
 		"prefix": "wpextends",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -164,6 +169,7 @@
 	},
 	"WordPress OOP Singleton": {
 		"prefix": "wpsingleton",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
@@ -214,6 +220,7 @@
 	},
 	"WordPress OOP Method": {
 		"prefix": "wpmethod",
+		"scope": "php",
 		"body": [
 			"/**",
 			" * ${1:Method description}.",
@@ -229,6 +236,7 @@
 	},
 	"WordPress OOP Constructor": {
 		"prefix": "wpconstruct",
+		"scope": "php",
 		"body": [
 			"/**",
 			" * ${1:Dependency instance}.",
