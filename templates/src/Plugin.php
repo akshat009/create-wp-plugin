@@ -52,6 +52,15 @@ final class Plugin {
 	}
 
 	/**
+	 * Get registered services.
+	 *
+	 * @return array
+	 */
+	public function get_services(): array {
+		return $this->services;
+	}
+
+	/**
 	 * Build built-in services array.
 	 *
 	 * @return array

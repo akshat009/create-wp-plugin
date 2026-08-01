@@ -60,6 +60,7 @@ register_deactivation_hook( __FILE__, array( '\{{NS}}\Core\Deactivator', 'run' )
  * @return void
  */
 function {{PREFIX}}_boot() {
+	load_plugin_textdomain( '{{SLUG}}', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
 	\{{NS}}\Plugin::get_instance()->boot();
 }
 

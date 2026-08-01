@@ -415,11 +415,18 @@ async function main() {
 		}
 	}
 
-	const targetDir = path.resolve(process.cwd(), answers.outputDir);
+	runGenerator(answers);
+}
+
+export function runGenerator(answers) {
+	answers.outputDir = answers.outputDir || answers.out;
+	const outputDir = answers.outputDir;
+	const targetDir = path.resolve(process.cwd(), outputDir);
 
 	if (fs.existsSync(targetDir) && fs.readdirSync(targetDir).length > 0) {
-		console.error(`\n❌ Error: Directory "${answers.outputDir}" already exists and is not empty.`);
-		process.exit(1);
+		console.error(`\n❌ Error: Directory "${outputDir}" already exists and is not empty.`);
+		if (!answers.out) process.exit(1);
+		return;
 	}
 
 	fs.mkdirSync(targetDir, { recursive: true });
@@ -514,6 +521,8 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'assets/css/main.css'), 'assets/css/main.css');
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
+	writeTemplateFile(path.join(templatesDir, 'readme.txt'), 'readme.txt');
+	writeTemplateFile(path.join(templatesDir, 'languages/.gitkeep'), 'languages/.gitkeep');
 	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
 	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), '.vscode/extensions.json');
 	writeTemplateFile(path.join(templatesDir, '.vscode/settings.json'), '.vscode/settings.json');
@@ -698,8 +707,18 @@ async function main() {
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
 
+	const allPhpVersions = ['8.0', '8.1', '8.2', '8.3'];
+	const minPhpNum = parseFloat(answers.minPhp || '8.0');
+	let validMatrixVersions = allPhpVersions.filter(v => parseFloat(v) >= minPhpNum);
+	if (!validMatrixVersions.includes(answers.minPhp)) {
+		validMatrixVersions.push(answers.minPhp);
+	}
+	validMatrixVersions.sort((a, b) => parseFloat(a) - parseFloat(b));
+	const ciPhpMatrix = JSON.stringify(validMatrixVersions).replace(/"/g, "'");
+
 	// Process ci.yml with dynamic node job
 	let ciContent = fs.readFileSync(path.join(templatesDir, 'github/workflows/ci.yml'), 'utf8');
+	ciContent = ciContent.replace('{{CI_PHP_MATRIX}}', () => ciPhpMatrix);
 	ciContent = ciContent.replace('{{CI_NODE_JOB}}', () => ciNodeJob);
 	ciContent = processTemplateContent(ciContent);
 	const ciDestPath = path.join(targetDir, '.github/workflows/ci.yml');
@@ -780,7 +799,9 @@ async function main() {
 	console.log('Note: composer install may prompt to allow dealerdirect/phpcodesniffer-composer-installer — answer yes.\n');
 }
 
-main().catch(err => {
-	console.error('An error occurred:', err);
-	process.exit(1);
-});
+if (process.argv[1] && path.resolve(__filename) === path.resolve(process.argv[1])) {
+	main().catch(err => {
+		console.error('An error occurred:', err);
+		process.exit(1);
+	});
+}

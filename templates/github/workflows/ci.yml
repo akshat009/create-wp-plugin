@@ -8,7 +8,7 @@ on:
 
 jobs:
   phpcs:
-    name: Code Sniffer (PHPCS)
+    name: Code Sniffer & Validation (PHPCS)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -19,6 +19,22 @@ jobs:
         with:
           php-version: '8.2'
           tools: composer
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Validate Composer JSON
+        run: composer validate --strict
 
       - name: Install Composer Dependencies
         run: composer install --prefer-dist --no-progress
@@ -31,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php-version: ['8.0', '8.2', '8.3']
+        php-version: {{CI_PHP_MATRIX}}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -41,6 +57,19 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           tools: composer
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
 
       - name: Install Composer Dependencies
         run: composer install --prefer-dist --no-progress
