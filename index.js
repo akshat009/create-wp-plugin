@@ -516,6 +516,7 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
 	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
 	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), '.vscode/extensions.json');
+	writeTemplateFile(path.join(templatesDir, '.vscode/settings.json'), '.vscode/settings.json');
 
 	// Selected modules mapping
 	const moduleRegistrations = [];
@@ -545,6 +546,7 @@ async function main() {
 		moduleRegistrations.push('\n\t\t$services[\'cron\'] = new Cron\\Scheduler();');
 	}
 	if (selectedModules.includes('elementor_widget')) {
+		writeTemplateFile(path.join(templatesDir, '.vscode/elementor.code-snippets'), '.vscode/elementor.code-snippets');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
 		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');

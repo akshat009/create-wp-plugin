@@ -1,6 +1,8 @@
 {
 	"recommendations": [
 		"bmewburn.vscode-intelephense-client",
-		"neilbrayfield.php-docblocker"
+		"neilbrayfield.php-docblocker",
+		"valeryanm.vscode-phpsab",
+		"editorconfig.editorconfig"
 	]
 }
