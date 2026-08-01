@@ -9,30 +9,37 @@ import prompts from 'prompts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function slugify(text) {
+export function slugify(text) {
+	if (!text) return '';
 	return text
 		.toString()
 		.toLowerCase()
 		.trim()
+		.replace(/_/g, '-')
 		.replace(/\s+/g, '-')
-		.replace(/[^\w\-]+/g, '')
-		.replace(/\-\-+/g, '-');
+		.replace(/[^a-z0-9\-]+/g, '')
+		.replace(/\-\-+/g, '-')
+		.replace(/^-+|-+$/g, '');
 }
 
-function suggestNamespace(name) {
-	if (!name) return 'MyPlugin';
-	const words = name.trim().split(/[\s-_]+/);
-	if (words.length === 1) {
-		return words[0].charAt(0).toUpperCase() + words[0].slice(1);
-	}
-	// For names like "Orbit Widgets for Elementor" -> ORBW or OWFE
-	const acronym = words.map(w => w.charAt(0).toUpperCase()).join('');
-	return acronym.length >= 2 ? acronym : 'MyPlugin';
+export function suggestNamespace(name) {
+	if (!name || typeof name !== 'string') return 'MyPlugin';
+	const fillers = new Set(['for', 'the', 'and', 'of', 'to', 'a', 'in', 'on', 'with', 'by', 'an', 'or', 'at', 'from', 'is']);
+	const rawWords = name.trim().split(/[\s-_]+/).filter(Boolean);
+	if (rawWords.length === 0) return 'MyPlugin';
+	const filtered = rawWords.filter(w => !fillers.has(w.toLowerCase()));
+	const words = filtered.length > 0 ? filtered : rawWords;
+	const studly = words
+		.map(w => w.replace(/[^A-Za-z0-9_]/g, ''))
+		.filter(Boolean)
+		.map(w => w.charAt(0).toUpperCase() + w.slice(1))
+		.join('');
+	return studly || 'MyPlugin';
 }
 
-function suggestPrefix(name) {
+export function suggestPrefix(name) {
 	if (!name) return 'myplug';
-	const fillers = new Set(['for', 'the', 'and', 'of', 'to', 'a']);
+	const fillers = new Set(['for', 'the', 'and', 'of', 'to', 'a', 'in', 'on', 'with', 'by', 'an', 'or', 'at', 'from', 'is']);
 	const words = name.trim().split(/[\s-_]+/).filter(Boolean);
 	if (words.length === 0) return 'myplug';
 
@@ -41,6 +48,108 @@ function suggestPrefix(name) {
 	if (targetWords.length === 1) return targetWords[0].toLowerCase();
 
 	return targetWords.map(w => w.charAt(0).toLowerCase()).join('');
+}
+
+export function validateName(val) {
+	if (!val || typeof val !== 'string' || val.trim().length === 0) {
+		return 'Plugin name is required.';
+	}
+	return true;
+}
+
+export function validateSlug(val) {
+	if (!val || typeof val !== 'string' || val.trim().length === 0) {
+		return 'Plugin slug is required.';
+	}
+	const processed = slugify(val);
+	if (processed !== val || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(val)) {
+		return 'Plugin slug must be lowercase alphanumeric characters separated by single hyphens (e.g. my-plugin).';
+	}
+	return true;
+}
+
+export function validatePrefix(val) {
+	if (!val || typeof val !== 'string' || val.trim().length === 0) {
+		return 'Function/constant prefix is required.';
+	}
+	if (val.includes('-')) {
+		return 'Prefix cannot contain hyphens because hyphens are invalid in PHP function names and constants.';
+	}
+	if (val.length < 2 || val.length > 20) {
+		return 'Prefix must be between 2 and 20 characters.';
+	}
+	if (!/^[a-z][a-z0-9_]*$/.test(val)) {
+		return 'Prefix must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.';
+	}
+	return true;
+}
+
+export function validateNamespace(val) {
+	if (!val || typeof val !== 'string' || val.trim().length === 0) {
+		return 'PHP namespace is required.';
+	}
+	if (val.includes('\\')) {
+		return 'Namespace must be a single segment without backslashes (nested namespaces are not allowed).';
+	}
+	if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(val)) {
+		return 'Namespace must start with a letter or underscore and contain only ASCII letters, numbers, and underscores.';
+	}
+	return true;
+}
+
+export function validateEmail(val) {
+	if (val === undefined || val === null || val === '') return true;
+	if (typeof val === 'string' && val.trim().length > 0) {
+		if (!val.includes('@')) {
+			return 'Author email must contain "@".';
+		}
+	}
+	return true;
+}
+
+export function validateMinPhp(val) {
+	if (!val || typeof val !== 'string' || val.trim().length === 0) {
+		return 'Minimum PHP version is required.';
+	}
+	if (!/^\d+\.\d+$/.test(val.trim())) {
+		return 'Minimum PHP version must be in format X.Y (e.g. 8.0).';
+	}
+	return true;
+}
+
+export function validateOutputDir(val) {
+	if (!val || typeof val !== 'string' || val.trim().length === 0) {
+		return 'Output directory is required.';
+	}
+	if (val.includes('..')) {
+		return 'Output directory cannot contain "..".';
+	}
+	const cwd = process.cwd();
+	const resolved = path.resolve(cwd, val);
+	const relative = path.relative(cwd, resolved);
+	if (relative.startsWith('..') || path.isAbsolute(relative)) {
+		return 'Output directory must be inside the current working directory.';
+	}
+	return true;
+}
+
+export function validateAll(answers) {
+	const checks = [
+		{ field: 'name', result: validateName(answers.name) },
+		{ field: 'slug', result: validateSlug(answers.slug) },
+		{ field: 'namespace', result: validateNamespace(answers.namespace) },
+		{ field: 'prefix', result: validatePrefix(answers.prefix) },
+		{ field: 'email', result: validateEmail(answers.authorEmail) },
+		{ field: 'minPhp', result: validateMinPhp(answers.minPhp) },
+		{ field: 'outputDir', result: validateOutputDir(answers.outputDir) }
+	];
+
+	for (const check of checks) {
+		if (check.result !== true) {
+			return check.result;
+		}
+	}
+	return true;
 }
 
 function parseCLIArgs() {
@@ -160,6 +269,12 @@ async function main() {
 			modules,
 			outputDir
 		};
+
+		const valid = validateAll(answers);
+		if (valid !== true) {
+			console.error(`❌ Validation error: ${valid}`);
+			process.exit(1);
+		}
 	} else {
 		console.log('\n🚀 Welcome to create-wp-plugin scaffold generator!\n');
 
@@ -185,25 +300,28 @@ async function main() {
 				name: 'name',
 				message: '1. Plugin name:',
 				initial: flags.name || '',
-				validate: value => (value.trim().length > 0 ? true : 'Plugin name is required.')
+				validate: validateName
 			},
 			{
 				type: 'text',
 				name: 'slug',
 				message: '2. Plugin slug:',
-				initial: flags.slug || ((prev, values) => slugify(values.name))
+				initial: flags.slug || ((prev, values) => slugify(values.name)),
+				validate: validateSlug
 			},
 			{
 				type: 'text',
 				name: 'namespace',
 				message: '3. PHP namespace:',
-				initial: flags.namespace || ((prev, values) => suggestNamespace(values.name))
+				initial: flags.namespace || ((prev, values) => suggestNamespace(values.name)),
+				validate: validateNamespace
 			},
 			{
 				type: 'text',
 				name: 'prefix',
 				message: '4. Function/constant prefix:',
-				initial: flags.prefix || ((prev, values) => suggestPrefix(values.name))
+				initial: flags.prefix || ((prev, values) => suggestPrefix(values.name)),
+				validate: validatePrefix
 			},
 			{
 				type: 'text',
@@ -215,7 +333,8 @@ async function main() {
 				type: 'text',
 				name: 'authorEmail',
 				message: '6. Author email:',
-				initial: flags.email || ''
+				initial: flags.email || '',
+				validate: validateEmail
 			},
 			{
 				type: 'text',
@@ -233,7 +352,8 @@ async function main() {
 				type: 'text',
 				name: 'minPhp',
 				message: '9. Minimum PHP version:',
-				initial: flags['min-php'] || '8.0'
+				initial: flags['min-php'] || '8.0',
+				validate: validateMinPhp
 			},
 			{
 				type: 'confirm',
@@ -252,7 +372,8 @@ async function main() {
 				type: 'text',
 				name: 'outputDir',
 				message: '12. Output directory:',
-				initial: flags.out || ((prev, values) => `./${values.slug}`)
+				initial: flags.out || ((prev, values) => `./${values.slug}`),
+				validate: validateOutputDir
 			}
 		];
 
@@ -321,7 +442,6 @@ async function main() {
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
 		'{{YEAR}}': new Date().getFullYear().toString(),
-		'{{AUTHOR_SLUG}}': answers.authorName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'author',
 		'{{ELEMENTOR_HEADERS}}': elementorHeaders
 	};
 
@@ -359,13 +479,6 @@ async function main() {
 
 	const templatesDir = path.join(__dirname, 'templates');
 
-	const filenameMappings = {
-		'gitignore.tpl': '.gitignore',
-		'editorconfig.tpl': '.editorconfig',
-		'.vscode/php.code-snippets': '.vscode/php.code-snippets',
-		'.vscode/extensions.json': '.vscode/extensions.json'
-	};
-
 	// Copy standard templates
 	writeTemplateFile(path.join(templatesDir, 'plugin-main.php'), `${answers.slug}.php`);
 	writeTemplateFile(path.join(templatesDir, 'composer.json'), 'composer.json');
@@ -374,13 +487,13 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
-	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), filenameMappings['gitignore.tpl']);
-	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), filenameMappings['editorconfig.tpl']);
+	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
+	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'uninstall.php'), 'uninstall.php');
 	writeTemplateFile(path.join(templatesDir, 'assets/css/main.css'), 'assets/css/main.css');
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
-	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), filenameMappings['.vscode/php.code-snippets']);
-	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), filenameMappings['.vscode/extensions.json']);
+	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
+	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), '.vscode/extensions.json');
 
 	// Selected modules mapping
 	const moduleRegistrations = [];
