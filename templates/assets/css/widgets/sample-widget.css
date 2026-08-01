@@ -1,0 +1,28 @@
+/**
+ * Sample Widget Styles
+ */
+.sample-widget-wrapper {
+	padding: 20px;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	background-color: #ffffff;
+}
+
+.sample-widget-title {
+	margin-top: 0;
+	margin-bottom: 12px;
+}
+
+.sample-widget-description {
+	margin-bottom: 16px;
+	color: #555555;
+}
+
+.sample-widget-list {
+	margin: 0;
+	padding-left: 20px;
+}
+
+.sample-widget-item {
+	margin-bottom: 8px;
+}

@@ -9,13 +9,10 @@ namespace {{NS}}\Widgets;
 
 use Elementor\Widget_Base;
 use Elementor\Controls_Manager;
+use Elementor\Repeater;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
-}
-
-if ( ! class_exists( '\Elementor\Widget_Base' ) ) {
-	return;
 }
 
 /**
@@ -48,6 +45,24 @@ class Sample_Widget extends Widget_Base {
 	 */
 	public function get_icon() {
 		return 'eicon-code';
+	}
+
+	/**
+	 * Get widget style dependencies.
+	 *
+	 * @return array
+	 */
+	public function get_style_depends() {
+		return array( '{{PREFIX}}-sample-widget' );
+	}
+
+	/**
+	 * Get widget script dependencies.
+	 *
+	 * @return array
+	 */
+	public function get_script_depends() {
+		return array( '{{PREFIX}}-sample-widget' );
 	}
 
 	/**
@@ -93,6 +108,32 @@ class Sample_Widget extends Widget_Base {
 			)
 		);
 
+		$repeater = new Repeater();
+
+		$repeater->add_control(
+			'item_text',
+			array(
+				'label'       => __( 'Item Text', '{{SLUG}}' ),
+				'type'        => Controls_Manager::TEXT,
+				'default'     => __( 'Feature Item', '{{SLUG}}' ),
+				'label_block' => true,
+			)
+		);
+
+		$this->add_control(
+			'items',
+			array(
+				'label'       => __( 'Items', '{{SLUG}}' ),
+				'type'        => Controls_Manager::REPEATER,
+				'fields'      => $repeater->get_controls(),
+				'default'     => array(
+					array( 'item_text' => __( 'Feature 1', '{{SLUG}}' ) ),
+					array( 'item_text' => __( 'Feature 2', '{{SLUG}}' ) ),
+				),
+				'title_field' => '{{{ item_text }}}',
+			)
+		);
+
 		$this->end_controls_section();
 
 		$this->start_controls_section(
@@ -124,14 +165,31 @@ class Sample_Widget extends Widget_Base {
 	 */
 	protected function render() {
 		$settings = $this->get_settings_for_display();
+
+		$this->add_inline_editing_attributes( 'title', 'none' );
+		$this->add_inline_editing_attributes( 'description', 'basic' );
 		?>
 		<div class="sample-widget-wrapper">
 			<?php if ( ! empty( $settings['title'] ) ) : ?>
-				<h3 class="sample-widget-title"><?php echo esc_html( $settings['title'] ); ?></h3>
+				<h3 class="sample-widget-title" <?php echo $this->get_render_attribute_string( 'title' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $settings['title'] ); ?></h3>
 			<?php endif; ?>
 
 			<?php if ( ! empty( $settings['description'] ) ) : ?>
-				<p class="sample-widget-description"><?php echo esc_html( $settings['description'] ); ?></p>
+				<p class="sample-widget-description" <?php echo $this->get_render_attribute_string( 'description' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $settings['description'] ); ?></p>
+			<?php endif; ?>
+
+			<?php if ( ! empty( $settings['items'] ) ) : ?>
+				<ul class="sample-widget-list">
+					<?php foreach ( $settings['items'] as $index => $item ) : ?>
+						<?php
+						$item_key = $this->get_repeater_setting_key( 'item_text', 'items', $index );
+						$this->add_inline_editing_attributes( $item_key, 'none' );
+						?>
+						<li class="sample-widget-item">
+							<span <?php echo $this->get_render_attribute_string( $item_key ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $item['item_text'] ); ?></span>
+						</li>
+					<?php endforeach; ?>
+				</ul>
 			<?php endif; ?>
 		</div>
 		<?php

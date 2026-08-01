@@ -266,6 +266,10 @@ async function main() {
 	if (selectedModules.includes('elementor_widget')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Base_Widget.php'), 'src/Widgets/Base_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
+		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
+		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');
+		moduleRegistrations.push('\t\tadd_action( \'wp_enqueue_scripts\', array( $this, \'register_widget_assets\' ) );');
+		moduleRegistrations.push('\t\tadd_action( \'elementor/editor/after_enqueue_styles\', array( $this, \'register_widget_assets\' ) );');
 		moduleRegistrations.push('\t\tadd_action( \'elementor/widgets/register\', array( $this, \'register_widgets\' ) );');
 	}
 	if (selectedModules.includes('woocommerce_hooks')) {
@@ -276,6 +280,36 @@ async function main() {
 	let elementorWidgetMethods = '';
 	if (selectedModules.includes('elementor_widget')) {
 		elementorWidgetMethods = `\t/**
+\t * Auto-register all per-widget stylesheets and scripts so Elementor can load them on demand.
+\t *
+\t * @return void
+\t */
+\tpublic function register_widget_assets() {
+\t\tforeach ( glob( {{PREFIX_UPPER}}_PATH . 'assets/css/widgets/*.css' ) as $file ) {
+\t\t\t$slug = basename( $file, '.css' );
+
+\t\t\twp_register_style(
+\t\t\t\t'{{PREFIX}}-' . $slug,
+\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/css/widgets/' . basename( $file ),
+\t\t\t\tarray(),
+\t\t\t\t{{PREFIX_UPPER}}_VERSION
+\t\t\t);
+\t\t}
+
+\t\tforeach ( glob( {{PREFIX_UPPER}}_PATH . 'assets/js/widgets/*.js' ) as $file ) {
+\t\t\t$slug = basename( $file, '.js' );
+
+\t\t\twp_register_script(
+\t\t\t\t'{{PREFIX}}-' . $slug,
+\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/js/widgets/' . basename( $file ),
+\t\t\t\tarray( 'jquery' ),
+\t\t\t\t{{PREFIX_UPPER}}_VERSION,
+\t\t\t\ttrue
+\t\t\t);
+\t\t}
+\t}
+
+\t/**
 \t * Auto-discover and register every concrete widget class in the
 \t * Widgets directory, so adding or deleting a widget file is all
 \t * that's needed — nothing to manually wire up here.
