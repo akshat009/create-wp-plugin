@@ -24,6 +24,10 @@ class Woo_Hooks implements Registrable {
 	 * @return void
 	 */
 	public function register(): void {
+		if ( ! class_exists( 'WooCommerce' ) ) {
+			return;
+		}
+
 		add_action( 'woocommerce_single_product_summary', array( $this, 'custom_product_summary_note' ), 25 );
 	}
 

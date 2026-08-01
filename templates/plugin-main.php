@@ -12,7 +12,7 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       {{SLUG}}
  * Domain Path:       /languages
-{{ELEMENTOR_HEADERS}} *
+{{PLUGIN_HEADER_EXTRA}} *
  * @package {{NS}}
  */
 
@@ -53,7 +53,7 @@ if ( file_exists( {{PREFIX_UPPER}}_PATH . 'vendor/autoload.php' ) ) {
 
 register_activation_hook( __FILE__, array( '\{{NS}}\Core\Activator', 'run' ) );
 register_deactivation_hook( __FILE__, array( '\{{NS}}\Core\Deactivator', 'run' ) );
-
+{{WOOCOMMERCE_HPOS}}
 /**
  * Bootstrap the plugin orchestrator.
  *

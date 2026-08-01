@@ -425,8 +425,28 @@ async function main() {
 	fs.mkdirSync(targetDir, { recursive: true });
 
 	const selectedModules = answers.modules || [];
-	const elementorHeaders = selectedModules.includes('elementor_widget')
-		? ' * Requires Plugins: elementor\n * Elementor tested up to: 3.27.0\n * Elementor Pro tested up to: 3.27.0\n'
+
+	const requiredPlugins = [];
+	if (selectedModules.includes('elementor_widget')) requiredPlugins.push('elementor');
+	if (selectedModules.includes('woocommerce_hooks')) requiredPlugins.push('woocommerce');
+
+	let pluginHeaderExtra = '';
+	if (requiredPlugins.length > 0) {
+		pluginHeaderExtra += ` * Requires Plugins: ${requiredPlugins.join(', ')}\n`;
+	}
+	if (selectedModules.includes('elementor_widget')) {
+		pluginHeaderExtra += ' * Elementor tested up to: 3.27.0\n * Elementor Pro tested up to: 3.27.0\n';
+	}
+
+	const woocommerceHpos = selectedModules.includes('woocommerce_hooks')
+		? `add_action(
+	'before_woocommerce_init',
+	function () {
+		if ( class_exists( \\Automattic\\WooCommerce\\Utilities\\FeaturesUtil::class ) ) {
+			\\Automattic\\WooCommerce\\Utilities\\FeaturesUtil::declare_compatibility( 'custom_order_tables', ${answers.prefix.toUpperCase()}_FILE, true );
+		}
+	}
+);\n\n`
 		: '';
 
 	const replacements = {
@@ -442,7 +462,8 @@ async function main() {
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
 		'{{YEAR}}': new Date().getFullYear().toString(),
-		'{{ELEMENTOR_HEADERS}}': elementorHeaders
+		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
+		'{{WOOCOMMERCE_HPOS}}': woocommerceHpos
 	};
 
 	function processTemplateContent(content) {
