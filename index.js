@@ -448,7 +448,7 @@ async function main() {
 	function processTemplateContent(content) {
 		let result = content;
 		for (const [key, val] of Object.entries(replacements)) {
-			result = result.replaceAll(key, val);
+			result = result.replaceAll(key, () => val);
 		}
 		return result;
 	}
@@ -461,15 +461,15 @@ async function main() {
 			const prefixUpper = answers.prefix.toUpperCase();
 			processed = processed.replace(
 				`<element value="${prefixLower}"/>`,
-				`<element value="${prefixLower}"/>\n\t\t\t\t<element value="${prefixLower}_"/>`
+				() => `<element value="${prefixLower}"/>\n\t\t\t\t<element value="${prefixLower}_"/>`
 			);
 			processed = processed.replace(
 				`<element value="${prefixUpper}"/>`,
-				`<element value="${prefixUpper}"/>\n\t\t\t\t<element value="${prefixUpper}_"/>`
+				() => `<element value="${prefixUpper}"/>\n\t\t\t\t<element value="${prefixUpper}_"/>`
 			);
 			processed = processed.replace(
 				'<rule ref="WordPress-VIP-Go"/>',
-				'<rule ref="WordPress-VIP-Go">\n\t\t<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>\n\t</rule>'
+				() => '<rule ref="WordPress-VIP-Go">\n\t\t<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>\n\t</rule>'
 			);
 		}
 		const destPath = path.join(targetDir, destRelativePath);
@@ -635,9 +635,9 @@ async function main() {
 
 	// Process Plugin.php template with dynamic registrations
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
-	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', reactAssetsRegistration);
-	pluginContent = pluginContent.replace('{{MODULE_REGISTRATIONS}}', moduleRegistrations.length > 0 ? moduleRegistrations.join('\n') + '\n' : '');
-	pluginContent = pluginContent.replace('{{ELEMENTOR_WIDGET_METHODS}}', elementorWidgetMethods);
+	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', () => reactAssetsRegistration);
+	pluginContent = pluginContent.replace('{{MODULE_REGISTRATIONS}}', () => moduleRegistrations.length > 0 ? moduleRegistrations.join('\n') + '\n' : '');
+	pluginContent = pluginContent.replace('{{ELEMENTOR_WIDGET_METHODS}}', () => elementorWidgetMethods);
 	pluginContent = processTemplateContent(pluginContent);
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
@@ -645,7 +645,7 @@ async function main() {
 
 	// Process ci.yml with dynamic node job
 	let ciContent = fs.readFileSync(path.join(templatesDir, 'github/workflows/ci.yml'), 'utf8');
-	ciContent = ciContent.replace('{{CI_NODE_JOB}}', ciNodeJob);
+	ciContent = ciContent.replace('{{CI_NODE_JOB}}', () => ciNodeJob);
 	ciContent = processTemplateContent(ciContent);
 	const ciDestPath = path.join(targetDir, '.github/workflows/ci.yml');
 	fs.mkdirSync(path.dirname(ciDestPath), { recursive: true });
@@ -653,8 +653,8 @@ async function main() {
 
 	// Process README.md with dynamic React sections
 	let readmeContent = fs.readFileSync(path.join(templatesDir, 'README.md'), 'utf8');
-	readmeContent = readmeContent.replace('{{README_REACT_INSTALL}}', readmeReactInstall);
-	readmeContent = readmeContent.replace('{{README_REACT_SCRIPTS}}', readmeReactScripts);
+	readmeContent = readmeContent.replace('{{README_REACT_INSTALL}}', () => readmeReactInstall);
+	readmeContent = readmeContent.replace('{{README_REACT_SCRIPTS}}', () => readmeReactScripts);
 	readmeContent = processTemplateContent(readmeContent);
 	const readmeDestPath = path.join(targetDir, 'README.md');
 	fs.writeFileSync(readmeDestPath, readmeContent, 'utf8');
