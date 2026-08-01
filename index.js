@@ -209,7 +209,9 @@ async function main() {
 
 	const filenameMappings = {
 		'gitignore.tpl': '.gitignore',
-		'editorconfig.tpl': '.editorconfig'
+		'editorconfig.tpl': '.editorconfig',
+		'.vscode/php.code-snippets': '.vscode/php.code-snippets',
+		'.vscode/extensions.json': '.vscode/extensions.json'
 	};
 
 	// Copy standard templates
@@ -225,6 +227,8 @@ async function main() {
 	writeTemplateFile(path.join(templatesDir, 'uninstall.php'), 'uninstall.php');
 	writeTemplateFile(path.join(templatesDir, 'assets/css/main.css'), 'assets/css/main.css');
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
+	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), filenameMappings['.vscode/php.code-snippets']);
+	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), filenameMappings['.vscode/extensions.json']);
 
 	// Selected modules mapping
 	const selectedModules = answers.modules || [];
