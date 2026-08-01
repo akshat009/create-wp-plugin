@@ -1,6 +1,7 @@
 {
 	"Elementor Widget Class": {
 		"prefix": "wpelwidget",
+		"scope": "php",
 		"body": [
 			"<?php",
 			"/**",
