@@ -461,6 +461,7 @@ async function main() {
 		'{{AUTHOR_URI}}': answers.authorUri,
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
+		'{{VERSION}}': '0.1.0',
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
 		'{{WOOCOMMERCE_HPOS}}': woocommerceHpos

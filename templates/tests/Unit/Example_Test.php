@@ -35,6 +35,6 @@ class Example_Test extends TestCase {
 	 * Test that plugin version constant is set.
 	 */
 	public function test_plugin_version_constant() {
-		$this->assertEquals( '0.1.0', {{PREFIX_UPPER}}_VERSION );
+		$this->assertEquals( '{{VERSION}}', {{PREFIX_UPPER}}_VERSION );
 	}
 }

@@ -12,10 +12,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	define( 'ABSPATH', '/tmp/wordpress/' );
 }
 if ( ! defined( '{{PREFIX_UPPER}}_VERSION' ) ) {
-	define( '{{PREFIX_UPPER}}_VERSION', '0.1.0' );
+	define( '{{PREFIX_UPPER}}_VERSION', '{{VERSION}}' );
 }
 if ( ! defined( '{{PREFIX_UPPER}}_FILE' ) ) {
 	define( '{{PREFIX_UPPER}}_FILE', dirname( __DIR__ ) . '/{{SLUG}}.php' );
 }
-
-Brain\Monkey\setUp();

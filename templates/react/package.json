@@ -1,6 +1,6 @@
 {
 	"name": "{{SLUG}}",
-	"version": "0.1.0",
+	"version": "{{VERSION}}",
 	"description": "{{DESCRIPTION}}",
 	"main": "assets/build/index.js",
 	"scripts": {
