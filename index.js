@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { parseArgs } from 'node:util';
 import prompts from 'prompts';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -42,126 +43,255 @@ function suggestPrefix(name) {
 	return targetWords.map(w => w.charAt(0).toLowerCase()).join('');
 }
 
-async function main() {
-	console.log('\n🚀 Welcome to create-wp-plugin scaffold generator!\n');
+function parseCLIArgs() {
+	const options = {
+		help: { type: 'boolean', short: 'h' },
+		version: { type: 'boolean', short: 'v' },
+		yes: { type: 'boolean', short: 'y' },
+		name: { type: 'string' },
+		slug: { type: 'string' },
+		namespace: { type: 'string' },
+		prefix: { type: 'string' },
+		author: { type: 'string' },
+		email: { type: 'string' },
+		'author-uri': { type: 'string' },
+		description: { type: 'string' },
+		'min-php': { type: 'string' },
+		out: { type: 'string' },
+		modules: { type: 'string' },
+		react: { type: 'boolean' },
+		'no-react': { type: 'boolean' }
+	};
 
-	const questions = [
-		{
-			type: 'text',
-			name: 'name',
-			message: '1. Plugin name:',
-			validate: value => (value.trim().length > 0 ? true : 'Plugin name is required.')
-		},
-		{
-			type: 'text',
-			name: 'slug',
-			message: '2. Plugin slug:',
-			initial: (prev, values) => slugify(values.name)
-		},
-		{
-			type: 'text',
-			name: 'namespace',
-			message: '3. PHP namespace:',
-			initial: (prev, values) => suggestNamespace(values.name)
-		},
-		{
-			type: 'text',
-			name: 'prefix',
-			message: '4. Function/constant prefix:',
-			initial: (prev, values) => suggestPrefix(values.name)
-		},
-		{
-			type: 'text',
-			name: 'authorName',
-			message: '5. Author name:'
-		},
-		{
-			type: 'text',
-			name: 'authorEmail',
-			message: '6. Author email:'
-		},
-		{
-			type: 'text',
-			name: 'authorUri',
-			message: '7. Author URI / GitHub URL:'
-		},
-		{
-			type: 'text',
-			name: 'description',
-			message: '8. Description (one line):',
-			initial: 'A powerful modern WordPress plugin scaffold.'
-		},
-		{
-			type: 'text',
-			name: 'minPhp',
-			message: '9. Minimum PHP version:',
-			initial: '8.0'
-		},
-		{
-			type: 'confirm',
-			name: 'useReact',
-			message: '10. Use React / Gutenberg build?',
-			initial: false
-		},
-		{
-			type: 'multiselect',
-			name: 'modules',
-			message: '11. Modules to include (multi-select, space to toggle):',
-			choices: [
-				{ title: 'admin settings page', value: 'admin_settings' },
-				{ title: 'shortcode', value: 'shortcode' },
-				{ title: 'REST API', value: 'rest_api' },
-				{ title: 'AJAX handler', value: 'ajax_handler' },
-				{ title: 'CPT + taxonomy', value: 'cpt_taxonomy' },
-				{ title: 'cron', value: 'cron' },
-				{ title: 'Elementor widget base', value: 'elementor_widget' },
-				{ title: 'WooCommerce hooks', value: 'woocommerce_hooks' }
-			],
-			hint: '- Space to select. Return to submit'
-		},
-		{
-			type: 'text',
-			name: 'outputDir',
-			message: '12. Output directory:',
-			initial: (prev, values) => `./${values.slug}`
-		}
-	];
-
-	const answers = await prompts(questions, {
-		onCancel: () => {
-			console.log('\nOperation cancelled.');
-			process.exit(1);
-		}
-	});
-
-	if (!answers.name) {
-		console.log('\nOperation cancelled.');
+	try {
+		const parsed = parseArgs({ options, allowPositionals: true });
+		return parsed.values;
+	} catch (err) {
+		console.error(`❌ Invalid argument: ${err.message}`);
 		process.exit(1);
 	}
+}
 
-	console.log('\nSummary:');
-	console.log(`  Name:      ${answers.name}`);
-	console.log(`  Slug:      ${answers.slug}`);
-	console.log(`  Namespace: ${answers.namespace}`);
-	console.log(`  Prefix:    ${answers.prefix}`);
-	console.log(`  Author:    ${answers.authorName || '(none)'}`);
-	console.log('');
+function showHelp() {
+	console.log(`
+Usage: create-wp-plugin [options]
 
-	const confirm = await prompts({
-		type: 'confirm',
-		name: 'value',
-		message: 'Proceed with these values?',
-		initial: true
-	}, {
-		onCancel: () => {
+Options:
+  -h, --help               Show help text
+  -v, --version            Show version number
+  -y, --yes                Skip interactive prompts and generate plugin non-interactively
+  --name <string>          Plugin name
+  --slug <string>          Plugin slug
+  --namespace <string>     PHP namespace
+  --prefix <string>        Function/constant prefix
+  --author <string>        Author name
+  --email <string>         Author email
+  --author-uri <string>    Author URI / GitHub URL
+  --description <string>   Plugin description
+  --min-php <string>       Minimum PHP version
+  --out <string>           Output directory
+  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,elementor_widget,woocommerce_hooks)
+  --react                  Include React asset build pipeline
+  --no-react               Do not include React asset build pipeline
+`);
+}
+
+function showVersion() {
+	const pkgPath = path.join(__dirname, 'package.json');
+	const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+	console.log(pkg.version);
+}
+
+function parseModules(modulesStr) {
+	if (modulesStr === undefined || modulesStr === null) return [];
+	if (modulesStr.trim() === '') return [];
+	return modulesStr.split(',').map(m => m.trim()).filter(Boolean);
+}
+
+async function main() {
+	const flags = parseCLIArgs();
+
+	if (flags.help) {
+		showHelp();
+		process.exit(0);
+	}
+
+	if (flags.version) {
+		showVersion();
+		process.exit(0);
+	}
+
+	let answers;
+
+	if (flags.yes) {
+		if (!flags.name) {
+			console.error('❌ Error: --name is required when --yes is set.');
+			process.exit(1);
+		}
+		if (!flags.out) {
+			console.error('❌ Error: --out is required when --yes is set.');
+			process.exit(1);
+		}
+
+		const name = flags.name;
+		const slug = flags.slug || slugify(name);
+		const namespace = flags.namespace || suggestNamespace(name);
+		const prefix = flags.prefix || suggestPrefix(name);
+		const authorName = flags.author || '';
+		const authorEmail = flags.email || '';
+		const authorUri = flags['author-uri'] || '';
+		const description = flags.description || 'A powerful modern WordPress plugin scaffold.';
+		const minPhp = flags['min-php'] || '8.0';
+		const useReact = flags.react ? true : (flags['no-react'] ? false : false);
+		const modules = flags.modules !== undefined ? parseModules(flags.modules) : [];
+		const outputDir = flags.out;
+
+		answers = {
+			name,
+			slug,
+			namespace,
+			prefix,
+			authorName,
+			authorEmail,
+			authorUri,
+			description,
+			minPhp,
+			useReact,
+			modules,
+			outputDir
+		};
+	} else {
+		console.log('\n🚀 Welcome to create-wp-plugin scaffold generator!\n');
+
+		const initialModules = flags.modules !== undefined ? parseModules(flags.modules) : [];
+
+		const choices = [
+			{ title: 'admin settings page', value: 'admin_settings' },
+			{ title: 'shortcode', value: 'shortcode' },
+			{ title: 'REST API', value: 'rest_api' },
+			{ title: 'AJAX handler', value: 'ajax_handler' },
+			{ title: 'CPT + taxonomy', value: 'cpt_taxonomy' },
+			{ title: 'cron', value: 'cron' },
+			{ title: 'Elementor widget base', value: 'elementor_widget' },
+			{ title: 'WooCommerce hooks', value: 'woocommerce_hooks' }
+		].map(c => ({
+			...c,
+			selected: initialModules.includes(c.value)
+		}));
+
+		const questions = [
+			{
+				type: 'text',
+				name: 'name',
+				message: '1. Plugin name:',
+				initial: flags.name || '',
+				validate: value => (value.trim().length > 0 ? true : 'Plugin name is required.')
+			},
+			{
+				type: 'text',
+				name: 'slug',
+				message: '2. Plugin slug:',
+				initial: flags.slug || ((prev, values) => slugify(values.name))
+			},
+			{
+				type: 'text',
+				name: 'namespace',
+				message: '3. PHP namespace:',
+				initial: flags.namespace || ((prev, values) => suggestNamespace(values.name))
+			},
+			{
+				type: 'text',
+				name: 'prefix',
+				message: '4. Function/constant prefix:',
+				initial: flags.prefix || ((prev, values) => suggestPrefix(values.name))
+			},
+			{
+				type: 'text',
+				name: 'authorName',
+				message: '5. Author name:',
+				initial: flags.author || ''
+			},
+			{
+				type: 'text',
+				name: 'authorEmail',
+				message: '6. Author email:',
+				initial: flags.email || ''
+			},
+			{
+				type: 'text',
+				name: 'authorUri',
+				message: '7. Author URI / GitHub URL:',
+				initial: flags['author-uri'] || ''
+			},
+			{
+				type: 'text',
+				name: 'description',
+				message: '8. Description (one line):',
+				initial: flags.description || 'A powerful modern WordPress plugin scaffold.'
+			},
+			{
+				type: 'text',
+				name: 'minPhp',
+				message: '9. Minimum PHP version:',
+				initial: flags['min-php'] || '8.0'
+			},
+			{
+				type: 'confirm',
+				name: 'useReact',
+				message: '10. Use React / Gutenberg build?',
+				initial: flags.react ? true : (flags['no-react'] ? false : false)
+			},
+			{
+				type: 'multiselect',
+				name: 'modules',
+				message: '11. Modules to include (multi-select, space to toggle):',
+				choices,
+				hint: '- Space to select. Return to submit'
+			},
+			{
+				type: 'text',
+				name: 'outputDir',
+				message: '12. Output directory:',
+				initial: flags.out || ((prev, values) => `./${values.slug}`)
+			}
+		];
+
+		answers = await prompts(questions, {
+			onCancel: () => {
+				console.log('\nOperation cancelled.');
+				process.exit(1);
+			}
+		});
+
+		if (!answers.name) {
 			console.log('\nOperation cancelled.');
 			process.exit(1);
 		}
-	});
 
-	if (!confirm.value) {
-		console.log('\nOperation cancelled.');
-		process.exit(0);
+		console.log('\nSummary:');
+		console.log(`  Name:      ${answers.name}`);
+		console.log(`  Slug:      ${answers.slug}`);
+		console.log(`  Namespace: ${answers.namespace}`);
+		console.log(`  Prefix:    ${answers.prefix}`);
+		console.log(`  Author:    ${answers.authorName || '(none)'}`);
+		console.log('');
+
+		const confirm = await prompts({
+			type: 'confirm',
+			name: 'value',
+			message: 'Proceed with these values?',
+			initial: true
+		}, {
+			onCancel: () => {
+				console.log('\nOperation cancelled.');
+				process.exit(1);
+			}
+		});
+
+		if (!confirm.value) {
+			console.log('\nOperation cancelled.');
+			process.exit(0);
+		}
 	}
 
 	const targetDir = path.resolve(process.cwd(), answers.outputDir);
@@ -186,7 +316,7 @@ async function main() {
 		'{{PREFIX}}': answers.prefix.toLowerCase(),
 		'{{PREFIX_UPPER}}': answers.prefix.toUpperCase(),
 		'{{AUTHOR}}': answers.authorName,
-		'{{AUTHOR_EMAIL}}': answers.authorEmail,
+		'{{AUTHOR_EMAIL}}': answers.authorEmail || 'author@example.com',
 		'{{AUTHOR_URI}}': answers.authorUri,
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
@@ -205,7 +335,23 @@ async function main() {
 
 	function writeTemplateFile(srcPath, destRelativePath) {
 		const raw = fs.readFileSync(srcPath, 'utf8');
-		const processed = processTemplateContent(raw);
+		let processed = processTemplateContent(raw);
+		if (destRelativePath === 'phpcs.xml') {
+			const prefixLower = answers.prefix.toLowerCase();
+			const prefixUpper = answers.prefix.toUpperCase();
+			processed = processed.replace(
+				`<element value="${prefixLower}"/>`,
+				`<element value="${prefixLower}"/>\n\t\t\t\t<element value="${prefixLower}_"/>`
+			);
+			processed = processed.replace(
+				`<element value="${prefixUpper}"/>`,
+				`<element value="${prefixUpper}"/>\n\t\t\t\t<element value="${prefixUpper}_"/>`
+			);
+			processed = processed.replace(
+				'<rule ref="WordPress-VIP-Go"/>',
+				'<rule ref="WordPress-VIP-Go">\n\t\t<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>\n\t</rule>'
+			);
+		}
 		const destPath = path.join(targetDir, destRelativePath);
 		fs.mkdirSync(path.dirname(destPath), { recursive: true });
 		fs.writeFileSync(destPath, processed, 'utf8');

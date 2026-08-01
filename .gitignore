@@ -5,6 +5,7 @@ test-plugin/
 test-output/
 test-scaffold/
 scratch/
+tmp-verify/
 .DS_Store
 Thumbs.db
 
