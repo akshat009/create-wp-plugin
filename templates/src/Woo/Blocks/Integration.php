@@ -11,6 +11,8 @@
  * @package {{NS}}\Woo\Blocks
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Woo\Blocks;
 
 use Automattic\WooCommerce\Blocks\Integrations\IntegrationInterface;

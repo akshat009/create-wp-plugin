@@ -15,17 +15,7 @@
 	<arg name="colors"/>
 	<arg name="extensions" value="php"/>
 
-	<rule ref="WordPress-Extra">
-		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
-		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
-		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
-		<exclude name="Generic.Formatting.MultipleStatementAlignment"/>
-	</rule>
-	<rule ref="WordPress-Docs"/>
-	<rule ref="WordPress-VIP-Go">
-		<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>
-	</rule>
-	<rule ref="PHPCompatibilityWP"/>
+{{PHPCS_RULESETS}}	<rule ref="PHPCompatibilityWP"/>
 
 	<config name="minimum_supported_wp_version" value="{{REQUIRES_AT_LEAST}}"/>
 	<config name="testVersion" value="{{MIN_PHP}}-"/>

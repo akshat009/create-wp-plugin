@@ -5,6 +5,8 @@
  * @package {{NS}}\Woo\Emails
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Woo\Emails;
 
 if ( ! defined( 'ABSPATH' ) ) {

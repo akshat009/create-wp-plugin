@@ -5,6 +5,8 @@
  * @package {{NS}}\Woo\Shipping
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Woo\Shipping;
 
 if ( ! defined( 'ABSPATH' ) ) {

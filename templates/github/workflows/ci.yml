@@ -37,7 +37,20 @@ jobs:
         run: composer validate --strict
 
       - name: Install Composer Dependencies
-        run: composer install --prefer-dist --no-progress
+        # composer install can fail transiently (a network blip against
+        # packagist, or a runner-side file-lock hiccup mid-extraction) —
+        # retry a few times with a short backoff before failing the job.
+        run: |
+          n=0
+          until composer install --prefer-dist --no-progress --no-interaction; do
+            n=$((n+1))
+            if [ "$n" -ge 3 ]; then
+              echo "composer install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "composer install failed (attempt $n/3) — retrying in 5s..."
+            sleep 5
+          done
 
       - name: Run PHPCS
         run: composer lint
@@ -72,7 +85,20 @@ jobs:
             ${{ runner.os }}-composer-
 
       - name: Install Composer Dependencies
-        run: composer install --prefer-dist --no-progress
+        # composer install can fail transiently (a network blip against
+        # packagist, or a runner-side file-lock hiccup mid-extraction) —
+        # retry a few times with a short backoff before failing the job.
+        run: |
+          n=0
+          until composer install --prefer-dist --no-progress --no-interaction; do
+            n=$((n+1))
+            if [ "$n" -ge 3 ]; then
+              echo "composer install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "composer install failed (attempt $n/3) — retrying in 5s..."
+            sleep 5
+          done
 
       - name: Run PHPUnit
         run: composer test

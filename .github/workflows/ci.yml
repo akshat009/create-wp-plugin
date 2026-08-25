@@ -76,7 +76,7 @@ jobs:
             --author "CI" \
             --email ci@example.com \
             --description "Self-consumption CI check" \
-            --modules "admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,elementor_widget,woocommerce_hooks,interactivity" \
+            --modules "admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,woocommerce_hooks,interactivity" \
             --react \
             --out "$RUNNER_TEMP/generated-plugin"
 
@@ -93,7 +93,19 @@ jobs:
 
       - name: composer install
         working-directory: ${{ runner.temp }}/generated-plugin
-        run: composer install --no-interaction --prefer-dist --no-progress
+        # Retry a few times: composer install can fail transiently (a network
+        # blip against packagist, or a runner-side file-lock hiccup mid-extraction).
+        run: |
+          n=0
+          until composer install --no-interaction --prefer-dist --no-progress; do
+            n=$((n+1))
+            if [ "$n" -ge 3 ]; then
+              echo "composer install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "composer install failed (attempt $n/3) — retrying in 5s..."
+            sleep 5
+          done
 
       - name: composer lint
         working-directory: ${{ runner.temp }}/generated-plugin

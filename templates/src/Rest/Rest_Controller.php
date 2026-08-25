@@ -5,9 +5,12 @@
  * @package {{NS}}\Rest
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Rest;
 
-use {{NS}}\Contracts\Registrable;
+use {{NS}}\Contracts\Service_Provider;
+use {{NS}}\Core\Container;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -16,21 +19,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Rest_Controller.
  */
-class Rest_Controller implements Registrable {
+class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 
 	/**
-	 * REST namespace.
+	 * Constructor.
 	 *
-	 * @var string
+	 * WP_REST_Controller declares $namespace/$rest_base with no default
+	 * values and no constructor of its own — set both here.
 	 */
-	private $namespace = '{{PREFIX}}/v1';
+	public function __construct() {
+		$this->namespace = '{{PREFIX}}/v1';
+		$this->rest_base = 'data';
+	}
 
 	/**
-	 * Register REST routes.
+	 * No bindings needed.
 	 *
+	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function register(): void {
+	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	}
+
+	/**
+	 * Register hooks.
+	 *
+	 * @param Container $container Application container.
+	 * @return void
+	 */
+	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
 	}
 
@@ -42,7 +59,7 @@ class Rest_Controller implements Registrable {
 	public function register_routes() {
 		register_rest_route(
 			$this->namespace,
-			'/data',
+			'/' . $this->rest_base,
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
 				'callback'            => array( $this, 'get_items' ),

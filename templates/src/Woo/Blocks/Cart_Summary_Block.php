@@ -10,6 +10,8 @@
  * @package {{NS}}\Woo\Blocks
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Woo\Blocks;
 
 if ( ! defined( 'ABSPATH' ) ) {

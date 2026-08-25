@@ -9,6 +9,8 @@
  * @package {{NS}}\Woo\Gateways
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Woo\Gateways;
 
 use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;

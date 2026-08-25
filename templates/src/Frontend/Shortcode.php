@@ -5,9 +5,12 @@
  * @package {{NS}}\Frontend
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Frontend;
 
-use {{NS}}\Contracts\Registrable;
+use {{NS}}\Contracts\Service_Provider;
+use {{NS}}\Core\Container;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -16,14 +19,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Shortcode.
  */
-class Shortcode implements Registrable {
+class Shortcode implements Service_Provider {
+
+	/**
+	 * No bindings needed.
+	 *
+	 * @param Container $container Application container.
+	 * @return void
+	 */
+	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	}
 
 	/**
 	 * Register shortcode.
 	 *
+	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function register(): void {
+	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		add_shortcode( '{{PREFIX}}_display', array( $this, 'render_shortcode' ) );
 	}
 
