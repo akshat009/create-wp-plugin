@@ -53,13 +53,13 @@ class Cache_Service implements Service_Provider {
 	}
 
 	/**
-	 * Get a cached value, or $default if it isn't cached (or has expired).
+	 * Get a cached value, or $fallback if it isn't cached (or has expired).
 	 *
-	 * @param string $key     Cache key (unprefixed; scoped by the plugin's own group).
-	 * @param mixed  $default Value to return on a cache miss.
+	 * @param string $key      Cache key (unprefixed; scoped by the plugin's own group).
+	 * @param mixed  $fallback Value to return on a cache miss.
 	 * @return mixed
 	 */
-	public function get( string $key, $default = null ) {
+	public function get( string $key, $fallback = null ) {
 		$found = false;
 		$value = wp_cache_get( $key, self::GROUP, false, $found );
 
@@ -69,7 +69,7 @@ class Cache_Service implements Service_Provider {
 
 		$transient = get_transient( $this->transient_key( $key ) );
 
-		return false !== $transient ? $transient : $default;
+		return false !== $transient ? $transient : $fallback;
 	}
 
 	/**

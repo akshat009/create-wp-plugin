@@ -126,7 +126,7 @@ class Schema implements Service_Provider {
 	public static function drop_table(): void {
 		global $wpdb;
 		$table_name = self::table_name();
-		$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name isn't user input; DROP TABLE doesn't support placeholders.
+		$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- table name isn't user input; DROP TABLE doesn't support placeholders.
 		delete_option( self::VERSION_OPTION );
 	}
 }
