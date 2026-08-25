@@ -16,6 +16,8 @@ export const MODULE_DEFINITIONS = [
 	{ title: 'AJAX handler', value: 'ajax_handler' },
 	{ title: 'CPT + taxonomy', value: 'cpt_taxonomy' },
 	{ title: 'cron', value: 'cron' },
+	{ title: 'caching layer (object cache + transient fallback)', value: 'caching' },
+	{ title: 'custom database table (dbDelta schema + migrations)', value: 'custom_table' },
 	{ title: 'Elementor widget base', value: 'elementor_widget' },
 	{ title: 'WooCommerce hooks', value: 'woocommerce_hooks' },
 	{ title: 'Frontend Interactivity (WordPress Interactivity API)', value: 'interactivity' }
@@ -165,6 +167,16 @@ export function validateOutputDir(val) {
 	return true;
 }
 
+const VALID_LINT_TARGETS = new Set(['wp-org', 'vip', 'both']);
+
+export function validateLintTarget(val) {
+	if (val === undefined || val === null || val === '') return true;
+	if (!VALID_LINT_TARGETS.has(val)) {
+		return `Lint target must be one of: ${[...VALID_LINT_TARGETS].join(', ')}.`;
+	}
+	return true;
+}
+
 export function validateAll(answers) {
 	const checks = [
 		{ field: 'name', result: validateName(answers.name) },
@@ -174,7 +186,8 @@ export function validateAll(answers) {
 		{ field: 'email', result: validateEmail(answers.authorEmail) },
 		{ field: 'modules', result: validateModules(answers.modules) },
 		{ field: 'minPhp', result: validateMinPhp(answers.minPhp) },
-		{ field: 'outputDir', result: validateOutputDir(answers.outputDir) }
+		{ field: 'outputDir', result: validateOutputDir(answers.outputDir) },
+		{ field: 'lintTarget', result: validateLintTarget(answers.lintTarget) }
 	];
 
 	for (const check of checks) {
@@ -202,7 +215,8 @@ function parseCLIArgs() {
 		out: { type: 'string' },
 		modules: { type: 'string' },
 		react: { type: 'boolean' },
-		'no-react': { type: 'boolean' }
+		'no-react': { type: 'boolean' },
+		'lint-target': { type: 'string' }
 	};
 
 	try {
@@ -232,9 +246,10 @@ Options:
   --description <string>   Plugin description
   --min-php <string>       Minimum PHP version
   --out <string>           Output directory
-  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,elementor_widget,woocommerce_hooks,interactivity)
+  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,elementor_widget,woocommerce_hooks,interactivity)
   --react                  Include React admin app build pipeline (wp-admin only)
   --no-react               Do not include React admin app build pipeline
+  --lint-target <string>   Coding standard(s) to lint against: wp-org (default), vip, or both
 `);
 }
 
@@ -287,6 +302,7 @@ async function main() {
 		const useReact = Boolean(flags.react);
 		const modules = flags.modules !== undefined ? parseModules(flags.modules) : [];
 		const outputDir = flags.out;
+		const lintTarget = flags['lint-target'] || 'wp-org';
 
 		answers = {
 			name,
@@ -300,7 +316,8 @@ async function main() {
 			minPhp,
 			useReact,
 			modules,
-			outputDir
+			outputDir,
+			lintTarget
 		};
 
 		const valid = validateAll(answers);
@@ -380,22 +397,33 @@ async function main() {
 				validate: validateMinPhp
 			},
 			{
+				type: 'select',
+				name: 'lintTarget',
+				message: '10. Coding standard target for composer lint:',
+				choices: [
+					{ title: 'WordPress.org (standard hosting)', value: 'wp-org' },
+					{ title: 'WordPress VIP (enterprise hosting)', value: 'vip' },
+					{ title: 'Both (strictest — may include overlapping rules)', value: 'both' }
+				],
+				initial: Math.max(0, ['wp-org', 'vip', 'both'].indexOf(flags['lint-target'] || 'wp-org'))
+			},
+			{
 				type: 'confirm',
 				name: 'useReact',
-				message: '10. Include React admin app build pipeline (@wordpress/scripts, wp-admin only)?',
+				message: '11. Include React admin app build pipeline (@wordpress/scripts, wp-admin only)?',
 				initial: Boolean(flags.react)
 			},
 			{
 				type: 'multiselect',
 				name: 'modules',
-				message: '11. Modules to include (multi-select, space to toggle):',
+				message: '12. Modules to include (multi-select, space to toggle):',
 				choices,
 				hint: '- Space to select. Return to submit'
 			},
 			{
 				type: 'text',
 				name: 'outputDir',
-				message: '12. Output directory:',
+				message: '13. Output directory:',
 				initial: flags.out || ((prev, values) => `./${values.slug}`),
 				validate: validateOutputDir
 			}
@@ -478,10 +506,39 @@ export function runGenerator(answers) {
 	// The Cart Summary block's block.json "render" field requires WP 6.4+.
 	const requiredWpVersion = hasInteractivity ? '6.5' : (hasWoo ? '6.4' : '6.0');
 
+	const lintTarget = ['wp-org', 'vip', 'both'].includes(answers.lintTarget) ? answers.lintTarget : 'wp-org';
+	const needsVip = lintTarget === 'vip' || lintTarget === 'both';
+
 	// php-stubs/woocommerce-stubs gives PHPCS/Intelephense real class definitions for
-	// WC_Payment_Gateway, WC_Shipping_Method, WC_Email, WC_Product, etc.
-	const composerExtraRequireDev = hasWoo ? ',\n\t\t"php-stubs/woocommerce-stubs": "^9.0"' : '';
+	// WC_Payment_Gateway, WC_Shipping_Method, WC_Email, WC_Product, etc. automattic/vipwpcs
+	// (the WordPress-VIP-Go phpcs ruleset) only needs pulling in when targeting VIP.
+	const composerExtraRequireDevEntries = [];
+	if (hasWoo) composerExtraRequireDevEntries.push('"php-stubs/woocommerce-stubs": "^9.0"');
+	if (needsVip) composerExtraRequireDevEntries.push('"automattic/vipwpcs": "^3.0"');
+	const composerExtraRequireDev = composerExtraRequireDevEntries.length > 0
+		? ',\n\t\t' + composerExtraRequireDevEntries.join(',\n\t\t')
+		: '';
 	const vscodeExtraStubPath = hasWoo ? ',\n\t\t"vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php"' : '';
+
+	// phpcs.xml ruleset(s): WordPress-Extra/-Docs for wp.org-hosted plugins,
+	// WordPress-VIP-Go for VIP hosting (which already carries WordPress-Extra/-Docs
+	// -equivalent coverage itself), or both together for teams who want maximum,
+	// possibly-overlapping coverage.
+	const wpOrgRuleset = '\t<rule ref="WordPress-Extra">\n' +
+		'\t\t<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>\n' +
+		'\t\t<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>\n' +
+		'\t\t<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>\n' +
+		'\t\t<exclude name="Generic.Formatting.MultipleStatementAlignment"/>\n' +
+		'\t</rule>\n' +
+		'\t<rule ref="WordPress-Docs"/>\n';
+	const vipRuleset = '\t<rule ref="WordPress-VIP-Go">\n' +
+		'\t\t<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>\n' +
+		'\t</rule>\n';
+	const phpcsRulesets = lintTarget === 'vip'
+		? vipRuleset
+		: lintTarget === 'both'
+			? wpOrgRuleset + vipRuleset
+			: wpOrgRuleset;
 
 	const woocommerceHpos = hasWoo
 		? `add_action(
@@ -508,12 +565,13 @@ export function runGenerator(answers) {
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
 		'{{REQUIRES_AT_LEAST}}': requiredWpVersion,
-		'{{VERSION}}': '0.1.0',
+		'{{VERSION}}': '1.0.0',
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
 		'{{WOOCOMMERCE_HPOS}}': woocommerceHpos,
 		'{{COMPOSER_EXTRA_REQUIRE_DEV}}': composerExtraRequireDev,
-		'{{VSCODE_EXTRA_STUB_PATH}}': vscodeExtraStubPath
+		'{{VSCODE_EXTRA_STUB_PATH}}': vscodeExtraStubPath,
+		'{{PHPCS_RULESETS}}': phpcsRulesets
 	};
 
 	function processTemplateContent(content) {
@@ -521,6 +579,10 @@ export function runGenerator(answers) {
 		for (const [key, val] of Object.entries(replacements)) {
 			result = result.replaceAll(key, () => val);
 		}
+		// Fixed-width header labels (e.g. " * Author URI:        {{AUTHOR_URI}}") leave
+		// trailing whitespace once an optional field like --author/--author-uri is left
+		// blank — trim it here so composer lint doesn't reject the plugin's own header.
+		result = result.replace(/[ \t]+$/gm, '');
 		return result;
 	}
 
@@ -535,7 +597,12 @@ export function runGenerator(answers) {
 	const templatesDir = path.join(__dirname, 'templates');
 
 	// Copy standard templates
-	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Registrable.php'), 'src/Contracts/Registrable.php');
+	writeTemplateFile(path.join(templatesDir, 'src/Core/Container.php'), 'src/Core/Container.php');
+	writeTemplateFile(path.join(templatesDir, 'src/Core/Exceptions/Not_Found_Exception.php'), 'src/Core/Exceptions/Not_Found_Exception.php');
+	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Service_Provider.php'), 'src/Contracts/Service_Provider.php');
+	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Conditional.php'), 'src/Contracts/Conditional.php');
+	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Activatable.php'), 'src/Contracts/Activatable.php');
+	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Deactivatable.php'), 'src/Contracts/Deactivatable.php');
 	writeTemplateFile(path.join(templatesDir, 'plugin-main.php'), `${answers.slug}.php`);
 	writeTemplateFile(path.join(templatesDir, 'composer.json'), 'composer.json');
 	writeTemplateFile(path.join(templatesDir, 'phpcs.xml'), 'phpcs.xml');
@@ -543,6 +610,11 @@ export function runGenerator(answers) {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
+	// Real-WordPress integration suite (wp-phpunit/wp-phpunit), separate from the
+	// Brain Monkey unit suite above — needs a MySQL test DB, run via `composer test:integration`.
+	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap-integration.php'), 'tests/bootstrap-integration.php');
+	writeTemplateFile(path.join(templatesDir, 'phpunit-integration.xml.dist'), 'phpunit-integration.xml.dist');
+	writeTemplateFile(path.join(templatesDir, 'tests/Integration/Plugin_Boot_Test.php'), 'tests/Integration/Plugin_Boot_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'distignore.tpl'), '.distignore');
@@ -554,55 +626,70 @@ export function runGenerator(answers) {
 	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), '.vscode/extensions.json');
 	writeTemplateFile(path.join(templatesDir, '.vscode/settings.json'), '.vscode/settings.json');
 
-	// Selected modules mapping
-	const moduleRegistrations = [];
-	const bootHooks = [];
+	// Selected modules mapping: each module pushes one or more `$providers[] = new X();`
+	// lines, injected into Plugin::create() (see {{PROVIDER_REGISTRATIONS}} below).
+	const providerRegistrations = [];
 
 	if (selectedModules.includes('admin_settings')) {
-		let settingsContent = fs.readFileSync(path.join(templatesDir, 'src/Admin/Settings_Page.php'), 'utf8');
-		const reactAdminRoot = answers.useReact ? '\t\t\t<div id="{{PREFIX}}-app-root"></div>\n' : '';
-		settingsContent = settingsContent.replace('{{REACT_ADMIN_ROOT}}', () => reactAdminRoot);
-		settingsContent = processTemplateContent(settingsContent);
-		const settingsDest = path.join(targetDir, 'src/Admin/Settings_Page.php');
-		fs.mkdirSync(path.dirname(settingsDest), { recursive: true });
-		fs.writeFileSync(settingsDest, settingsContent, 'utf8');
-		moduleRegistrations.push('\n\t\t$services[\'admin_settings\'] = new Admin\\Settings_Page();');
+		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Repository.php'), 'src/Admin/Settings_Repository.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Registrar.php'), 'src/Admin/Settings_Registrar.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Admin/views/sample-field.php'), 'src/Admin/views/sample-field.php');
+
+		let settingsPageViewContent = fs.readFileSync(path.join(templatesDir, 'src/Admin/views/settings-page.php'), 'utf8');
+		const reactAdminRoot = answers.useReact ? '\t<div id="{{PREFIX}}-app-root"></div>\n' : '';
+		settingsPageViewContent = settingsPageViewContent.replace('{{REACT_ADMIN_ROOT}}', () => reactAdminRoot);
+		settingsPageViewContent = processTemplateContent(settingsPageViewContent);
+		const settingsPageViewDest = path.join(targetDir, 'src/Admin/views/settings-page.php');
+		fs.mkdirSync(path.dirname(settingsPageViewDest), { recursive: true });
+		fs.writeFileSync(settingsPageViewDest, settingsPageViewContent, 'utf8');
+
+		providerRegistrations.push('\n\t\t$providers[] = new Admin\\Settings_Registrar();');
 	}
 	if (selectedModules.includes('shortcode')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Shortcode.php'), 'src/Frontend/Shortcode.php');
-		moduleRegistrations.push('\n\t\t$services[\'shortcode\'] = new Frontend\\Shortcode();');
+		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Shortcode();');
 	}
 	if (selectedModules.includes('rest_api')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Rest/Rest_Controller.php'), 'src/Rest/Rest_Controller.php');
-		moduleRegistrations.push('\n\t\t$services[\'rest\'] = new Rest\\Rest_Controller();');
+		providerRegistrations.push('\n\t\t$providers[] = new Rest\\Rest_Controller();');
 	}
 	if (selectedModules.includes('ajax_handler')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Ajax/Ajax_Handler.php'), 'src/Ajax/Ajax_Handler.php');
-		moduleRegistrations.push('\n\t\t$services[\'ajax\'] = new Ajax\\Ajax_Handler();');
+		providerRegistrations.push('\n\t\t$providers[] = new Ajax\\Ajax_Handler();');
 	}
 	if (selectedModules.includes('cpt_taxonomy')) {
 		writeTemplateFile(path.join(templatesDir, 'src/PostTypes/Post_Types.php'), 'src/PostTypes/Post_Types.php');
-		moduleRegistrations.push('\n\t\t$services[\'post_types\'] = new PostTypes\\Post_Types();');
+		providerRegistrations.push('\n\t\t$providers[] = new PostTypes\\Post_Types();');
 	}
 	if (selectedModules.includes('cron')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cron/Scheduler.php'), 'src/Cron/Scheduler.php');
-		moduleRegistrations.push('\n\t\t$services[\'cron\'] = new Cron\\Scheduler();');
+		providerRegistrations.push('\n\t\t$providers[] = new Cron\\Scheduler();');
+	}
+	if (selectedModules.includes('caching')) {
+		writeTemplateFile(path.join(templatesDir, 'src/Cache/Cache_Service.php'), 'src/Cache/Cache_Service.php');
+		providerRegistrations.push('\n\t\t$providers[] = new Cache\\Cache_Service();');
+	}
+	if (selectedModules.includes('custom_table')) {
+		writeTemplateFile(path.join(templatesDir, 'src/Database/Schema.php'), 'src/Database/Schema.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Database/Item_Repository.php'), 'src/Database/Item_Repository.php');
+		providerRegistrations.push('\n\t\t$providers[] = new Database\\Schema();');
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		writeTemplateFile(path.join(templatesDir, '.vscode/php-elementor.code-snippets'), '.vscode/php-elementor.code-snippets');
 		writeTemplateFile(path.join(templatesDir, 'src/Elementor/Dependency_Notice.php'), 'src/Elementor/Dependency_Notice.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Elementor/Widget_Registrar.php'), 'src/Elementor/Widget_Registrar.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
 		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');
-		moduleRegistrations.push('\n\t\t$services[\'elementor_notice\'] = new Elementor\\Dependency_Notice();');
-		// Hook registration is a boot()-time side effect, not a service build step — it must run
-		// even when get_instance() is called with an injected $services array that skips build_services().
-		bootHooks.push('\t\tadd_action( \'wp_enqueue_scripts\', array( $this, \'register_widget_assets\' ) );');
-		bootHooks.push('\t\tadd_action( \'elementor/editor/after_enqueue_styles\', array( $this, \'register_widget_assets\' ) );');
-		bootHooks.push('\t\tadd_action( \'elementor/widgets/register\', array( $this, \'register_widgets\' ) );');
+		providerRegistrations.push('\n\t\t$providers[] = new Elementor\\Dependency_Notice();');
+		providerRegistrations.push('\n\t\t$providers[] = new Elementor\\Widget_Registrar();');
 	}
 	if (selectedModules.includes('woocommerce_hooks')) {
-		writeTemplateFile(path.join(templatesDir, 'src/Woo/Woo_Hooks.php'), 'src/Woo/Woo_Hooks.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Gateway_Provider.php'), 'src/Woo/Providers/Gateway_Provider.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Shipping_Provider.php'), 'src/Woo/Providers/Shipping_Provider.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Email_Provider.php'), 'src/Woo/Providers/Email_Provider.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Product_Type_Provider.php'), 'src/Woo/Providers/Product_Type_Provider.php');
+		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Blocks_Provider.php'), 'src/Woo/Providers/Blocks_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Gateways/Gateway.php'), 'src/Woo/Gateways/Gateway.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Gateways/Blocks_Payment_Method_Type.php'), 'src/Woo/Gateways/Blocks_Payment_Method_Type.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Shipping/Shipping_Method.php'), 'src/Woo/Shipping/Shipping_Method.php');
@@ -617,115 +704,16 @@ export function runGenerator(answers) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/blocks/cart-summary/block.json'), 'assets/src/blocks/cart-summary/block.json');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/blocks/cart-summary/index.js'), 'assets/src/blocks/cart-summary/index.js');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/blocks/cart-summary/render.php'), 'assets/src/blocks/cart-summary/render.php');
-		moduleRegistrations.push('\n\t\t$services[\'woo\'] = new Woo\\Woo_Hooks();');
+		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Gateway_Provider();');
+		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Shipping_Provider();');
+		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Email_Provider();');
+		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Product_Type_Provider();');
+		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Blocks_Provider();');
 	}
 	if (selectedModules.includes('interactivity')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Interactivity.php'), 'src/Frontend/Interactivity.php');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/view.js'), 'assets/src/view.js');
-		moduleRegistrations.push('\n\t\t$services[\'interactivity\'] = new Frontend\\Interactivity();');
-	}
-
-	let elementorWidgetMethods = '';
-	if (selectedModules.includes('elementor_widget')) {
-		elementorWidgetMethods = `\t/**
-\t * Get auto-discovered Elementor widget class names (cached via transient unless SCRIPT_DEBUG is active).
-\t *
-\t * @return array List of widget class names.
-\t */
-\tprivate function get_widget_classes(): array {
-\t\tif ( ! did_action( 'elementor/loaded' ) ) {
-\t\t\treturn array();
-\t\t}
-
-\t\tif ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ) {
-\t\t\t$cached = get_transient( '{{PREFIX}}_elementor_widgets' );
-\t\t\tif ( is_array( $cached ) ) {
-\t\t\t\treturn $cached;
-\t\t\t}
-\t\t}
-
-\t\t$widget_classes = array();
-\t\t$files          = glob( __DIR__ . '/Widgets/*.php' ) ?: array(); // phpcs:ignore Universal.Operators.DisallowShortTernary.Found
-
-\t\tforeach ( $files as $file ) {
-\t\t\t$class_name = __NAMESPACE__ . '\\\\Widgets\\\\' . basename( $file, '.php' );
-
-\t\t\tif ( ! class_exists( $class_name ) ) {
-\t\t\t\tcontinue;
-\t\t\t}
-
-\t\t\t$reflection = new \\ReflectionClass( $class_name );
-
-\t\t\tif ( $reflection->isAbstract() || ! $reflection->isSubclassOf( '\\\\Elementor\\\\Widget_Base' ) ) {
-\t\t\t\tcontinue;
-\t\t\t}
-
-\t\t\t$widget_classes[] = $class_name;
-\t\t}
-
-\t\tset_transient( '{{PREFIX}}_elementor_widgets', $widget_classes, DAY_IN_SECONDS );
-\t\treturn $widget_classes;
-\t}
-
-\t/**
-\t * Auto-register per-widget stylesheets and scripts derived by convention from widget class names.
-\t *
-\t * @return void
-\t */
-\tpublic function register_widget_assets(): void {
-\t\tif ( ! did_action( 'elementor/loaded' ) ) {
-\t\t\treturn;
-\t\t}
-
-\t\t$widget_classes = $this->get_widget_classes();
-
-\t\tforeach ( $widget_classes as $class_name ) {
-\t\t\t$short_name = substr( $class_name, strrpos( $class_name, '\\\\' ) + 1 );
-\t\t\t$slug       = strtolower( str_replace( '_', '-', $short_name ) );
-\t\t\t$handle     = '{{PREFIX}}-' . $slug;
-\t\t\t$css_file   = {{PREFIX_UPPER}}_PATH . 'assets/css/widgets/' . $slug . '.css';
-\t\t\t$js_file    = {{PREFIX_UPPER}}_PATH . 'assets/js/widgets/' . $slug . '.js';
-
-\t\t\tif ( file_exists( $css_file ) ) {
-\t\t\t\twp_register_style(
-\t\t\t\t\t$handle,
-\t\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/css/widgets/' . $slug . '.css',
-\t\t\t\t\tarray(),
-\t\t\t\t\t{{PREFIX_UPPER}}_VERSION
-\t\t\t\t);
-\t\t\t}
-
-\t\t\tif ( file_exists( $js_file ) ) {
-\t\t\t\twp_register_script(
-\t\t\t\t\t$handle,
-\t\t\t\t\t{{PREFIX_UPPER}}_URL . 'assets/js/widgets/' . $slug . '.js',
-\t\t\t\t\tarray( 'jquery' ),
-\t\t\t\t\t{{PREFIX_UPPER}}_VERSION,
-\t\t\t\t\ttrue
-\t\t\t\t);
-\t\t\t}
-\t\t}
-\t}
-
-\t/**
-\t * Auto-register discovered concrete Elementor widget classes.
-\t *
-\t * @param object $widgets_manager Elementor widgets manager.
-\t * @return void
-\t */
-\tpublic function register_widgets( $widgets_manager ): void {
-\t\tif ( ! did_action( 'elementor/loaded' ) ) {
-\t\t\treturn;
-\t\t}
-
-\t\t$widget_classes = $this->get_widget_classes();
-
-\t\tforeach ( $widget_classes as $class_name ) {
-\t\t\tif ( class_exists( $class_name ) ) {
-\t\t\t\t$widgets_manager->register( new $class_name() );
-\t\t\t}
-\t\t}
-\t}\n\n`;
+		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
 	}
 
 	// React admin app (wp-admin only) + Interactivity API (frontend) + WooCommerce
@@ -754,11 +742,41 @@ export function runGenerator(answers) {
 		fs.mkdirSync(path.dirname(assetsDestPath), { recursive: true });
 		fs.writeFileSync(assetsDestPath, assetsContent, 'utf8');
 
-		reactAssetsRegistration = '\n\t\t$services[\'assets\'] = new Admin\\Assets();\n';
+		reactAssetsRegistration = '\n\t\t$providers[] = new Admin\\Assets();\n';
 	}
 
 	if (needsBuildPipeline) {
+		// Playwright E2E ships whenever there's already a Node/JS pipeline (a pure-PHP
+		// scaffold gets no package.json at all, so there'd be nowhere to hang it).
+		// Jest unit tests are added only alongside the React admin app: it's the one
+		// piece of generated JS that's actually a unit-testable component (view.js /
+		// wc-gateway-block.js / blocks-integration.js execute as side effects against
+		// window.wc/window.wp globals, not exported functions worth unit-testing).
+		const packageExtraScriptsEntries = ['"test:e2e": "playwright test"'];
+		const packageExtraDevDependenciesEntries = [
+			'"@playwright/test": "^1.47.0"',
+			'"@wordpress/e2e-test-utils-playwright": "^1.4.0"'
+		];
+		if (answers.useReact) {
+			packageExtraScriptsEntries.push('"test:js": "wp-scripts test-unit-js"');
+			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
+			packageExtraDevDependenciesEntries.push('"@testing-library/jest-dom": "^6.0.0"');
+		}
+		const packageExtraScripts = ',\n\t\t' + packageExtraScriptsEntries.join(',\n\t\t');
+		const packageExtraDevDependencies = ',\n\t\t' + packageExtraDevDependenciesEntries.join(',\n\t\t');
+		replacements['{{PACKAGE_EXTRA_SCRIPTS}}'] = packageExtraScripts;
+		replacements['{{PACKAGE_EXTRA_DEV_DEPENDENCIES}}'] = packageExtraDevDependencies;
+
 		writeTemplateFile(path.join(templatesDir, 'react/package.json'), 'package.json');
+		writeTemplateFile(path.join(templatesDir, 'playwright.config.js'), 'playwright.config.js');
+		writeTemplateFile(path.join(templatesDir, 'tests/e2e/homepage.spec.js'), 'tests/e2e/homepage.spec.js');
+		if (selectedModules.includes('admin_settings')) {
+			writeTemplateFile(path.join(templatesDir, 'tests/e2e/settings-page.spec.js'), 'tests/e2e/settings-page.spec.js');
+		}
+		if (answers.useReact) {
+			writeTemplateFile(path.join(templatesDir, 'jest.config.js'), 'jest.config.js');
+			writeTemplateFile(path.join(templatesDir, 'tests/js/App.test.js'), 'tests/js/App.test.js');
+		}
 
 		// wp-scripts only auto-detects a single "src/index.js" entry (or, if any
 		// block.json exists under the src dir, ONLY the entries it derives from
@@ -801,7 +819,7 @@ ${entries.join('\n')}
 		}
 
 		readmeReactInstall = '3. Run `npm install` and `npm run build` to compile JS assets.\n   > Note: `assets/build` is gitignored and generated during build.';
-		readmeReactScripts = '- `npm run build` — Build JS assets for production.\n- `npm run start` — Start JS asset dev server in watch mode.';
+		readmeReactScripts = '- `npm run build` — Build JS assets for production.\n- `npm run start` — Start JS asset dev server in watch mode.\n- `npm run test:e2e` — Run Playwright E2E tests against a running WordPress site (`WP_BASE_URL`, defaults to `http://localhost:8889` — e.g. `wp-env start`).' + (answers.useReact ? '\n- `npm run test:js` — Run Jest unit tests for the JS admin app.' : '');
 
 		ciNodeJob = `
   node-build:
@@ -826,9 +844,7 @@ ${entries.join('\n')}
 	// Process Plugin.php template with dynamic registrations
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
 	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', () => reactAssetsRegistration);
-	pluginContent = pluginContent.replace('{{MODULE_REGISTRATIONS}}', () => moduleRegistrations.length > 0 ? moduleRegistrations.join('\n') + '\n' : '');
-	pluginContent = pluginContent.replace('{{ELEMENTOR_WIDGET_METHODS}}', () => elementorWidgetMethods);
-	pluginContent = pluginContent.replace('{{BOOT_HOOKS}}', () => bootHooks.length > 0 ? bootHooks.join('\n') + '\n' : '');
+	pluginContent = pluginContent.replace('{{PROVIDER_REGISTRATIONS}}', () => providerRegistrations.length > 0 ? providerRegistrations.join('\n') + '\n' : '');
 	pluginContent = processTemplateContent(pluginContent);
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
@@ -858,7 +874,10 @@ ${entries.join('\n')}
 	const uninstallLines = [];
 
 	if (selectedModules.includes('cpt_taxonomy')) {
-		activatorLines.push('\t\t$post_types = new PostTypes\\Post_Types();');
+		// Fully-qualified on purpose: Activator.php lives in the {{NS}}\Core namespace,
+		// so an unqualified "PostTypes\Post_Types" reference here would resolve to the
+		// (nonexistent) {{NS}}\Core\PostTypes\Post_Types and fatal at runtime.
+		activatorLines.push('\t\t$post_types = $container->get( \\{{NS}}\\PostTypes\\Post_Types::class );');
 		activatorLines.push('\t\t$post_types->register_cpt_and_taxonomy();');
 		activatorLines.push('\t\tflush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
 		deactivatorLines.push('\t\tflush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
@@ -869,7 +888,8 @@ ${entries.join('\n')}
 		activatorLines.push('\t\t\twp_schedule_event( time(), \'hourly\', \'{{PREFIX}}_cron_event\' );');
 		activatorLines.push('\t\t}');
 		deactivatorLines.push('\t\twp_clear_scheduled_hook( \'{{PREFIX}}_cron_event\' );');
-		uninstallLines.push('\twp_clear_scheduled_hook( \'{{PREFIX}}_cron_event\' );');
+		// Two-tab depth: this body is injected into Uninstaller::cleanup(), a class method (not a top-level function).
+		uninstallLines.push('\t\twp_clear_scheduled_hook( \'{{PREFIX}}_cron_event\' );');
 	}
 
 	if (selectedModules.includes('elementor_widget')) {
@@ -877,7 +897,15 @@ ${entries.join('\n')}
 	}
 
 	if (selectedModules.includes('admin_settings')) {
-		uninstallLines.push('\tdelete_option( \'{{PREFIX}}_option_name\' );');
+		uninstallLines.push('\t\tdelete_option( \'{{PREFIX}}_option_name\' );');
+	}
+
+	if (selectedModules.includes('custom_table')) {
+		// dbDelta() must run synchronously on activation so the table exists
+		// immediately — Schema::boot()'s plugins_loaded hook only catches
+		// updates, which don't fire register_activation_hook().
+		activatorLines.push('\t\t$container->get( \\{{NS}}\\Database\\Schema::class )->create_table();');
+		uninstallLines.push('\t\t\\{{NS}}\\Database\\Schema::drop_table();');
 	}
 
 	const activatorBody = activatorLines.length > 0 ? activatorLines.join('\n') + '\n' : '';
@@ -898,11 +926,20 @@ ${entries.join('\n')}
 	fs.mkdirSync(path.dirname(deactivatorDestPath), { recursive: true });
 	fs.writeFileSync(deactivatorDestPath, deactivatorContent, 'utf8');
 
+	// uninstall.php itself is now a thin procedural shell with no {{UNINSTALL_BODY}}
+	// of its own — it just delegates to Core\Uninstaller::cleanup(), which is where
+	// the per-module cleanup lines below actually get injected.
 	let uninstallContent = fs.readFileSync(path.join(templatesDir, 'uninstall.php'), 'utf8');
-	uninstallContent = uninstallContent.replace('{{UNINSTALL_BODY}}', () => uninstallBody);
 	uninstallContent = processTemplateContent(uninstallContent);
 	const uninstallDestPath = path.join(targetDir, 'uninstall.php');
 	fs.writeFileSync(uninstallDestPath, uninstallContent, 'utf8');
+
+	let uninstallerContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Uninstaller.php'), 'utf8');
+	uninstallerContent = uninstallerContent.replace('{{UNINSTALL_BODY}}', () => uninstallBody);
+	uninstallerContent = processTemplateContent(uninstallerContent);
+	const uninstallerDestPath = path.join(targetDir, 'src/Core/Uninstaller.php');
+	fs.mkdirSync(path.dirname(uninstallerDestPath), { recursive: true });
+	fs.writeFileSync(uninstallerDestPath, uninstallerContent, 'utf8');
 
 	// Process README.md with dynamic React sections
 	let readmeContent = fs.readFileSync(path.join(templatesDir, 'README.md'), 'utf8');

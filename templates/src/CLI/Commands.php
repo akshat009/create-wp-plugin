@@ -5,9 +5,12 @@
  * @package {{NS}}\CLI
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\CLI;
 
-use {{NS}}\Contracts\Registrable;
+use {{NS}}\Contracts\Service_Provider;
+use {{NS}}\Core\Container;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -20,14 +23,24 @@ if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 /**
  * WP-CLI Commands for {{PLUGIN_NAME}}.
  */
-class Commands implements Registrable {
+class Commands implements Service_Provider {
+
+	/**
+	 * No bindings needed.
+	 *
+	 * @param Container $container Application container.
+	 * @return void
+	 */
+	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	}
 
 	/**
 	 * Register WP-CLI commands.
 	 *
+	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function register(): void {
+	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		\WP_CLI::add_command( '{{PREFIX}} status', array( $this, 'status' ) );
 		\WP_CLI::add_command( '{{PREFIX}} cache clear', array( $this, 'cache_clear' ) );
 	}

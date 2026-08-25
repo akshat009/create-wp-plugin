@@ -5,9 +5,12 @@
  * @package {{NS}}\Elementor
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Elementor;
 
-use {{NS}}\Contracts\Registrable;
+use {{NS}}\Contracts\Service_Provider;
+use {{NS}}\Core\Container;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -16,14 +19,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Dependency_Notice.
  */
-class Dependency_Notice implements Registrable {
+class Dependency_Notice implements Service_Provider {
+
+	/**
+	 * No bindings needed.
+	 *
+	 * @param Container $container Application container.
+	 * @return void
+	 */
+	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	}
 
 	/**
 	 * Register admin notice hooks.
 	 *
+	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function register(): void {
+	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		add_action( 'admin_notices', array( $this, 'render_notice' ) );
 	}
 

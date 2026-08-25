@@ -5,6 +5,8 @@
  * @package {{NS}}\Widgets
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Widgets;
 
 use Elementor\Widget_Base;

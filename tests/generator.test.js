@@ -133,6 +133,7 @@ test('Non-interactive scaffolding for zero-module minimal variant', () => {
 	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php.code-snippets')));
 	assert.ok(!fs.existsSync(path.join(outDir, '.vscode/php-elementor.code-snippets')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Elementor/Dependency_Notice.php')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Elementor/Widget_Registrar.php')));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
@@ -167,6 +168,7 @@ test('Non-interactive scaffolding for Elementor variant includes php-elementor.c
 	// Ensure no invalid nested tabstop transform syntax like ${3:${TM_...}} remains
 	assert.ok(!snippetContent.includes('${3:${TM_'));
 	assert.ok(fs.existsSync(path.join(outDir, 'src/Elementor/Dependency_Notice.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Elementor/Widget_Registrar.php')));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
@@ -265,7 +267,7 @@ test('composer.json omits the "version" field (composer validate --strict discou
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('phpcs.xml has no unreplaced {{TOKENS}} and includes trailing-underscore prefix variants', () => {
+test('phpcs.xml has no unreplaced {{TOKENS}} and includes trailing-underscore prefix variants (default lint target: wp-org)', () => {
 	const outDir = path.join(__dirname, '../tmp-test-phpcs');
 	runGenerator({
 		name: 'Phpcs Plugin',
@@ -282,12 +284,124 @@ test('phpcs.xml has no unreplaced {{TOKENS}} and includes trailing-underscore pr
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(phpcs), 'no unreplaced template tokens should remain');
 	assert.ok(phpcs.includes('<element value="pcp_"/>'));
 	assert.ok(phpcs.includes('<element value="PCP_"/>'));
-	assert.ok(phpcs.includes('WordPressVIPMinimum.Security.Mustache.OutputNotation'));
+	assert.ok(phpcs.includes('WordPress-Extra'));
+	assert.ok(!phpcs.includes('WordPress-VIP-Go'), 'default lint target is wp-org, VIP ruleset should not be included');
+
+	const composer = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
+	assert.ok(!composer['require-dev']['automattic/vipwpcs'], 'default lint target is wp-org, vipwpcs should not be a dependency');
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('Elementor add_action hooks live in boot(), not build_services(), so DI-injected services still register them', () => {
+test('lintTarget "vip" generates only the WordPress-VIP-Go ruleset and adds automattic/vipwpcs', () => {
+	const outDir = path.join(__dirname, '../tmp-test-phpcs-vip');
+	runGenerator({
+		name: 'Vip Plugin',
+		slug: 'vip-plugin',
+		prefix: 'vpg',
+		namespace: 'VipPlugin',
+		minPhp: '8.0',
+		modules: [],
+		useReact: false,
+		lintTarget: 'vip',
+		out: outDir
+	});
+
+	const phpcs = fs.readFileSync(path.join(outDir, 'phpcs.xml'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(phpcs), 'no unreplaced template tokens should remain');
+	assert.ok(phpcs.includes('WordPress-VIP-Go'));
+	assert.ok(phpcs.includes('WordPressVIPMinimum.Security.Mustache.OutputNotation'));
+	assert.ok(!phpcs.includes('WordPress-Extra'), 'vip-only target should not also load WordPress-Extra');
+
+	const composer = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
+	assert.ok(composer['require-dev']['automattic/vipwpcs'], 'vip lint target should add automattic/vipwpcs');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('lintTarget "both" generates both wp.org and VIP-Go rulesets', () => {
+	const outDir = path.join(__dirname, '../tmp-test-phpcs-both');
+	runGenerator({
+		name: 'Both Standards Plugin',
+		slug: 'both-standards-plugin',
+		prefix: 'bsp',
+		namespace: 'BothStandardsPlugin',
+		minPhp: '8.0',
+		modules: [],
+		useReact: false,
+		lintTarget: 'both',
+		out: outDir
+	});
+
+	const phpcs = fs.readFileSync(path.join(outDir, 'phpcs.xml'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(phpcs), 'no unreplaced template tokens should remain');
+	assert.ok(phpcs.includes('WordPress-Extra'));
+	assert.ok(phpcs.includes('WordPress-VIP-Go'));
+
+	const composer = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
+	assert.ok(composer['require-dev']['automattic/vipwpcs']);
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('generated plugin version defaults to 1.0.0', () => {
+	const outDir = path.join(__dirname, '../tmp-test-version-default');
+	runGenerator({
+		name: 'Version Default Plugin',
+		slug: 'version-default-plugin',
+		prefix: 'vdp',
+		namespace: 'VersionDefaultPlugin',
+		minPhp: '8.0',
+		modules: [],
+		useReact: false,
+		out: outDir
+	});
+
+	const mainPhp = fs.readFileSync(path.join(outDir, 'version-default-plugin.php'), 'utf8');
+	assert.ok(mainPhp.includes('Version:           1.0.0'));
+
+	const readmeTxt = fs.readFileSync(path.join(outDir, 'readme.txt'), 'utf8');
+	assert.ok(readmeTxt.includes('Stable tag: 1.0.0'));
+
+	const composer = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
+	assert.equal(composer.version, undefined, 'composer.json intentionally omits "version" (see the dedicated test above)');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('foundational contracts and container are always scaffolded with no leftover tokens', () => {
+	const outDir = path.join(__dirname, '../tmp-test-foundation');
+	runGenerator({
+		name: 'Foundation Plugin',
+		slug: 'foundation-plugin',
+		prefix: 'fdp',
+		namespace: 'FoundationPlugin',
+		minPhp: '8.0',
+		modules: [],
+		useReact: false,
+		out: outDir
+	});
+
+	const files = [
+		'src/Core/Container.php',
+		'src/Core/Exceptions/Not_Found_Exception.php',
+		'src/Core/Uninstaller.php',
+		'src/Contracts/Service_Provider.php',
+		'src/Contracts/Conditional.php',
+		'src/Contracts/Activatable.php',
+		'src/Contracts/Deactivatable.php'
+	];
+	for (const f of files) {
+		assert.ok(fs.existsSync(path.join(outDir, f)), `expected ${f} to exist`);
+		const content = fs.readFileSync(path.join(outDir, f), 'utf8');
+		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
+	}
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Contracts/Registrable.php')), 'Registrable was replaced by Service_Provider');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('Plugin.php is a pure composition root (no hooks registered directly), and Widget_Registrar owns Elementor\'s hooks in its own boot()', () => {
 	const outDir = path.join(__dirname, '../tmp-test-elementor-boot');
 	runGenerator({
 		name: 'Elementor Boot Plugin',
@@ -301,16 +415,17 @@ test('Elementor add_action hooks live in boot(), not build_services(), so DI-inj
 	});
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	const buildServicesBody = pluginPhp.slice(
-		pluginPhp.indexOf('private function build_services'),
-		pluginPhp.indexOf('function boot(')
-	);
-	const bootBody = pluginPhp.slice(pluginPhp.indexOf('function boot('));
+	assert.ok(!pluginPhp.includes('add_action'), 'Plugin.php itself should never register WordPress hooks directly');
+	assert.ok(pluginPhp.includes('public function __construct( Container $container, array $providers )'));
+	assert.ok(pluginPhp.includes('public static function create(): self'));
+	assert.ok(pluginPhp.includes('new Elementor\\Widget_Registrar();'));
+	assert.ok(pluginPhp.includes('new Elementor\\Dependency_Notice();'));
 
-	assert.ok(!buildServicesBody.includes('add_action'), 'add_action hook registration must not live inside build_services()');
-	assert.ok(bootBody.includes("add_action( 'elementor/widgets/register'"));
-	assert.ok(pluginPhp.includes('private function __construct( ?array $services = null )'));
-	assert.ok(pluginPhp.includes('public static function get_instance( ?array $services = null )'));
+	const widgetRegistrar = fs.readFileSync(path.join(outDir, 'src/Elementor/Widget_Registrar.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(widgetRegistrar), 'no unreplaced template tokens should remain');
+	const registrarBootBody = widgetRegistrar.slice(widgetRegistrar.indexOf('public function boot('));
+	assert.ok(registrarBootBody.includes("add_action( 'elementor/widgets/register'"));
+	assert.ok(registrarBootBody.includes("add_action( 'wp_enqueue_scripts'"));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
@@ -328,8 +443,14 @@ test('React admin app + admin_settings: root div mounted, Assets.php scoped to t
 		out: outDir
 	});
 
-	const settingsPhp = fs.readFileSync(path.join(outDir, 'src/Admin/Settings_Page.php'), 'utf8');
-	assert.ok(settingsPhp.includes('<div id="rap-app-root"></div>'));
+	const settingsPageView = fs.readFileSync(path.join(outDir, 'src/Admin/views/settings-page.php'), 'utf8');
+	assert.ok(settingsPageView.includes('<div id="rap-app-root"></div>'));
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(settingsPageView), 'no unreplaced template tokens should remain');
+
+	const settingsRegistrar = fs.readFileSync(path.join(outDir, 'src/Admin/Settings_Registrar.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(settingsRegistrar), 'no unreplaced template tokens should remain');
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Admin/Settings_Repository.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Admin/views/sample-field.php')));
 
 	const assetsPhp = fs.readFileSync(path.join(outDir, 'src/Admin/Assets.php'), 'utf8');
 	assert.ok(assetsPhp.includes("namespace ReactAdminPlugin\\Admin;"));
@@ -338,6 +459,7 @@ test('React admin app + admin_settings: root div mounted, Assets.php scoped to t
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
 	assert.ok(pluginPhp.includes("new Admin\\Assets()"));
+	assert.ok(pluginPhp.includes("new Admin\\Settings_Registrar()"));
 
 	const mainPhp = fs.readFileSync(path.join(outDir, 'react-admin-plugin.php'), 'utf8');
 	assert.ok(mainPhp.includes('Requires at least: 6.0'), 'React alone must not bump the minimum WP version');
@@ -440,7 +562,11 @@ test('WooCommerce module: gateway, shipping, email, product type, blocks payment
 	});
 
 	const files = [
-		'src/Woo/Woo_Hooks.php',
+		'src/Woo/Providers/Gateway_Provider.php',
+		'src/Woo/Providers/Shipping_Provider.php',
+		'src/Woo/Providers/Email_Provider.php',
+		'src/Woo/Providers/Product_Type_Provider.php',
+		'src/Woo/Providers/Blocks_Provider.php',
 		'src/Woo/Gateways/Gateway.php',
 		'src/Woo/Gateways/Blocks_Payment_Method_Type.php',
 		'src/Woo/Shipping/Shipping_Method.php',
@@ -459,11 +585,27 @@ test('WooCommerce module: gateway, shipping, email, product type, blocks payment
 		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
 	}
 
-	const wooHooks = fs.readFileSync(path.join(outDir, 'src/Woo/Woo_Hooks.php'), 'utf8');
-	assert.ok(wooHooks.includes("add_filter( 'woocommerce_payment_gateways'"));
-	assert.ok(wooHooks.includes("add_filter( 'woocommerce_shipping_methods'"));
-	assert.ok(wooHooks.includes("add_filter( 'woocommerce_email_classes'"));
-	assert.ok(wooHooks.includes('woocommerce_blocks_payment_method_type_registration'));
+	const gatewayProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Gateway_Provider.php'), 'utf8');
+	assert.ok(gatewayProvider.includes("add_filter( 'woocommerce_payment_gateways'"));
+	assert.ok(gatewayProvider.includes('woocommerce_blocks_payment_method_type_registration'));
+	assert.ok(gatewayProvider.includes('function is_needed(): bool'));
+
+	const shippingProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Shipping_Provider.php'), 'utf8');
+	assert.ok(shippingProvider.includes("add_filter( 'woocommerce_shipping_methods'"));
+
+	const emailProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Email_Provider.php'), 'utf8');
+	assert.ok(emailProvider.includes("add_filter( 'woocommerce_email_classes'"));
+
+	const productTypeProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Product_Type_Provider.php'), 'utf8');
+	assert.ok(productTypeProvider.includes("add_filter( 'woocommerce_product_class'"));
+	assert.ok(productTypeProvider.includes("add_filter( 'product_type_selector'"));
+
+	const pluginPhpWoo = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
+	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Gateway_Provider();'));
+	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Shipping_Provider();'));
+	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Email_Provider();'));
+	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Product_Type_Provider();'));
+	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Blocks_Provider();'));
 
 	const blocksType = fs.readFileSync(path.join(outDir, 'src/Woo/Gateways/Blocks_Payment_Method_Type.php'), 'utf8');
 	assert.ok(blocksType.includes("protected $name = 'wfp_gateway';"));
@@ -520,10 +662,10 @@ test('WooCommerce Cart block: native cart-summary block + Blocks Integration sca
 	assert.ok(integration.includes('IntegrationInterface'));
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(integration));
 
-	const wooHooks = fs.readFileSync(path.join(outDir, 'src/Woo/Woo_Hooks.php'), 'utf8');
-	assert.ok(wooHooks.includes('Cart_Summary_Block::class'));
-	assert.ok(wooHooks.includes('woocommerce_blocks_cart_block_registration'));
-	assert.ok(wooHooks.includes('woocommerce_blocks_checkout_block_registration'));
+	const blocksProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Blocks_Provider.php'), 'utf8');
+	assert.ok(blocksProvider.includes('Cart_Summary_Block::class'));
+	assert.ok(blocksProvider.includes('woocommerce_blocks_cart_block_registration'));
+	assert.ok(blocksProvider.includes('woocommerce_blocks_checkout_block_registration'));
 
 	// The critical regression: entry must be a function that invokes defaultConfig.entry()
 	// (not `...defaultConfig.entry`, which silently spreads to {} and drops the block).
@@ -555,6 +697,204 @@ test('composer.json package name derives from the author, not a literal "vendor/
 
 	const composerJson = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
 	assert.equal(composerJson.name, 'jane-doe/vendor-test-plugin');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('cpt_taxonomy Activator resolves Post_Types through the container with a fully-qualified class reference', () => {
+	const outDir = path.join(__dirname, '../tmp-test-cpt-activator');
+	runGenerator({
+		name: 'Cpt Activator Plugin',
+		slug: 'cpt-activator-plugin',
+		prefix: 'cap',
+		namespace: 'CptActivatorPlugin',
+		minPhp: '8.0',
+		modules: ['cpt_taxonomy'],
+		useReact: false,
+		out: outDir
+	});
+
+	const activatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Activator.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(activatorPhp), 'no unreplaced template tokens should remain');
+	assert.ok(activatorPhp.includes('implements Activatable'));
+	assert.ok(activatorPhp.includes('public function activate( Container $container )'));
+	// Must be fully-qualified (leading backslash): Activator.php lives in the
+	// {{NS}}\Core namespace, so an unqualified "PostTypes\Post_Types" reference
+	// would resolve to the nonexistent {{NS}}\Core\PostTypes\Post_Types and
+	// fatal at runtime the moment the plugin is activated.
+	assert.ok(activatorPhp.includes('$container->get( \\CptActivatorPlugin\\PostTypes\\Post_Types::class )'));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('WP integration test suite (wp-phpunit) is always scaffolded, independent of module selection', () => {
+	const outDir = path.join(__dirname, '../tmp-test-integration');
+	runGenerator({
+		name: 'Integration Plugin',
+		slug: 'integration-plugin',
+		prefix: 'intp',
+		namespace: 'IntegrationPlugin',
+		minPhp: '8.0',
+		modules: [],
+		useReact: false,
+		out: outDir
+	});
+
+	const files = [
+		'tests/bootstrap-integration.php',
+		'phpunit-integration.xml.dist',
+		'tests/Integration/Plugin_Boot_Test.php'
+	];
+	for (const f of files) {
+		assert.ok(fs.existsSync(path.join(outDir, f)), `expected ${f} to exist`);
+		const content = fs.readFileSync(path.join(outDir, f), 'utf8');
+		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
+	}
+
+	const composer = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
+	assert.ok(composer['require-dev']['wp-phpunit/wp-phpunit']);
+	assert.ok(composer['require-dev']['yoast/phpunit-polyfills']);
+	assert.equal(composer.scripts['test:integration'], 'phpunit -c phpunit-integration.xml.dist');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('pure-PHP scaffold (no React/Interactivity/WooCommerce) gets no package.json, Jest, or Playwright', () => {
+	const outDir = path.join(__dirname, '../tmp-test-no-js-pipeline');
+	runGenerator({
+		name: 'No Js Pipeline Plugin',
+		slug: 'no-js-pipeline-plugin',
+		prefix: 'njpp',
+		namespace: 'NoJsPipelinePlugin',
+		minPhp: '8.0',
+		modules: ['admin_settings', 'cpt_taxonomy'],
+		useReact: false,
+		out: outDir
+	});
+
+	assert.ok(!fs.existsSync(path.join(outDir, 'package.json')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'playwright.config.js')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'jest.config.js')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'tests/e2e')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'tests/js')));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('Playwright E2E ships alongside any JS pipeline (here: Interactivity only, no React)', () => {
+	const outDir = path.join(__dirname, '../tmp-test-e2e-interactivity');
+	runGenerator({
+		name: 'E2e Interactivity Plugin',
+		slug: 'e2e-interactivity-plugin',
+		prefix: 'eip',
+		namespace: 'E2eInteractivityPlugin',
+		minPhp: '8.0',
+		modules: ['interactivity'],
+		useReact: false,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, 'playwright.config.js')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/e2e/homepage.spec.js')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'tests/e2e/settings-page.spec.js')), 'no admin_settings module selected');
+	assert.ok(!fs.existsSync(path.join(outDir, 'jest.config.js')), 'Jest only ships alongside the React admin app');
+	assert.ok(!fs.existsSync(path.join(outDir, 'tests/js')));
+
+	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
+	assert.equal(pkg.scripts['test:e2e'], 'playwright test');
+	assert.ok(pkg.devDependencies['@playwright/test']);
+	assert.ok(pkg.devDependencies['@wordpress/e2e-test-utils-playwright']);
+	assert.ok(!pkg.scripts['test:js']);
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('Jest unit tests + admin_settings-aware E2E spec ship with React admin app', () => {
+	const outDir = path.join(__dirname, '../tmp-test-jest-react');
+	runGenerator({
+		name: 'Jest React Plugin',
+		slug: 'jest-react-plugin',
+		prefix: 'jrp',
+		namespace: 'JestReactPlugin',
+		minPhp: '8.0',
+		modules: ['admin_settings'],
+		useReact: true,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, 'jest.config.js')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/js/App.test.js')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/e2e/settings-page.spec.js')));
+
+	const appEntry = fs.readFileSync(path.join(outDir, 'assets/src/index.js'), 'utf8');
+	assert.ok(appEntry.includes('export function App()'), 'App must be exported for tests/js/App.test.js to import it');
+
+	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
+	assert.equal(pkg.scripts['test:js'], 'wp-scripts test-unit-js');
+	assert.ok(pkg.devDependencies['@testing-library/react']);
+	assert.ok(pkg.devDependencies['@testing-library/jest-dom']);
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('caching module scaffolds Cache_Service as a container-resolvable provider', () => {
+	const outDir = path.join(__dirname, '../tmp-test-caching');
+	runGenerator({
+		name: 'Caching Plugin',
+		slug: 'caching-plugin',
+		prefix: 'cchp',
+		namespace: 'CachingPlugin',
+		minPhp: '8.0',
+		modules: ['caching'],
+		useReact: false,
+		out: outDir
+	});
+
+	const cacheService = fs.readFileSync(path.join(outDir, 'src/Cache/Cache_Service.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(cacheService), 'no unreplaced template tokens should remain');
+	assert.ok(cacheService.includes('implements Service_Provider'));
+	assert.ok(cacheService.includes("wp_cache_get"));
+	assert.ok(cacheService.includes('get_transient'));
+
+	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
+	assert.ok(pluginPhp.includes('new Cache\\Cache_Service();'));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('custom_table module scaffolds a dbDelta Schema + Item_Repository, wired into Activator/uninstall', () => {
+	const outDir = path.join(__dirname, '../tmp-test-custom-table');
+	runGenerator({
+		name: 'Custom Table Plugin',
+		slug: 'custom-table-plugin',
+		prefix: 'ctbp',
+		namespace: 'CustomTablePlugin',
+		minPhp: '8.0',
+		modules: ['custom_table'],
+		useReact: false,
+		out: outDir
+	});
+
+	const schema = fs.readFileSync(path.join(outDir, 'src/Database/Schema.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(schema), 'no unreplaced template tokens should remain');
+	assert.ok(schema.includes('implements Service_Provider'));
+	assert.ok(schema.includes('dbDelta('));
+	assert.ok(schema.includes("PRIMARY KEY"));
+	assert.ok(schema.includes('KEY status'));
+
+	const repository = fs.readFileSync(path.join(outDir, 'src/Database/Item_Repository.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(repository));
+
+	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
+	assert.ok(pluginPhp.includes('new Database\\Schema();'));
+
+	const activatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Activator.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(activatorPhp));
+	assert.ok(activatorPhp.includes('$container->get( \\CustomTablePlugin\\Database\\Schema::class )->create_table();'));
+
+	const uninstallerPhp = fs.readFileSync(path.join(outDir, 'src/Core/Uninstaller.php'), 'utf8');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(uninstallerPhp));
+	assert.ok(uninstallerPhp.includes('\\CustomTablePlugin\\Database\\Schema::drop_table();'));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });

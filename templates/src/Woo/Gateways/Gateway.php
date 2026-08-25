@@ -5,6 +5,8 @@
  * @package {{NS}}\Woo\Gateways
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Woo\Gateways;
 
 if ( ! defined( 'ABSPATH' ) ) {

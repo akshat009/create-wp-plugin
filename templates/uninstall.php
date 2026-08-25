@@ -2,7 +2,9 @@
 /**
  * Uninstall Handler.
  *
- * Runs when the plugin is deleted via the WordPress Admin dashboard.
+ * Runs when the plugin is deleted via the WordPress Admin dashboard. WordPress
+ * invokes this file standalone — the main plugin file is never loaded — so it
+ * needs its own autoloader rather than relying on plugin-main.php's constants.
  *
  * @package {{NS}}
  */
@@ -12,13 +14,38 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 }
 
 /**
- * Perform uninstall cleanup tasks.
+ * Autoload classes via PSR-4 with graceful fallback (same convention as plugin-main.php).
+ */
+if ( file_exists( __DIR__ . '/vendor/autoload.php' ) ) {
+	require_once __DIR__ . '/vendor/autoload.php';
+} else {
+	spl_autoload_register(
+		function ( $class_name ) {
+			$prefix   = '{{NS}}\\';
+			$base_dir = __DIR__ . '/src/';
+			$len      = strlen( $prefix );
+
+			if ( 0 !== strncmp( $prefix, $class_name, $len ) ) {
+				return;
+			}
+
+			$relative_class = substr( $class_name, $len );
+			$file           = $base_dir . str_replace( '\\', '/', $relative_class ) . '.php';
+
+			if ( file_exists( $file ) ) {
+				require_once $file;
+			}
+		}
+	);
+}
+
+/**
+ * Perform uninstall cleanup tasks for the current site.
  *
  * @return void
  */
 function {{PREFIX}}_uninstall_cleanup(): void {
-	delete_option( '{{PREFIX}}_version' );
-{{UNINSTALL_BODY}}	delete_transient( '{{PREFIX}}_elementor_widgets' );
+	( new \{{NS}}\Core\Uninstaller() )->cleanup();
 }
 
 if ( is_multisite() ) {

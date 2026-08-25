@@ -12,9 +12,10 @@
 {{README_REACT_INSTALL}}
 
 ## Architecture & Services
-This plugin uses a modular composition root orchestrated by `Plugin::get_instance()`.
-- Services implement `{{NS}}\Contracts\Registrable`.
-- Additional services can be injected without modifying core files using the `{{PREFIX}}_services` WordPress filter.
+This plugin uses a modular composition root: `Plugin::create()` builds a `{{NS}}\Core\Container` and a list of providers, then `Plugin::boot()` runs each one.
+- Providers implement `{{NS}}\Contracts\Service_Provider` (`register()` for container bindings, `boot()` for WordPress hooks).
+- A provider can optionally implement `{{NS}}\Contracts\Conditional` to self-exclude (e.g. only run when a required plugin is active).
+- Additional providers can be injected without modifying core files using the `{{PREFIX}}_providers` WordPress filter.
 
 ## Elementor Widgets Convention
 Concrete widget classes placed in `src/Widgets/` are automatically discovered:
@@ -29,5 +30,9 @@ Concrete widget classes placed in `src/Widgets/` are automatically discovered:
 ## Development Scripts
 - `composer lint` — Run PHPCS checks against WordPress Coding Standards.
 - `composer lint:fix` — Automatically fix lint errors with PHPCBF.
-- `composer test` — Run PHPUnit unit test suite.
+- `composer test` — Run the PHPUnit unit test suite (`tests/Unit/` — Brain Monkey, WordPress functions are stubs, no WordPress install needed).
+- `composer test:integration` — Run the PHPUnit integration suite (`tests/Integration/` — a real WordPress install via `wp-phpunit/wp-phpunit`, backed by an actual MySQL test database). Set these environment variables first (`WP_TESTS_DB_HOST` defaults to `localhost`):
+  - bash / zsh: `export WP_TESTS_DB_NAME=wp_tests WP_TESTS_DB_USER=root WP_TESTS_DB_PASSWORD=root`
+  - PowerShell: `$env:WP_TESTS_DB_NAME="wp_tests"; $env:WP_TESTS_DB_USER="root"; $env:WP_TESTS_DB_PASSWORD="root"`
+  - cmd.exe: `set WP_TESTS_DB_NAME=wp_tests && set WP_TESTS_DB_USER=root && set WP_TESTS_DB_PASSWORD=root`
 {{README_REACT_SCRIPTS}}

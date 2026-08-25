@@ -10,9 +10,12 @@
  * @package {{NS}}\Frontend
  */
 
+declare(strict_types=1);
+
 namespace {{NS}}\Frontend;
 
-use {{NS}}\Contracts\Registrable;
+use {{NS}}\Contracts\Service_Provider;
+use {{NS}}\Core\Container;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -21,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Interactivity.
  */
-class Interactivity implements Registrable {
+class Interactivity implements Service_Provider {
 
 	/**
 	 * Interactivity API namespace, shared between data-wp-interactive and the JS store().
@@ -31,11 +34,21 @@ class Interactivity implements Registrable {
 	const NAMESPACE_KEY = '{{SLUG}}';
 
 	/**
-	 * Register hooks.
+	 * No bindings needed.
 	 *
+	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function register(): void {
+	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	}
+
+	/**
+	 * Register hooks.
+	 *
+	 * @param Container $container Application container.
+	 * @return void
+	 */
+	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		add_action( 'init', array( $this, 'register_script_module' ) );
 		add_action( 'wp_footer', array( $this, 'render_demo' ) );
 	}
