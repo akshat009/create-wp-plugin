@@ -49,7 +49,11 @@ export function suggestNamespace(name) {
 		.filter(Boolean)
 		.map(w => w.charAt(0).toUpperCase() + w.slice(1))
 		.join('');
-	return studly || 'MyPlugin';
+	let ns = studly || 'MyPlugin';
+	if (/^[0-9]/.test(ns)) {
+		ns = 'Plugin' + ns;
+	}
+	return ns;
 }
 
 export function suggestPrefix(name) {
@@ -63,6 +67,10 @@ export function suggestPrefix(name) {
 	let prefix = targetWords.length === 1
 		? targetWords[0].toLowerCase()
 		: targetWords.map(w => w.charAt(0).toLowerCase()).join('');
+
+	if (prefix.length > 15) {
+		prefix = prefix.slice(0, 15);
+	}
 
 	// WPCS's PrefixAllGlobals.ShortPrefixPassed sniff flags prefixes under 4
 	// characters as a collision risk, so a short suggestion would fail the
@@ -79,6 +87,9 @@ export function validateName(val) {
 	if (!val || typeof val !== 'string' || val.trim().length === 0) {
 		return 'Plugin name is required.';
 	}
+	if (val.trim().length > 100) {
+		return 'Plugin name is too long (max 100 characters).';
+	}
 	return true;
 }
 
@@ -86,7 +97,7 @@ export function validateSlug(val) {
 	if (!val || typeof val !== 'string' || val.trim().length === 0) {
 		return 'Plugin slug is required.';
 	}
-	const processed = slugify(val);
+	const processed = val.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
 	if (processed !== val || !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(val)) {
 		return 'Plugin slug must be lowercase alphanumeric characters separated by single hyphens (e.g. my-plugin).';
 	}
@@ -102,8 +113,8 @@ export function validatePrefix(val) {
 	if (val.includes('-')) {
 		return 'Prefix cannot contain hyphens because hyphens are invalid in PHP function names and constants.';
 	}
-	if (val.length < 4 || val.length > 20) {
-		return 'Prefix must be between 4 and 20 characters — WPCS\'s PrefixAllGlobals.ShortPrefixPassed sniff flags anything shorter as a collision risk.';
+	if (val.length < 4 || val.length > 15) {
+		return 'Prefix must be between 4 and 15 characters (to prevent custom post type key overflow beyond WordPress\'s 20-character limit).';
 	}
 	if (!/^[a-z][a-z0-9_]*$/.test(val)) {
 		return 'Prefix must start with a lowercase letter and contain only lowercase letters, numbers, and underscores.';

@@ -41,6 +41,12 @@ test('suggestPrefix generates lowercase prefix, at least 4 chars (WPCS ShortPref
 	assert.equal(suggestPrefix('Plugin'), 'plugin');
 	assert.ok(suggestPrefix('Go').length >= 4);
 	assert.ok(suggestPrefix('My Plugin').length >= 4);
+	assert.equal(suggestPrefix('WooCommerceIntegration'), 'woocommerceinte');
+});
+
+test('suggestNamespace handles numeric leading characters', () => {
+	assert.equal(suggestNamespace('24Seven Commerce'), 'Plugin24SevenCommerce');
+	assert.equal(validateNamespace(suggestNamespace('24Seven Commerce')), true);
 });
 
 test('Group 2 Validators', () => {
@@ -52,6 +58,7 @@ test('Group 2 Validators', () => {
 
 	assert.equal(validatePrefix('myplug'), true);
 	assert.equal(typeof validatePrefix('myp'), 'string'); // 3 chars: below WPCS's 4-char ShortPrefixPassed floor
+	assert.equal(typeof validatePrefix('sixteencharspref'), 'string'); // 16 chars: exceeds 15-char max to avoid CPT 20-char overflow
 	assert.equal(typeof validatePrefix('123'), 'string');
 
 	assert.equal(validateNamespace('MyPlugin'), true);

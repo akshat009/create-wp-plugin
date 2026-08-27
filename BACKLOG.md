@@ -62,7 +62,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 ## 🐛 Section 0: Critical Codebase Findings & Edge Cases (Forensic Audit)
 
 ### Iteration 1 Findings
-- [ ] **NEW-1 [P0] WordPress 20-character CPT slug overflow**  
+- [x] ~~**NEW-1 [P0] WordPress 20-character CPT slug overflow**~~  
   *Location:* `templates/src/PostTypes/Post_Types.php:51` & `index.js:103`  
   `validatePrefix()` allows 20 characters. `'{{PREFIX}}_item'` produces 25 characters if prefix is 20 chars long. WordPress `register_post_type` has a hard 20-character limit and silently fails or truncates. *Fix:* Cap prefix validation to 15 chars or truncate CPT key.
 - [x] ~~**NEW-2 [P0] Interactivity API demo code printed in `wp_footer` on every live page**~~ (Fixed in 0.12)  
@@ -128,10 +128,10 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
   `"phpsab.executablePathCS": "vendor/bin/phpcs"` fails on Windows machines unless `.bat` is supported or dynamic OS resolution is applied.
 
 ### Iteration 3 Findings
-- [ ] **NEW-22 [P0] `suggestPrefix()` generates prefixes that fail its own validator on long single-word names**  
+- [x] ~~**NEW-22 [P0] `suggestPrefix()` generates prefixes that fail its own validator on long single-word names**~~  
   *Location:* `index.js:53-74`  
   If the user inputs a single word like `"WooCommerceIntegration"` (22 chars), `suggestPrefix()` returns `"woocommerceintegration"`, which immediately fails `validatePrefix()` (`prefix.length > 20`). *Fix:* Truncate single-word suggestions to 12 characters.
-- [ ] **NEW-23 [P0] `suggestNamespace()` produces illegal PHP namespaces on numeric starts**  
+- [x] ~~**NEW-23 [P0] `suggestNamespace()` produces illegal PHP namespaces on numeric starts**~~  
   *Location:* `index.js:38-51`  
   For names starting with numbers (e.g. `"24Seven Commerce"`), `suggestNamespace()` returns `"24SevenCommerce"`, which is an illegal PHP namespace and fails `validateNamespace()`. *Fix:* Prefix with `Plugin` or sanitize leading digits.
 - [ ] **NEW-24 [P1] Module Duplication Bug (`--modules "admin_settings,admin_settings"`)**  
