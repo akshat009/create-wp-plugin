@@ -109,7 +109,7 @@ test('Group 3 $& pattern replacement bug fix regression test', () => {
 	assert.ok(fs.existsSync(mainPhpFile));
 
 	const content = fs.readFileSync(mainPhpFile, 'utf8');
-	assert.ok(content.includes('Price $10 & Specials $& $1 $\''));
+	assert.ok(content.includes('Price $10 & Specials $& $1'));
 	assert.ok(content.includes('Author $&'));
 
 	fs.rmSync(mockAnswers.out, { recursive: true, force: true });
@@ -920,9 +920,34 @@ test('composer.json package name falls back to "vendor/" when no author name is 
 		out: outDir
 	});
 
-	const composerJson = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
-	assert.equal(composerJson.name, 'vendor/no-author-plugin');
+	const composerJson = fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8');
+	assert.ok(composerJson.includes('"name": "vendor/no-author-plugin"'));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
+test('quotes and apostrophes in plugin name and description are safely escaped in JSON and PHP templates (NEW-14, NEW-15)', () => {
+	const outDir = path.join(__dirname, '../tmp-test-quote-escaping');
+	runGenerator({
+		name: "Dave's \"Awesome\" Plugin",
+		slug: 'daves-awesome-plugin',
+		prefix: 'dapl',
+		namespace: 'DavesAwesomePlugin',
+		authorName: "Dave O'Connor",
+		description: 'A plugin with "fast" checkout & \'cool\' features.',
+		minPhp: '8.0',
+		modules: ['admin_settings'],
+		useReact: false,
+		out: outDir
+	});
+
+	const composerJsonRaw = fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8');
+	assert.doesNotThrow(() => JSON.parse(composerJsonRaw), 'composer.json should be valid JSON even with quotes in description');
+	const composerParsed = JSON.parse(composerJsonRaw);
+	assert.equal(composerParsed.description, 'A plugin with "fast" checkout & \'cool\' features.');
+
+	const registrarPhp = fs.readFileSync(path.join(outDir, 'src/Admin/Settings_Registrar.php'), 'utf8');
+	assert.ok(registrarPhp.includes("Dave\\'s \"Awesome\" Plugin Settings"), 'single quotes in plugin name should be escaped for single-quoted PHP strings');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});

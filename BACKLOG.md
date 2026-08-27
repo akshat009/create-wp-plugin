@@ -102,10 +102,10 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
   Stripping `{{NS}}\` and mapping directly to `src/` can cause fatal errors on Linux for sub-namespaces if folder casing doesn't strictly match before `composer install` is run.
 
 ### Iteration 2 Findings
-- [ ] **NEW-14 [P0] PHP Fatal Syntax Error on Apostrophes / Single Quotes in Plugin Name**  
+- [x] ~~**NEW-14 [P0] PHP Fatal Syntax Error on Apostrophes / Single Quotes in Plugin Name**~~  
   *Location:* `templates/src/Admin/Settings_Page.php:38`, `Rest/Rest_Controller.php:83`, `Woo/Gateways/Gateway.php:29`, `Woo/Shipping/Shipping_Method.php:30`, `Woo/Products/Custom_Product.php:53`  
   Templates embed `'{{PLUGIN_NAME}}'` directly inside PHP single quotes `__( '{{PLUGIN_NAME}} Settings', '...' )`. If a user names their plugin `"Dave's Plugin"`, the output becomes `__( 'Dave's Plugin Settings', '...' )` which generates a fatal PHP syntax error (`T_STRING`). *Fix:* Use `addcslashes($name, "'\\")` for PHP single-quote substitutions.
-- [ ] **NEW-15 [P0] Corrupt JSON Generation on Double Quotes in Description or Plugin Name**  
+- [x] ~~**NEW-15 [P0] Corrupt JSON Generation on Double Quotes in Description or Plugin Name**~~  
   *Location:* `templates/composer.json:3`, `templates/react/package.json:4`, `templates/react/assets/src/blocks/cart-summary/block.json:5`  
   Templates embed `"description": "{{DESCRIPTION}}"` directly. If a description contains double quotes (e.g. `A plugin with "fast" checkout`), `composer.json`, `package.json`, and `block.json` become invalid JSON, causing `composer validate` and `npm install` to crash immediately. *Fix:* JSON-encode strings injected into JSON files.
 - [ ] **NEW-16 [P1] Unprefixed CSS Classes in `sample-widget.css` Violate WPCS**  

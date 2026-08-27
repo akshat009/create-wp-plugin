@@ -585,10 +585,30 @@ export function runGenerator(answers) {
 		'{{PHPCS_RULESETS}}': phpcsRulesets
 	};
 
-	function processTemplateContent(content) {
+	function processTemplateContent(content, destRelativePath = '') {
 		let result = content;
+		const isJson = destRelativePath.endsWith('.json');
+		const isPhp = destRelativePath.endsWith('.php');
+
+		const textTokens = new Set([
+			'{{PLUGIN_NAME}}',
+			'{{DESCRIPTION}}',
+			'{{AUTHOR}}',
+			'{{AUTHOR_EMAIL}}',
+			'{{AUTHOR_URI}}',
+			'{{SLUG}}'
+		]);
+
 		for (const [key, val] of Object.entries(replacements)) {
-			result = result.replaceAll(key, () => val);
+			let safeVal = val;
+			if (typeof val === 'string') {
+				if (isJson && textTokens.has(key)) {
+					safeVal = JSON.stringify(val).slice(1, -1);
+				} else if (isPhp && (key === '{{PLUGIN_NAME}}' || key === '{{DESCRIPTION}}' || key === '{{AUTHOR}}')) {
+					safeVal = val.replaceAll("'", "\\'");
+				}
+			}
+			result = result.replaceAll(key, () => safeVal);
 		}
 		// Fixed-width header labels (e.g. " * Author URI:        {{AUTHOR_URI}}") leave
 		// trailing whitespace once an optional field like --author/--author-uri is left
@@ -599,7 +619,7 @@ export function runGenerator(answers) {
 
 	function writeTemplateFile(srcPath, destRelativePath) {
 		const raw = fs.readFileSync(srcPath, 'utf8');
-		const processed = processTemplateContent(raw);
+		const processed = processTemplateContent(raw, destRelativePath);
 		const destPath = path.join(targetDir, destRelativePath);
 		fs.mkdirSync(path.dirname(destPath), { recursive: true });
 		fs.writeFileSync(destPath, processed, 'utf8');
@@ -649,7 +669,7 @@ export function runGenerator(answers) {
 		let settingsPageViewContent = fs.readFileSync(path.join(templatesDir, 'src/Admin/views/settings-page.php'), 'utf8');
 		const reactAdminRoot = answers.useReact ? '\t<div id="{{PREFIX}}-app-root"></div>\n' : '';
 		settingsPageViewContent = settingsPageViewContent.replace('{{REACT_ADMIN_ROOT}}', () => reactAdminRoot);
-		settingsPageViewContent = processTemplateContent(settingsPageViewContent);
+		settingsPageViewContent = processTemplateContent(settingsPageViewContent, 'src/Admin/views/settings-page.php');
 		const settingsPageViewDest = path.join(targetDir, 'src/Admin/views/settings-page.php');
 		fs.mkdirSync(path.dirname(settingsPageViewDest), { recursive: true });
 		fs.writeFileSync(settingsPageViewDest, settingsPageViewContent, 'utf8');
@@ -748,7 +768,7 @@ export function runGenerator(answers) {
 			? '\t\tif ( \'settings_page_{{SLUG}}\' !== $hook_suffix ) {\n\t\t\treturn;\n\t\t}\n\n'
 			: '\t\t// TODO: narrow this to your plugin\'s own admin screen(s), e.g. compare $hook_suffix.\n';
 		assetsContent = assetsContent.replace('{{REACT_ADMIN_HOOK_GUARD}}', () => reactAdminHookGuard);
-		assetsContent = processTemplateContent(assetsContent);
+		assetsContent = processTemplateContent(assetsContent, 'src/Admin/Assets.php');
 		const assetsDestPath = path.join(targetDir, 'src/Admin/Assets.php');
 		fs.mkdirSync(path.dirname(assetsDestPath), { recursive: true });
 		fs.writeFileSync(assetsDestPath, assetsContent, 'utf8');
@@ -856,7 +876,7 @@ ${entries.join('\n')}
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
 	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', () => reactAssetsRegistration);
 	pluginContent = pluginContent.replace('{{PROVIDER_REGISTRATIONS}}', () => providerRegistrations.length > 0 ? providerRegistrations.join('\n') + '\n' : '');
-	pluginContent = processTemplateContent(pluginContent);
+	pluginContent = processTemplateContent(pluginContent, 'src/Plugin.php');
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
@@ -874,7 +894,7 @@ ${entries.join('\n')}
 	let ciContent = fs.readFileSync(path.join(templatesDir, 'github/workflows/ci.yml'), 'utf8');
 	ciContent = ciContent.replace('{{CI_PHP_MATRIX}}', () => ciPhpMatrix);
 	ciContent = ciContent.replace('{{CI_NODE_JOB}}', () => ciNodeJob);
-	ciContent = processTemplateContent(ciContent);
+	ciContent = processTemplateContent(ciContent, '.github/workflows/ci.yml');
 	const ciDestPath = path.join(targetDir, '.github/workflows/ci.yml');
 	fs.mkdirSync(path.dirname(ciDestPath), { recursive: true });
 	fs.writeFileSync(ciDestPath, ciContent, 'utf8');
@@ -925,14 +945,14 @@ ${entries.join('\n')}
 
 	let activatorContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Activator.php'), 'utf8');
 	activatorContent = activatorContent.replace('{{ACTIVATOR_BODY}}', () => activatorBody);
-	activatorContent = processTemplateContent(activatorContent);
+	activatorContent = processTemplateContent(activatorContent, 'src/Core/Activator.php');
 	const activatorDestPath = path.join(targetDir, 'src/Core/Activator.php');
 	fs.mkdirSync(path.dirname(activatorDestPath), { recursive: true });
 	fs.writeFileSync(activatorDestPath, activatorContent, 'utf8');
 
 	let deactivatorContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Deactivator.php'), 'utf8');
 	deactivatorContent = deactivatorContent.replace('{{DEACTIVATOR_BODY}}', () => deactivatorBody);
-	deactivatorContent = processTemplateContent(deactivatorContent);
+	deactivatorContent = processTemplateContent(deactivatorContent, 'src/Core/Deactivator.php');
 	const deactivatorDestPath = path.join(targetDir, 'src/Core/Deactivator.php');
 	fs.mkdirSync(path.dirname(deactivatorDestPath), { recursive: true });
 	fs.writeFileSync(deactivatorDestPath, deactivatorContent, 'utf8');
@@ -941,13 +961,13 @@ ${entries.join('\n')}
 	// of its own — it just delegates to Core\Uninstaller::cleanup(), which is where
 	// the per-module cleanup lines below actually get injected.
 	let uninstallContent = fs.readFileSync(path.join(templatesDir, 'uninstall.php'), 'utf8');
-	uninstallContent = processTemplateContent(uninstallContent);
+	uninstallContent = processTemplateContent(uninstallContent, 'uninstall.php');
 	const uninstallDestPath = path.join(targetDir, 'uninstall.php');
 	fs.writeFileSync(uninstallDestPath, uninstallContent, 'utf8');
 
 	let uninstallerContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Uninstaller.php'), 'utf8');
 	uninstallerContent = uninstallerContent.replace('{{UNINSTALL_BODY}}', () => uninstallBody);
-	uninstallerContent = processTemplateContent(uninstallerContent);
+	uninstallerContent = processTemplateContent(uninstallerContent, 'src/Core/Uninstaller.php');
 	const uninstallerDestPath = path.join(targetDir, 'src/Core/Uninstaller.php');
 	fs.mkdirSync(path.dirname(uninstallerDestPath), { recursive: true });
 	fs.writeFileSync(uninstallerDestPath, uninstallerContent, 'utf8');
@@ -956,7 +976,7 @@ ${entries.join('\n')}
 	let readmeContent = fs.readFileSync(path.join(templatesDir, 'README.md'), 'utf8');
 	readmeContent = readmeContent.replace('{{README_REACT_INSTALL}}', () => readmeReactInstall);
 	readmeContent = readmeContent.replace('{{README_REACT_SCRIPTS}}', () => readmeReactScripts);
-	readmeContent = processTemplateContent(readmeContent);
+	readmeContent = processTemplateContent(readmeContent, 'README.md');
 	const readmeDestPath = path.join(targetDir, 'README.md');
 	fs.writeFileSync(readmeDestPath, readmeContent, 'utf8');
 
