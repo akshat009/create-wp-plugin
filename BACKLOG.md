@@ -223,7 +223,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
   `fs.rmSync(outDir)` is placed after assertions without `try...finally` or `t.after()`. Any failed test leaves `tmp-test-*` directories on disk, corrupting subsequent runs with "directory already exists" errors.
 
 ### Iteration 7 Findings
-- [ ] **NEW-51 [P0] Windows Drive-Letter Casing Crash in `isRunAsScript()`**  
+- [x] ~~**NEW-51 [P0] Windows Drive-Letter Casing Crash in `isRunAsScript()`**~~  
   *Location:* `index.js:930-944`  
   On Windows, `path.resolve(__filename) === path.resolve(invokedPath)` evaluates to `false` if drive letter casings differ (`d:\` vs `D:\`), causing `main()` to silently never execute. *Fix:* Use case-insensitive path comparison on Windows.
 - [ ] **NEW-52 [P1] Sample "Special Product Note" Injected on Every Single Product Page**  

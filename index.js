@@ -1008,7 +1008,12 @@ function isRunAsScript() {
 		// Path doesn't exist as given (e.g. invoked via a loader that fabricates
 		// argv[1]) — fall back to the raw value so the comparison below still applies.
 	}
-	return path.resolve(__filename) === path.resolve(invokedPath);
+	const a = path.resolve(__filename);
+	const b = path.resolve(invokedPath);
+	if (process.platform === 'win32') {
+		return a.toLowerCase() === b.toLowerCase();
+	}
+	return a === b;
 }
 
 if (isRunAsScript()) {
