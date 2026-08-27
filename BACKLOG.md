@@ -424,7 +424,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 - [ ] **B6.3 [P2] Generic tags in `readme.txt`** (`wordpress, plugin, scaffolding` rejected by wp.org review).
 - [ ] **B6.4 [P2] Missing root `LICENSE` file in scaffolded output**  
 - [x] ~~**B6.6 [P0] `main.js` fires an `admin-ajax.php` POST on every pageview**~~ (Fixed in 0.11)
-- [ ] **B6.7 [P1] Remove `console.log()` calls in shipped production JS**  
+- [x] ~~**B6.7 [P1] Remove `console.log()` calls in shipped production JS**~~ (Fixed in 0.13)  
 - [ ] **B6.8 [P1] Unauthenticated `wp_ajax_nopriv_` registered by default** (Opt-in only).
 - [ ] **B6.9 [P1] Upgrade stale `@wordpress/scripts` dependency (^27.0.0 → ^30.0+)**  
 - [ ] **B6.10 [P1] Unify asset build pipelines (`main.js` raw ES6 vs wp-scripts)**  
