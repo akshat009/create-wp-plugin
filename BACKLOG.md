@@ -65,7 +65,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 - [ ] **NEW-1 [P0] WordPress 20-character CPT slug overflow**  
   *Location:* `templates/src/PostTypes/Post_Types.php:51` & `index.js:103`  
   `validatePrefix()` allows 20 characters. `'{{PREFIX}}_item'` produces 25 characters if prefix is 20 chars long. WordPress `register_post_type` has a hard 20-character limit and silently fails or truncates. *Fix:* Cap prefix validation to 15 chars or truncate CPT key.
-- [ ] **NEW-2 [P0] Interactivity API demo code printed in `wp_footer` on every live page**  
+- [x] ~~**NEW-2 [P0] Interactivity API demo code printed in `wp_footer` on every live page**~~ (Fixed in 0.12)  
   *Location:* `templates/src/Frontend/Interactivity.php:40`  
   Hooks `render_demo` into `wp_footer` unconditionally on every frontend pageview. This prints an unstyled demo button `<div class="{{SLUG}}-interactivity-demo">` on all live website pages. *Fix:* Restrict to shortcode or demo admin screen.
 - [ ] **NEW-3 [P1] Incomplete HPOS & Modern Block feature flags**  

@@ -50,7 +50,7 @@ class Interactivity implements Service_Provider {
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		add_action( 'init', array( $this, 'register_script_module' ) );
-		add_action( 'wp_footer', array( $this, 'render_demo' ) );
+		add_shortcode( '{{PREFIX}}_interactivity_demo', array( $this, 'render_demo' ) );
 	}
 
 	/**
@@ -68,11 +68,11 @@ class Interactivity implements Service_Provider {
 	}
 
 	/**
-	 * Print a demo directive-driven counter and enqueue its Script Module.
+	 * Render the Interactivity API demo via shortcode `[{{PREFIX}}_interactivity_demo]`.
 	 *
-	 * @return void
+	 * @return string HTML output.
 	 */
-	public function render_demo(): void {
+	public function render_demo(): string {
 		wp_enqueue_script_module( '{{PREFIX}}-interactivity-view' );
 
 		wp_interactivity_state(
@@ -81,6 +81,8 @@ class Interactivity implements Service_Provider {
 				'label' => __( 'Clicked', '{{SLUG}}' ),
 			)
 		);
+
+		ob_start();
 		?>
 		<div
 			class="{{SLUG}}-interactivity-demo"
@@ -92,5 +94,6 @@ class Interactivity implements Service_Provider {
 			</button>
 		</div>
 		<?php
+		return (string) ob_get_clean();
 	}
 }
