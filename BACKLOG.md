@@ -137,7 +137,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 - [ ] **NEW-24 [P1] Module Duplication Bug (`--modules "admin_settings,admin_settings"`)**  
   *Location:* `index.js:247-251`  
   `parseModules()` does not deduplicate. Passing repeated modules duplicates service registrations in `Plugin.php` and duplicate lines in `Activator.php`. *Fix:* Wrap in `[...new Set(modules)]`.
-- [ ] **NEW-25 [P1] Logged-out Anonymous Users Bypass Security Check in `Ajax_Handler.php`**  
+- [x] ~~**NEW-25 [P1] Logged-out Anonymous Users Bypass Security Check in `Ajax_Handler.php`**~~ (Fixed in 0.14)  
   *Location:* `templates/src/Ajax/Ajax_Handler.php:66`  
   `if ( is_user_logged_in() && ! current_user_can( 'read' ) )` only checks capability if logged in. Since `wp_ajax_nopriv_` is hooked, anonymous visitors bypass capability checking completely. *Fix:* Enforce capability or remove `nopriv` by default.
 - [ ] **NEW-26 [P1] Hard Flush on Activation/Deactivation (`flush_rewrite_rules()`)**  
@@ -425,7 +425,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 - [ ] **B6.4 [P2] Missing root `LICENSE` file in scaffolded output**  
 - [x] ~~**B6.6 [P0] `main.js` fires an `admin-ajax.php` POST on every pageview**~~ (Fixed in 0.11)
 - [x] ~~**B6.7 [P1] Remove `console.log()` calls in shipped production JS**~~ (Fixed in 0.13)  
-- [ ] **B6.8 [P1] Unauthenticated `wp_ajax_nopriv_` registered by default** (Opt-in only).
+- [x] ~~**B6.8 [P1] Unauthenticated `wp_ajax_nopriv_` registered by default**~~ (Opt-in only; fixed in 0.14).
 - [ ] **B6.9 [P1] Upgrade stale `@wordpress/scripts` dependency (^27.0.0 → ^30.0+)**  
 - [ ] **B6.10 [P1] Unify asset build pipelines (`main.js` raw ES6 vs wp-scripts)**  
 - [ ] **B6.11 [P2] Add `"private": true`, `license`, `author`, `engines` to scaffolded `package.json`**  

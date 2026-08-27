@@ -22,6 +22,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Ajax_Handler implements Service_Provider {
 
 	/**
+	 * Whether to register unauthenticated (nopriv) AJAX action for logged-out visitors.
+	 *
+	 * Set to true if this endpoint should be publicly accessible to unauthenticated visitors.
+	 *
+	 * @var bool
+	 */
+	protected bool $allow_nopriv = false;
+
+	/**
 	 * No bindings needed.
 	 *
 	 * @param Container $container Application container.
@@ -38,7 +47,9 @@ class Ajax_Handler implements Service_Provider {
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
 		add_action( 'wp_ajax_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
-		add_action( 'wp_ajax_nopriv_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
+		if ( $this->allow_nopriv ) {
+			add_action( 'wp_ajax_nopriv_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
+		}
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
@@ -76,7 +87,7 @@ class Ajax_Handler implements Service_Provider {
 			wp_send_json_error( array( 'message' => __( 'Invalid security token.', '{{SLUG}}' ) ), 403 );
 		}
 
-		if ( is_user_logged_in() && ! current_user_can( 'read' ) ) {
+		if ( ! $this->allow_nopriv && ! current_user_can( 'read' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', '{{SLUG}}' ) ), 403 );
 		}
 
