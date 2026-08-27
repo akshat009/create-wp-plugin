@@ -273,7 +273,8 @@ function showVersion() {
 function parseModules(modulesStr) {
 	if (modulesStr === undefined || modulesStr === null) return [];
 	if (modulesStr.trim() === '') return [];
-	return modulesStr.split(',').map(m => m.trim()).filter(Boolean);
+	const list = modulesStr.split(',').map(m => m.trim()).filter(Boolean);
+	return [...new Set(list)];
 }
 
 async function main() {
@@ -910,8 +911,8 @@ ${entries.join('\n')}
 		// (nonexistent) {{NS}}\Core\PostTypes\Post_Types and fatal at runtime.
 		activatorLines.push('\t\t$post_types = $container->get( \\{{NS}}\\PostTypes\\Post_Types::class );');
 		activatorLines.push('\t\t$post_types->register_cpt_and_taxonomy();');
-		activatorLines.push('\t\tflush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
-		deactivatorLines.push('\t\tflush_rewrite_rules(); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
+		activatorLines.push('\t\tflush_rewrite_rules( false ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
+		deactivatorLines.push('\t\tflush_rewrite_rules( false ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
 	}
 
 	if (selectedModules.includes('cron')) {

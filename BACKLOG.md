@@ -134,16 +134,16 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 - [x] ~~**NEW-23 [P0] `suggestNamespace()` produces illegal PHP namespaces on numeric starts**~~  
   *Location:* `index.js:38-51`  
   For names starting with numbers (e.g. `"24Seven Commerce"`), `suggestNamespace()` returns `"24SevenCommerce"`, which is an illegal PHP namespace and fails `validateNamespace()`. *Fix:* Prefix with `Plugin` or sanitize leading digits.
-- [ ] **NEW-24 [P1] Module Duplication Bug (`--modules "admin_settings,admin_settings"`)**  
+- [x] ~~**NEW-24 [P1] Module Duplication Bug (`--modules "admin_settings,admin_settings"`)**~~  
   *Location:* `index.js:247-251`  
   `parseModules()` does not deduplicate. Passing repeated modules duplicates service registrations in `Plugin.php` and duplicate lines in `Activator.php`. *Fix:* Wrap in `[...new Set(modules)]`.
 - [x] ~~**NEW-25 [P1] Logged-out Anonymous Users Bypass Security Check in `Ajax_Handler.php`**~~ (Fixed in 0.14)  
   *Location:* `templates/src/Ajax/Ajax_Handler.php:66`  
   `if ( is_user_logged_in() && ! current_user_can( 'read' ) )` only checks capability if logged in. Since `wp_ajax_nopriv_` is hooked, anonymous visitors bypass capability checking completely. *Fix:* Enforce capability or remove `nopriv` by default.
-- [ ] **NEW-26 [P1] Hard Flush on Activation/Deactivation (`flush_rewrite_rules()`)**  
+- [x] ~~**NEW-26 [P1] Hard Flush on Activation/Deactivation (`flush_rewrite_rules()`)**~~  
   *Location:* `index.js:863-864`  
   Calls `flush_rewrite_rules()` without arguments, triggering an expensive disk rewrite of `.htaccess` / `web.config`. WordPress standard for activation is soft-flush: `flush_rewrite_rules( false )`.
-- [ ] **NEW-27 [P1] Dead `"main"` Entry in Scaffolded `package.json` Without React**  
+- [x] ~~**NEW-27 [P1] Dead `"main"` Entry in Scaffolded `package.json` Without React**~~  
   *Location:* `templates/react/package.json:5` & `index.js:761`  
   When only Interactivity or WooCommerce is chosen without React, `package.json` specifies `"main": "assets/build/index.js"`, but `assets/src/index.js` is never compiled, leaving a broken dead entry.
 - [ ] **NEW-28 [P2] Non-ASCII / Unicode Diacritic Stripping Bug in `slugify()`**  

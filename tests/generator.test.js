@@ -244,6 +244,7 @@ test('React pipeline: package.json build/start scripts point wp-scripts at asset
 	});
 
 	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
+	assert.equal(pkg.main, undefined, 'package.json should not have a dead main entry');
 	assert.match(pkg.scripts.build, /--webpack-src-dir=assets\/src/);
 	assert.match(pkg.scripts.start, /--webpack-src-dir=assets\/src/);
 	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/index.js')));
@@ -730,6 +731,7 @@ test('cpt_taxonomy Activator resolves Post_Types through the container with a fu
 	// would resolve to the nonexistent {{NS}}\Core\PostTypes\Post_Types and
 	// fatal at runtime the moment the plugin is activated.
 	assert.ok(activatorPhp.includes('$container->get( \\CptActivatorPlugin\\PostTypes\\Post_Types::class )'));
+	assert.ok(activatorPhp.includes('flush_rewrite_rules( false );'));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
