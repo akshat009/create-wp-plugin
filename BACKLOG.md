@@ -435,7 +435,7 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
   Include source files or add required `== Source Code ==` link in `readme.txt`.
 - [ ] **B6.16 [P1] `CLI\Commands::cache_clear()` hardcodes Elementor transient key**  
 - [ ] **B6.17 [P2] `Commands.php` top-level `return` breaks PSR-4 autoloading**  
-- [ ] **B6.18 [P3] `Cron\Scheduler::execute_cron_job()` is empty**  
+- [x] ~~**B6.18 [P3] `Cron\Scheduler::execute_cron_job()` is empty**~~ (Fixed in 0.15)  
 - [ ] **B6.19 [P1] Fix `flush_rewrite_rules()` VIP violation suppression**
 
 ### B7. Documentation
