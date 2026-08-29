@@ -140,8 +140,7 @@ test('Non-interactive scaffolding for zero-module minimal variant', () => {
 	assert.ok(fs.existsSync(path.join(outDir, 'minimal-plugin.php')));
 	assert.ok(fs.existsSync(path.join(outDir, 'readme.txt')));
 	assert.ok(fs.existsSync(path.join(outDir, 'languages/.gitkeep')));
-	assert.ok(fs.existsSync(path.join(outDir, '.vscode/php.code-snippets')));
-	assert.ok(!fs.existsSync(path.join(outDir, '.vscode/php-elementor.code-snippets')));
+	assert.ok(!fs.existsSync(path.join(outDir, '.vscode')), 'no .vscode without the editor_config module');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Elementor/Dependency_Notice.php')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Elementor/Widget_Registrar.php')));
 
@@ -160,7 +159,7 @@ test('Non-interactive scaffolding for Elementor variant includes php-elementor.c
 		authorUri: 'https://example.com',
 		description: 'Elementor',
 		minPhp: '8.2',
-		modules: ['elementor_widget'],
+		modules: ['elementor_widget', 'editor_config'],
 		useReact: false,
 		out: outDir
 	};
@@ -567,7 +566,7 @@ test('WooCommerce module: gateway, shipping, email, product type, blocks payment
 		prefix: 'wfp',
 		namespace: 'WooFullPlugin',
 		minPhp: '8.0',
-		modules: ['woocommerce_hooks'],
+		modules: ['woocommerce_hooks', 'editor_config'],
 		useReact: false,
 		out: outDir
 	});
@@ -937,6 +936,27 @@ test('B6.16 cache cleanup goes through the {{PREFIX}}_cache_keys filter, not har
 	const uninstallerEle = fs.readFileSync(path.join(ele, 'src/Core/Uninstaller.php'), 'utf8');
 	assert.ok(uninstallerEle.includes("delete_transient( 'cele_elementor_widgets' )"), 'uninstall.php (unbooted) still purges it explicitly when the module is present');
 	fs.rmSync(ele, { recursive: true, force: true });
+});
+
+test('0.10 editor_config module owns every .vscode file', () => {
+	const without = path.join(__dirname, '../tmp-test-editorcfg-off');
+	runGenerator({
+		name: 'Ecfg Off', slug: 'ecfg-off', prefix: 'ecof', namespace: 'EcfgOff',
+		minPhp: '8.0', modules: ['elementor_widget'], useReact: false, out: without
+	});
+	assert.ok(!fs.existsSync(path.join(without, '.vscode')), 'no .vscode dir at all without editor_config, even with elementor_widget');
+	fs.rmSync(without, { recursive: true, force: true });
+
+	const withCfg = path.join(__dirname, '../tmp-test-editorcfg-on');
+	runGenerator({
+		name: 'Ecfg On', slug: 'ecfg-on', prefix: 'econ', namespace: 'EcfgOn',
+		minPhp: '8.0', modules: ['editor_config', 'elementor_widget'], useReact: false, out: withCfg
+	});
+	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/php.code-snippets')));
+	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/extensions.json')));
+	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/settings.json')));
+	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/php-elementor.code-snippets')), 'the elementor snippet needs both modules');
+	fs.rmSync(withCfg, { recursive: true, force: true });
 });
 
 test('composer.json package name falls back to "vendor/" when no author name is given', () => {

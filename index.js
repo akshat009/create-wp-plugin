@@ -35,6 +35,9 @@ export const MODULE_DEFINITIONS = [
 	{ title: 'Elementor widget base', value: 'elementor_widget' },
 	{ title: 'WooCommerce integration', value: 'woocommerce_hooks' },
 	{ title: 'Frontend Interactivity (WordPress Interactivity API)', value: 'interactivity' },
+	{ title: 'WP-CLI commands (wp <prefix> status / cache clear)', value: 'cli' },
+	{ title: 'editor config (.vscode snippets, settings, extensions)', value: 'editor_config' },
+	{ title: 'WordPress integration test suite (wp-phpunit + wp-env)', value: 'integration_tests' },
 	...WOO_SUB_MODULES.map(m => ({ title: `WooCommerce: ${m.title}`, value: m.value }))
 ];
 export const VALID_MODULES = new Set([
@@ -452,7 +455,8 @@ async function main() {
 
 		const initialModules = flags.modules !== undefined ? parseModules(flags.modules) : [];
 
-		const choices = MODULE_DEFINITIONS.slice(0, 11).map(m => ({
+		// The woo: sub-modules are chosen in the secondary prompt below, not here.
+		const choices = MODULE_DEFINITIONS.filter(m => !m.value.startsWith('woo:')).map(m => ({
 			title: m.title,
 			value: m.value,
 			selected: initialModules.includes(m.value)
@@ -812,10 +816,13 @@ export function runGenerator(answers) {
 	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
 	writeTemplateFile(path.join(templatesDir, 'readme.txt'), 'readme.txt');
 	writeTemplateFile(path.join(templatesDir, 'languages/.gitkeep'), 'languages/.gitkeep');
-	writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
-	writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), '.vscode/extensions.json');
-	writeTemplateFile(path.join(templatesDir, '.vscode/settings.json'), '.vscode/settings.json');
 	writeTemplateFile(path.join(templatesDir, '.wp-env.json'), '.wp-env.json');
+
+	if (selectedModules.includes('editor_config')) {
+		writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
+		writeTemplateFile(path.join(templatesDir, '.vscode/extensions.json'), '.vscode/extensions.json');
+		writeTemplateFile(path.join(templatesDir, '.vscode/settings.json'), '.vscode/settings.json');
+	}
 
 	// Selected modules mapping: each module pushes one or more `$providers[] = new X();`
 	// lines, injected into Plugin::create() (see {{PROVIDER_REGISTRATIONS}} below).
@@ -869,7 +876,9 @@ export function runGenerator(answers) {
 		providerRegistrations.push('\n\t\t$providers[] = new Database\\Schema();');
 	}
 	if (selectedModules.includes('elementor_widget')) {
-		writeTemplateFile(path.join(templatesDir, '.vscode/php-elementor.code-snippets'), '.vscode/php-elementor.code-snippets');
+		if (selectedModules.includes('editor_config')) {
+			writeTemplateFile(path.join(templatesDir, '.vscode/php-elementor.code-snippets'), '.vscode/php-elementor.code-snippets');
+		}
 		writeTemplateFile(path.join(templatesDir, 'src/Elementor/Dependency_Notice.php'), 'src/Elementor/Dependency_Notice.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Elementor/Widget_Registrar.php'), 'src/Elementor/Widget_Registrar.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Widgets/Sample_Widget.php'), 'src/Widgets/Sample_Widget.php');
