@@ -67,7 +67,7 @@ const fixtures = [
 	},
 	{
 		name: 'elementor',
-		args: ['--name', 'Fixture Gamma', '--prefix', 'fxgg', '--namespace', 'FixtureGamma', '--modules', 'elementor_widget,editor_config', '--min-php', '8.2', '--no-react'],
+		args: ['--name', 'Fixture Gamma', '--prefix', 'fxgg', '--namespace', 'FixtureGamma', '--modules', 'elementor_widget,editor_config', '--no-react'],
 	},
 	{
 		name: 'woo',
