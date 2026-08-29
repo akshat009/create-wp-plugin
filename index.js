@@ -829,6 +829,7 @@ function scaffoldInto(answers, targetDir) {
 		use_react: Boolean(answers.useReact),
 		interactivity: hasInteractivity,
 		block: hasBlock,
+		has_webpack_build: Boolean(answers.useReact) || hasWooJs || hasBlock,
 		needs_build_pipeline: Boolean(answers.useReact) || hasInteractivity || hasWooJs || hasBlock,
 		admin_settings: selectedModules.includes('admin_settings'),
 		elementor_widget: selectedModules.includes('elementor_widget'),
@@ -1128,7 +1129,8 @@ function scaffoldInto(answers, targetDir) {
 	}
 	if (selectedModules.includes('interactivity')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Interactivity.php'), 'src/Frontend/Interactivity.php');
-		writeTemplateFile(path.join(templatesDir, 'react/assets/src/view.js'), 'assets/src/view.js');
+		// Hand-written ESM served directly as a script module — no build step.
+		writeTemplateFile(path.join(templatesDir, 'interactivity/view.js'), 'assets/js/view.js');
 		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
 	}
 	if (hasBlock) {
@@ -1152,15 +1154,17 @@ function scaffoldInto(answers, targetDir) {
 		providerRegistrations.push('\n\t\t$providers[] = new Blocks\\Block_Registrar();');
 	}
 
-	// React admin app (wp-admin only) + Interactivity API (frontend) + WooCommerce
-	// Blocks & Gateway build pipeline. These are independent toggles that share one
-	// @wordpress/scripts build:
+	// React admin app (wp-admin only) + WooCommerce Blocks/Gateway + native
+	// blocks all compile through one @wordpress/scripts build:
 	// useReact       -> assets/src/index.js (wp-admin React app)
-	// interactivity  -> assets/src/view.js (frontend Interactivity API store)
 	// block          -> assets/src/blocks/example (native block.json, auto-built)
 	// woo:gateway    -> assets/src/wc-gateway-block.js (block checkout payment method)
 	// woo:blocks     -> assets/src/blocks-integration.js + assets/src/blocks/cart-summary
-	const needsBuildPipeline = answers.useReact || hasInteractivity || hasWooJs || hasBlock;
+	// The Interactivity view is hand-written ESM (assets/js/view.js) served as
+	// a script module — WordPress's import map resolves `@wordpress/interactivity`,
+	// so it needs no build step.
+	const hasWebpackBuild = answers.useReact || hasWooJs || hasBlock;
+	const needsBuildPipeline = hasWebpackBuild || hasInteractivity;
 
 	// The Jest unit-test setup (jest.config.js + preset + testing-library) ships
 	// with anything that has authored JS worth unit-testing.
@@ -1231,29 +1235,20 @@ function scaffoldInto(answers, targetDir) {
 			writeTemplateFile(path.join(templatesDir, 'tests/js/block-static.test.js'), 'tests/js/block-static.test.js');
 		}
 
-		// wp-scripts only auto-detects a single "src/index.js" entry (or, if any
+		// wp-scripts auto-detects a single "src/index.js" entry (or, if any
 		// block.json exists under the src dir, ONLY the entries it derives from
 		// block.json files — "src/index.js" is silently dropped in that case).
-		// Once we ship more than one of: the admin app, the Interactivity API view
-		// script, the WooCommerce Blocks gateway/integration scripts, or a native
-		// block (block.json), we must override entry resolution via webpack.config.js
-		// — wp-scripts picks this file up automatically if present at the project root.
+		// We override entry resolution via webpack.config.js when we ship the
+		// WooCommerce Blocks gateway/integration scripts, or the admin app
+		// *alongside* a native block.json (block-only mode would drop it).
 		//
 		// IMPORTANT: @wordpress/scripts assigns `entry` as a *function* (webpack's
 		// lazy-entry form) so it can glob for block.json files at build time, not a
 		// plain object — `{ ...defaultConfig.entry }` silently spreads to `{}` and
 		// drops every auto-discovered block entry. It must be invoked, not spread.
-		//
-		// A React-only build has a single `./assets/src/index.js` entry that
-		// wp-scripts auto-detects via the `--webpack-src-dir` build flag, so it
-		// needs no override. A block-only build is likewise fine — wp-scripts
-		// finds block.json on its own. But React *and* a block.json together
-		// tip wp-scripts into block-only mode and silently drop the admin
-		// entry, so that combination needs the override too.
-		if (hasInteractivity || hasWooJs || (hasBlock && answers.useReact)) {
+		if (hasWooJs || (hasBlock && answers.useReact)) {
 			const entries = [];
 			if (answers.useReact) entries.push('\t\tindex: \'./assets/src/index.js\',');
-			if (hasInteractivity) entries.push('\t\tview: \'./assets/src/view.js\',');
 			if (hasWooGateway) {
 				entries.push('\t\t\'wc-gateway-block\': \'./assets/src/wc-gateway-block.js\',');
 			}

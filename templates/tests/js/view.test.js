@@ -20,7 +20,7 @@ jest.mock(
 	{ virtual: true }
 );
 
-require( '../../assets/src/view.js' );
+require( '../../assets/js/view.js' );
 
 describe( 'Interactivity API view store', () => {
 	it( 'registers store under {{SLUG}} namespace and increments count', () => {

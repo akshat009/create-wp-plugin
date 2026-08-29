@@ -549,7 +549,7 @@ test('React admin app without admin_settings: Assets.php falls back to a TODO sc
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('Frontend Interactivity module: Interactivity.php + view.js scaffolded, WP requirement bumped to 6.5, webpack.config.js overrides entry', () => {
+test('Frontend Interactivity module: view.js is hand-written ESM served as a script module (no build step, no webpack.config.js), WP requirement 6.5', () => {
 	const outDir = path.join(__dirname, '../tmp-test-interactivity');
 	runGenerator({
 		name: 'Interactivity Plugin',
@@ -565,28 +565,27 @@ test('Frontend Interactivity module: Interactivity.php + view.js scaffolded, WP 
 	const interactivityPhp = fs.readFileSync(path.join(outDir, 'src/Frontend/Interactivity.php'), 'utf8');
 	assert.ok(interactivityPhp.includes('wp_register_script_module'));
 	assert.ok(interactivityPhp.includes('wp_enqueue_script_module'));
+	assert.ok(interactivityPhp.includes("'assets/js/view.js'"), 'registers the raw ESM file, not a build artifact');
+	assert.ok(!interactivityPhp.includes('assets/build/view'), 'no reference to a non-existent bundled view');
 	assert.ok(interactivityPhp.includes("wp_interactivity_data_wp_context( array( 'count' => 0 ), self::NAMESPACE_KEY )"));
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(interactivityPhp), 'no unreplaced template tokens should remain');
 
-	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/view.js')));
-	assert.ok(!fs.existsSync(path.join(outDir, 'assets/src/index.js')), 'no React admin app entry without useReact');
+	const viewJs = fs.readFileSync(path.join(outDir, 'assets/js/view.js'), 'utf8');
+	assert.ok(viewJs.includes("import { store, getContext } from '@wordpress/interactivity'"), 'stays ESM — resolved by WP\'s import map at runtime');
+	assert.ok(!fs.existsSync(path.join(outDir, 'assets/src/view.js')), 'not a webpack entry');
+	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')), 'interactivity alone needs no webpack override');
 
-	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhp.includes("new Frontend\\Interactivity()"));
+	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
+	assert.equal(pkg.scripts.build, undefined, 'nothing to build for interactivity alone');
+	assert.equal(pkg.scripts['test:js'], 'wp-scripts test-unit-js', 'but the Jest suite still ships for view.test.js');
 
 	const mainPhp = fs.readFileSync(path.join(outDir, 'interactivity-plugin.php'), 'utf8');
 	assert.ok(mainPhp.includes('Requires at least: 6.5'));
-	const readmeTxt = fs.readFileSync(path.join(outDir, 'readme.txt'), 'utf8');
-	assert.ok(readmeTxt.includes('Requires at least: 6.5'));
-
-	const webpackConfig = fs.readFileSync(path.join(outDir, 'webpack.config.js'), 'utf8');
-	assert.ok(webpackConfig.includes("view: './assets/src/view.js'"));
-	assert.ok(!webpackConfig.includes("index:"), 'no index entry when useReact is off');
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('React admin app + Frontend Interactivity together: webpack.config.js declares both entries', () => {
+test('React admin app + Frontend Interactivity together: no webpack.config.js (single admin entry auto-detected; view.js is raw ESM)', () => {
 	const outDir = path.join(__dirname, '../tmp-test-react-interactivity');
 	runGenerator({
 		name: 'Both Plugin',
@@ -600,11 +599,8 @@ test('React admin app + Frontend Interactivity together: webpack.config.js decla
 	});
 
 	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/index.js')));
-	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/view.js')));
-
-	const webpackConfig = fs.readFileSync(path.join(outDir, 'webpack.config.js'), 'utf8');
-	assert.ok(webpackConfig.includes("index: './assets/src/index.js'"));
-	assert.ok(webpackConfig.includes("view: './assets/src/view.js'"));
+	assert.ok(fs.existsSync(path.join(outDir, 'assets/js/view.js')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')), 'one webpack entry (the admin app) is auto-detected');
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
