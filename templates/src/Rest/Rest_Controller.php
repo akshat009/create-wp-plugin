@@ -48,7 +48,7 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'rest_api_init', array( $this, 'register_routes' ) );
+		add_action( 'rest_api_init', $this->register_routes( ... ) );
 	}
 
 	/**
@@ -62,8 +62,8 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 			'/' . $this->rest_base,
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => array( $this, 'get_items' ),
-				'permission_callback' => array( $this, 'get_items_permissions_check' ),
+				'callback'            => $this->get_items( ... ),
+				'permission_callback' => $this->get_items_permissions_check( ... ),
 				'args'                => array(
 					'param' => array(
 						'required'          => false,
@@ -84,8 +84,9 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 	 * @return bool|\WP_Error
 	 */
 	public function get_items_permissions_check( $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// Public endpoint. Replace with current_user_can() check if restricted access is required.
-		return true;
+		// Fails closed by default. For a genuinely public read endpoint,
+		// `return true;` — but decide that deliberately rather than inherit it.
+		return current_user_can( 'read' );
 	}
 
 	/**
@@ -97,7 +98,7 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 	public function get_items( $request ) {
 		$param = $request->get_param( 'param' );
 		$data  = array(
-			'message' => __( 'Hello from {{PLUGIN_NAME}} REST API', '{{SLUG}}' ),
+			'message' => __( 'Hello from {{PLUGIN_NAME_ESC}} REST API', '{{SLUG}}' ),
 			'param'   => ! empty( $param ) ? sanitize_text_field( (string) $param ) : null,
 		);
 

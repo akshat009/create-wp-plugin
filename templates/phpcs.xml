@@ -8,6 +8,10 @@
 {{#if has_uninstall}}
 	<file>./uninstall.php</file>
 {{/if}}
+{{#if has_webpack_build}}
+	<!-- Only the block render.php files here match the "php" extension filter. -->
+	<file>./assets/src</file>
+{{/if}}
 
 	<exclude-pattern>/vendor/</exclude-pattern>
 	<exclude-pattern>/node_modules/</exclude-pattern>
@@ -67,6 +71,14 @@
 				<element value="{{NS_ROOT}}"/>
 			</property>
 		</properties>
+	</rule>
+	<!--
+	Block render.php files are require()d inside WP_Block::render(), so their
+	"file-scope" $variables ($attributes, $content, …) are really method-scoped
+	locals, not globals — the sniff can't see that.
+	-->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound">
+		<exclude-pattern>*/blocks/*/render.php</exclude-pattern>
 	</rule>
 	<rule ref="WordPress.WP.I18n">
 		<properties>

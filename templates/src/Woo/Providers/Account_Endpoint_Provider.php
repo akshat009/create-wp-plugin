@@ -24,19 +24,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Account_Endpoint_Provider implements Service_Provider, Conditional {
 
 	/**
-	 * Service instance.
-	 *
-	 * @var Account_Endpoint_Service|null
-	 */
-	private ?Account_Endpoint_Service $service = null;
-
-	/**
-	 * Constructor.
+	 * Accept an optional service override; the container builds a default
+	 * lazily when one isn't injected.
 	 *
 	 * @param Account_Endpoint_Service|null $service Service instance.
 	 */
-	public function __construct( ?Account_Endpoint_Service $service = null ) {
-		$this->service = $service;
+	public function __construct( private readonly ?Account_Endpoint_Service $service = null ) {
 	}
 
 	/**

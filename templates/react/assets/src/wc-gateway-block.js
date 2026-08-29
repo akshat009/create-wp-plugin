@@ -10,13 +10,17 @@
 	const { getSetting } = window.wc.wcSettings;
 	const { createElement } = window.wp.element;
 	const { decodeEntities } = window.wp.htmlEntities;
-	const { __ } = window.wp.i18n;
 
 	const settings = getSetting( '{{PREFIX}}_gateway_data', {} );
-	const label = decodeEntities( settings.title || '' ) || __( '{{PLUGIN_NAME}}', '{{SLUG}}' );
+	const fallbackLabel = '{{PLUGIN_NAME_ESC}}';
+	const label = decodeEntities( settings.title || '' ) || fallbackLabel;
 
 	const Content = () =>
-		createElement( 'div', null, decodeEntities( settings.description || '' ) );
+		createElement(
+			'div',
+			null,
+			decodeEntities( settings.description || '' )
+		);
 
 	registerPaymentMethod( {
 		name: '{{PREFIX}}_gateway',

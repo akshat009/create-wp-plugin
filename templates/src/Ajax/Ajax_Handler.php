@@ -46,11 +46,11 @@ class Ajax_Handler implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'wp_ajax_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
+		add_action( 'wp_ajax_{{PREFIX}}_action', $this->handle_ajax( ... ) );
 		if ( $this->allow_nopriv ) {
-			add_action( 'wp_ajax_nopriv_{{PREFIX}}_action', array( $this, 'handle_ajax' ) );
+			add_action( 'wp_ajax_nopriv_{{PREFIX}}_action', $this->handle_ajax( ... ) );
 		}
-		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+		add_action( 'wp_enqueue_scripts', $this->enqueue_scripts( ... ) );
 	}
 
 	/**

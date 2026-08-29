@@ -92,7 +92,7 @@ class Integration implements IntegrationInterface {
 	 */
 	public function get_script_data() {
 		return array(
-			'message' => __( 'Custom content injected by {{PLUGIN_NAME}} — replace this with your own.', '{{SLUG}}' ),
+			'message' => __( 'Custom content injected by {{PLUGIN_NAME_ESC}} — replace this with your own.', '{{SLUG}}' ),
 		);
 	}
 }

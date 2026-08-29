@@ -40,8 +40,8 @@ class Store_Api_Extension {
 			array(
 				'endpoint'        => 'cart',
 				'namespace'       => self::IDENTIFIER,
-				'data_callback'   => array( $this, 'get_cart_data' ),
-				'schema_callback' => array( $this, 'get_cart_schema' ),
+				'data_callback'   => $this->get_cart_data( ... ),
+				'schema_callback' => $this->get_cart_schema( ... ),
 				'schema_type'     => ARRAY_A,
 			)
 		);
@@ -55,7 +55,7 @@ class Store_Api_Extension {
 	public function get_cart_data(): array {
 		return array(
 			'plugin_version' => '1.0.0',
-			'custom_message' => __( 'Sample Store API data from {{PLUGIN_NAME}}.', '{{SLUG}}' ),
+			'custom_message' => __( 'Sample Store API data from {{PLUGIN_NAME_ESC}}.', '{{SLUG}}' ),
 		);
 	}
 

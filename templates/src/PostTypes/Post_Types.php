@@ -40,7 +40,7 @@ class Post_Types implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'init', array( $this, 'register_cpt_and_taxonomy' ) );
+		add_action( 'init', $this->register_cpt_and_taxonomy( ... ) );
 	}
 
 	/**

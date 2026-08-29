@@ -44,8 +44,8 @@ class Commands implements Service_Provider {
 			return;
 		}
 
-		\WP_CLI::add_command( '{{PREFIX}} status', array( $this, 'status' ) );
-		\WP_CLI::add_command( '{{PREFIX}} cache clear', array( $this, 'cache_clear' ) );
+		\WP_CLI::add_command( '{{PREFIX}} status', $this->status( ... ) );
+		\WP_CLI::add_command( '{{PREFIX}} cache clear', $this->cache_clear( ... ) );
 	}
 
 	/**
@@ -63,7 +63,7 @@ class Commands implements Service_Provider {
 		$version       = {{PREFIX_UPPER}}_VERSION;
 		$cache_backend = wp_using_ext_object_cache() ? 'External Object Cache' : 'Transient / Database Cache';
 
-		\WP_CLI::success( sprintf( '{{PLUGIN_NAME}} Version: %s | Cache Backend: %s', $version, $cache_backend ) );
+		\WP_CLI::success( sprintf( '{{PLUGIN_NAME_ESC}} Version: %s | Cache Backend: %s', $version, $cache_backend ) );
 	}
 
 	/**

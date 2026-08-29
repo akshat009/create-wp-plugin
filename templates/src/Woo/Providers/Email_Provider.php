@@ -48,7 +48,7 @@ class Email_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_filter( 'woocommerce_email_classes', array( $this, 'register_email' ) );
+		add_filter( 'woocommerce_email_classes', $this->register_email( ... ) );
 	}
 
 	/**

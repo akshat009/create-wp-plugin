@@ -98,7 +98,7 @@ class Blocks_Payment_Method_Type extends AbstractPaymentMethodType {
 	 */
 	public function get_payment_method_data() {
 		return array(
-			'title'       => $this->gateway_settings['title'] ?? __( '{{PLUGIN_NAME}}', '{{SLUG}}' ),
+			'title'       => $this->gateway_settings['title'] ?? __( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' ),
 			'description' => $this->gateway_settings['description'] ?? '',
 			'supports'    => array( 'products' ),
 		);

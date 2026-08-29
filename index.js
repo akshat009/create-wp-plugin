@@ -315,15 +315,10 @@ export function validateModules(modules) {
 	return true;
 }
 
-export function validateMinPhp(val) {
-	if (!val || typeof val !== 'string' || val.trim().length === 0) {
-		return 'Minimum PHP version is required.';
-	}
-	if (!/^\d+\.\d+$/.test(val.trim())) {
-		return 'Minimum PHP version must be in format X.Y (e.g. 8.0).';
-	}
-	return true;
-}
+// The generated code targets a single modern PHP baseline — constructor
+// property promotion, readonly properties, first-class callable syntax — and
+// this is not configurable: every scaffold requires PHP 8.3.
+export const MIN_PHP = '8.3';
 
 export function validateOutputDir(val) {
 	if (!val || typeof val !== 'string' || val.trim().length === 0) {
@@ -353,7 +348,6 @@ export function validateAll(answers) {
 		{ field: 'prefix', result: validatePrefix(answers.prefix) },
 		{ field: 'email', result: validateEmail(answers.authorEmail) },
 		{ field: 'modules', result: validateModules(answers.modules) },
-		{ field: 'minPhp', result: validateMinPhp(answers.minPhp) },
 		{ field: 'outputDir', result: validateOutputDir(answers.outputDir) },
 		{ field: 'lintTarget', result: validateLintTarget(answers.lintTarget) }
 	];
@@ -379,7 +373,6 @@ function parseCLIArgs() {
 		email: { type: 'string' },
 		'author-uri': { type: 'string' },
 		description: { type: 'string' },
-		'min-php': { type: 'string' },
 		out: { type: 'string' },
 		modules: { type: 'string' },
 		react: { type: 'boolean' },
@@ -416,7 +409,6 @@ Options:
   --email <string>         Author email
   --author-uri <string>    Author URI / GitHub URL
   --description <string>   Plugin description
-  --min-php <string>       Minimum PHP version
   --out <string>           Output directory
   --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,block:dynamic,block:static,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
   --react                  Include React admin app build pipeline (wp-admin only)
@@ -471,7 +463,6 @@ async function main() {
 		const authorEmail = flags.email || '';
 		const authorUri = flags['author-uri'] || '';
 		const description = flags.description || 'A powerful modern WordPress plugin scaffold.';
-		const minPhp = flags['min-php'] || '8.0';
 		const useReact = flags['no-react'] ? false : Boolean(flags.react);
 		const modules = flags.modules !== undefined ? parseModules(flags.modules) : [];
 		const outputDir = flags.out;
@@ -486,7 +477,6 @@ async function main() {
 			authorEmail,
 			authorUri,
 			description,
-			minPhp,
 			useReact,
 			modules,
 			outputDir,
@@ -575,16 +565,9 @@ async function main() {
 				initial: flags.description || 'A powerful modern WordPress plugin scaffold.'
 			},
 			{
-				type: 'text',
-				name: 'minPhp',
-				message: '9. Minimum PHP version:',
-				initial: flags['min-php'] || '8.0',
-				validate: validateMinPhp
-			},
-			{
 				type: 'select',
 				name: 'lintTarget',
-				message: '10. Coding standard target for composer lint:',
+				message: '9. Coding standard target for composer lint:',
 				choices: [
 					{ title: 'WordPress.org (standard hosting)', value: 'wp-org' },
 					{ title: 'WordPress VIP (enterprise hosting)', value: 'vip' },
@@ -595,20 +578,20 @@ async function main() {
 			{
 				type: 'confirm',
 				name: 'useReact',
-				message: '11. Include React admin app build pipeline (@wordpress/scripts, wp-admin only)?',
+				message: '10. Include React admin app build pipeline (@wordpress/scripts, wp-admin only)?',
 				initial: flags['no-react'] ? false : Boolean(flags.react)
 			},
 			{
 				type: 'multiselect',
 				name: 'modules',
-				message: '12. Modules to include (multi-select, space to toggle):',
+				message: '11. Modules to include (multi-select, space to toggle):',
 				choices,
 				hint: '- Space to select. Return to submit'
 			},
 			{
 				type: 'text',
 				name: 'outputDir',
-				message: '13. Output directory:',
+				message: '12. Output directory:',
 				initial: (prev, values) => flags.out || `./${slugify(values.name || 'plugin')}`,
 				validate: validateOutputDir
 			}
@@ -625,7 +608,7 @@ async function main() {
 			const wooAnswers = await prompts({
 				type: 'multiselect',
 				name: 'wooModules',
-				message: '12a. Select WooCommerce components to include:',
+				message: '11a. Select WooCommerce components to include:',
 				choices: WOO_SUB_MODULES.map(m => ({
 					title: m.title,
 					value: m.value,
@@ -647,7 +630,7 @@ async function main() {
 			const blockAnswers = await prompts({
 				type: 'multiselect',
 				name: 'blockModules',
-				message: '12b. Select block type(s) to scaffold:',
+				message: '11b. Select block type(s) to scaffold:',
 				choices: BLOCK_SUB_MODULES.map(m => ({
 					title: m.title,
 					value: m.value,
@@ -829,6 +812,7 @@ function scaffoldInto(answers, targetDir) {
 		use_react: Boolean(answers.useReact),
 		interactivity: hasInteractivity,
 		block: hasBlock,
+		has_webpack_build: Boolean(answers.useReact) || hasWooJs || hasBlock,
 		needs_build_pipeline: Boolean(answers.useReact) || hasInteractivity || hasWooJs || hasBlock,
 		admin_settings: selectedModules.includes('admin_settings'),
 		elementor_widget: selectedModules.includes('elementor_widget'),
@@ -874,6 +858,10 @@ function scaffoldInto(answers, targetDir) {
 
 	const replacements = {
 		'{{PLUGIN_NAME}}': answers.name,
+		// Same value; processTemplateContent escapes this one for a PHP
+		// single-quoted string context (inside __(), sprintf(), …) while
+		// {{PLUGIN_NAME}} is sanitised for comment/header context instead.
+		'{{PLUGIN_NAME_ESC}}': answers.name,
 		'{{SLUG}}': answers.slug,
 		'{{NS}}': answers.namespace,
 		'{{NS_ROOT}}': answers.namespace.split('\\')[0],
@@ -887,12 +875,12 @@ function scaffoldInto(answers, targetDir) {
 		'{{COMPOSER_VENDOR}}': slugify(answers.authorName) || 'vendor',
 		'{{AUTHOR_URI}}': answers.authorUri,
 		'{{DESCRIPTION}}': answers.description,
-		'{{MIN_PHP}}': answers.minPhp,
+		'{{MIN_PHP}}': MIN_PHP,
 		'{{REQUIRES_AT_LEAST}}': requiredWpVersion,
 		// readme.txt "Tested up to". A generated scaffold can't know the WP
 		// release it'll be tested against, so seed a recent stable floor the
 		// developer bumps per release — never below what the plugin requires.
-		'{{TESTED_UP_TO}}': parseFloat(requiredWpVersion) > 6.8 ? requiredWpVersion : '6.8',
+		'{{TESTED_UP_TO}}': parseFloat(requiredWpVersion) > 6.9 ? requiredWpVersion : '6.9',
 		'{{VERSION}}': '1.0.0',
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
@@ -910,7 +898,6 @@ function scaffoldInto(answers, targetDir) {
 		// substituted by the loop below and dropped blocks cost nothing.
 		let result = applyConditionals(content, templateFlags);
 		const isJson = destRelativePath.endsWith('.json');
-		const isPhp = destRelativePath.endsWith('.php');
 
 		const textTokens = new Set([
 			'{{PLUGIN_NAME}}',
@@ -920,14 +907,24 @@ function scaffoldInto(answers, targetDir) {
 			'{{AUTHOR_URI}}',
 			'{{SLUG}}'
 		]);
+		// Free-text tokens that land in a plugin header / docblock / readme,
+		// where a literal `*/` closes the comment early and a newline injects
+		// a bogus header line.
+		const commentTokens = new Set([ '{{PLUGIN_NAME}}', '{{DESCRIPTION}}', '{{AUTHOR}}' ]);
+		const commentSafe = (v) => v.replace( /\*\//g, '* /' ).replace( /[\r\n]+/g, ' ' );
+		// Same tokens when they land inside a PHP single-quoted string
+		// (backslash first, then the quote).
+		const phpStringSafe = (v) => v.replace( /\\/g, '\\\\' ).replace( /'/g, "\\'" ).replace( /[\r\n]+/g, ' ' );
 
 		for (const [key, val] of Object.entries(replacements)) {
 			let safeVal = val;
 			if (typeof val === 'string') {
 				if (isJson && textTokens.has(key)) {
 					safeVal = JSON.stringify(val).slice(1, -1);
-				} else if (isPhp && (key === '{{PLUGIN_NAME}}' || key === '{{DESCRIPTION}}' || key === '{{AUTHOR}}')) {
-					safeVal = val.replaceAll("'", "\\'");
+				} else if (key === '{{PLUGIN_NAME_ESC}}') {
+					safeVal = phpStringSafe(val);
+				} else if (! isJson && commentTokens.has(key)) {
+					safeVal = commentSafe(val);
 				}
 			}
 			result = result.replaceAll(key, () => safeVal);
@@ -962,6 +959,7 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
+	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Container_Test.php'), 'tests/Unit/Container_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'LICENSE'), 'LICENSE');
@@ -1128,7 +1126,8 @@ function scaffoldInto(answers, targetDir) {
 	}
 	if (selectedModules.includes('interactivity')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Interactivity.php'), 'src/Frontend/Interactivity.php');
-		writeTemplateFile(path.join(templatesDir, 'react/assets/src/view.js'), 'assets/src/view.js');
+		// Hand-written ESM served directly as a script module — no build step.
+		writeTemplateFile(path.join(templatesDir, 'interactivity/view.js'), 'assets/js/view.js');
 		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
 	}
 	if (hasBlock) {
@@ -1152,15 +1151,17 @@ function scaffoldInto(answers, targetDir) {
 		providerRegistrations.push('\n\t\t$providers[] = new Blocks\\Block_Registrar();');
 	}
 
-	// React admin app (wp-admin only) + Interactivity API (frontend) + WooCommerce
-	// Blocks & Gateway build pipeline. These are independent toggles that share one
-	// @wordpress/scripts build:
+	// React admin app (wp-admin only) + WooCommerce Blocks/Gateway + native
+	// blocks all compile through one @wordpress/scripts build:
 	// useReact       -> assets/src/index.js (wp-admin React app)
-	// interactivity  -> assets/src/view.js (frontend Interactivity API store)
 	// block          -> assets/src/blocks/example (native block.json, auto-built)
 	// woo:gateway    -> assets/src/wc-gateway-block.js (block checkout payment method)
 	// woo:blocks     -> assets/src/blocks-integration.js + assets/src/blocks/cart-summary
-	const needsBuildPipeline = answers.useReact || hasInteractivity || hasWooJs || hasBlock;
+	// The Interactivity view is hand-written ESM (assets/js/view.js) served as
+	// a script module — WordPress's import map resolves `@wordpress/interactivity`,
+	// so it needs no build step.
+	const hasWebpackBuild = answers.useReact || hasWooJs || hasBlock;
+	const needsBuildPipeline = hasWebpackBuild || hasInteractivity;
 
 	// The Jest unit-test setup (jest.config.js + preset + testing-library) ships
 	// with anything that has authored JS worth unit-testing.
@@ -1184,9 +1185,27 @@ function scaffoldInto(answers, targetDir) {
 		];
 		if (wantsJest) {
 			packageExtraScriptsEntries.push('"test:js": "wp-scripts test-unit-js"');
+			packageExtraScriptsEntries.push('"test": "npm run test:js"');
 			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^14.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/jest-dom": "^6.0.0"');
+		}
+		// @wordpress/* runtime packages the authored JS imports. wp-scripts'
+		// dependency-extraction plugin still externalises these at build time
+		// (they don't bloat the bundle), but listing them keeps `npm run
+		// lint:js` import-resolution happy and gives editors real types.
+		if (hasBlock) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/blocks": "^15.0.0"');
+			packageExtraDevDependenciesEntries.push('"@wordpress/block-editor": "^17.0.0"');
+		}
+		if (hasBlock || answers.useReact) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/i18n": "^6.0.0"');
+		}
+		if (answers.useReact) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/element": "^8.0.0"');
+		}
+		if (hasInteractivity) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/interactivity": "^6.0.0"');
 		}
 		const packageExtraScripts = ',\n\t\t' + packageExtraScriptsEntries.join(',\n\t\t');
 		const packageExtraDevDependencies = ',\n\t\t' + packageExtraDevDependenciesEntries.join(',\n\t\t');
@@ -1214,29 +1233,20 @@ function scaffoldInto(answers, targetDir) {
 			writeTemplateFile(path.join(templatesDir, 'tests/js/block-static.test.js'), 'tests/js/block-static.test.js');
 		}
 
-		// wp-scripts only auto-detects a single "src/index.js" entry (or, if any
+		// wp-scripts auto-detects a single "src/index.js" entry (or, if any
 		// block.json exists under the src dir, ONLY the entries it derives from
 		// block.json files — "src/index.js" is silently dropped in that case).
-		// Once we ship more than one of: the admin app, the Interactivity API view
-		// script, the WooCommerce Blocks gateway/integration scripts, or a native
-		// block (block.json), we must override entry resolution via webpack.config.js
-		// — wp-scripts picks this file up automatically if present at the project root.
+		// We override entry resolution via webpack.config.js when we ship the
+		// WooCommerce Blocks gateway/integration scripts, or the admin app
+		// *alongside* a native block.json (block-only mode would drop it).
 		//
 		// IMPORTANT: @wordpress/scripts assigns `entry` as a *function* (webpack's
 		// lazy-entry form) so it can glob for block.json files at build time, not a
 		// plain object — `{ ...defaultConfig.entry }` silently spreads to `{}` and
 		// drops every auto-discovered block entry. It must be invoked, not spread.
-		//
-		// A React-only build has a single `./assets/src/index.js` entry that
-		// wp-scripts auto-detects via the `--webpack-src-dir` build flag, so it
-		// needs no override. A block-only build is likewise fine — wp-scripts
-		// finds block.json on its own. But React *and* a block.json together
-		// tip wp-scripts into block-only mode and silently drop the admin
-		// entry, so that combination needs the override too.
-		if (hasInteractivity || hasWooJs || (hasBlock && answers.useReact)) {
+		if (hasWooJs || (hasBlock && answers.useReact)) {
 			const entries = [];
 			if (answers.useReact) entries.push('\t\tindex: \'./assets/src/index.js\',');
-			if (hasInteractivity) entries.push('\t\tview: \'./assets/src/view.js\',');
 			if (hasWooGateway) {
 				entries.push('\t\t\'wc-gateway-block\': \'./assets/src/wc-gateway-block.js\',');
 			}
@@ -1260,7 +1270,9 @@ module.exports = {
 		path: path.resolve( process.cwd(), 'assets/build' ),
 	},
 	entry: () => ( {
-		...( typeof defaultConfig.entry === 'function' ? defaultConfig.entry() : defaultConfig.entry ),
+		...( typeof defaultConfig.entry === 'function'
+			? defaultConfig.entry()
+			: defaultConfig.entry ),
 ${entries.join('\n')}
 	} ),
 };
@@ -1281,7 +1293,8 @@ ${entries.join('\n')}
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No cache: 'npm' — there's no committed package-lock.json yet, and
+          # setup-node fails the step when the lockfile is missing.
 
       - name: Install Node Dependencies
         run: npm install
@@ -1305,30 +1318,6 @@ ${entries.join('\n')}
 
       - name: Run E2E Tests
         run: npm run test:e2e`;
-	} else if (selectedModules.includes('elementor_widget') || selectedModules.includes('ajax_handler')) {
-		// No build pipeline, but there are hand-written JS/CSS assets (the
-		// sample widget, the AJAX front-end script) — still lint them in CI.
-		ciNodeJob = `
-  lint-assets:
-    name: Lint JS & Styles
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Node Dependencies
-        run: npm install
-
-      - name: Lint JS & Styles
-        run: |
-          npm run lint:js
-          npm run lint:style`;
 	}
 
 	// Every scaffold gets a package.json: it's the distribution pipeline
@@ -1350,14 +1339,9 @@ ${entries.join('\n')}
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
 
-	const allPhpVersions = ['8.0', '8.1', '8.2', '8.3'];
-	const minPhpNum = parseFloat(answers.minPhp || '8.0');
-	let validMatrixVersions = allPhpVersions.filter(v => parseFloat(v) >= minPhpNum);
-	if (!validMatrixVersions.includes(answers.minPhp)) {
-		validMatrixVersions.push(answers.minPhp);
-	}
-	validMatrixVersions.sort((a, b) => parseFloat(a) - parseFloat(b));
-	const ciPhpMatrix = JSON.stringify(validMatrixVersions).replace(/"/g, "'");
+	// Single supported PHP line — see MIN_PHP. The matrix also runs the next
+	// minor so a scaffold surfaces forward-compat breakage early.
+	const ciPhpMatrix = "['8.3', '8.4']";
 
 	// Process ci.yml with dynamic node job
 	let ciContent = fs.readFileSync(path.join(templatesDir, 'github/workflows/ci.yml'), 'utf8');

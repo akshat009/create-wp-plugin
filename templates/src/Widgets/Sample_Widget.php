@@ -105,7 +105,7 @@ class Sample_Widget extends Widget_Base {
 			array(
 				'label'       => __( 'Description', '{{SLUG}}' ),
 				'type'        => Controls_Manager::TEXTAREA,
-				'default'     => __( 'This is a sample Elementor widget built with {{PLUGIN_NAME}}.', '{{SLUG}}' ),
+				'default'     => __( 'This is a sample Elementor widget built with {{PLUGIN_NAME_ESC}}.', '{{SLUG}}' ),
 				'placeholder' => __( 'Enter description', '{{SLUG}}' ),
 			)
 		);

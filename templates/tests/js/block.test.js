@@ -1,13 +1,23 @@
 import { registerBlockType } from '@wordpress/blocks';
 
-jest.mock( '@wordpress/blocks', () => ( {
-	registerBlockType: jest.fn(),
-} ) );
+// `@wordpress/*` runtime packages are webpack externals, not devDependencies —
+// `virtual: true` lets Jest mock them without resolving them on disk.
+jest.mock(
+	'@wordpress/blocks',
+	() => ( {
+		registerBlockType: jest.fn(),
+	} ),
+	{ virtual: true }
+);
 
-jest.mock( '@wordpress/block-editor', () => ( {
-	useBlockProps: () => ( {} ),
-	RichText: 'rich-text',
-} ) );
+jest.mock(
+	'@wordpress/block-editor',
+	() => ( {
+		useBlockProps: () => ( {} ),
+		RichText: 'rich-text',
+	} ),
+	{ virtual: true }
+);
 
 require( '../../assets/src/blocks/example/index.js' );
 

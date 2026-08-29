@@ -86,7 +86,9 @@ final class Container {
 	 * @return bool
 	 */
 	public function has( string $id ): bool {
-		return isset( $this->instances[ $id ] ) || isset( $this->bindings[ $id ] );
+		// array_key_exists, not isset: a singleton factory may legitimately
+		// resolve to null, and isset() would report it as absent.
+		return array_key_exists( $id, $this->instances ) || array_key_exists( $id, $this->bindings );
 	}
 
 	/**
@@ -98,11 +100,13 @@ final class Container {
 	 * @throws Not_Found_Exception When no instance or binding is registered for $id.
 	 */
 	public function get( string $id ): mixed {
-		if ( isset( $this->instances[ $id ] ) ) {
+		// array_key_exists, not isset: a resolved singleton may be null, and
+		// isset() would re-run its factory on every call.
+		if ( array_key_exists( $id, $this->instances ) ) {
 			return $this->instances[ $id ];
 		}
 
-		if ( ! isset( $this->bindings[ $id ] ) ) {
+		if ( ! array_key_exists( $id, $this->bindings ) ) {
 			throw new Not_Found_Exception( sprintf( 'No binding registered for "%s".', $id ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped -- $id is a developer-supplied binding identifier, not user input or output.
 		}
 

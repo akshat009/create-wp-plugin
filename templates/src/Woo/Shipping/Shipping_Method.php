@@ -29,8 +29,8 @@ class Shipping_Method extends \WC_Shipping_Method {
 	public function __construct( $instance_id = 0 ) {
 		$this->id                 = '{{PREFIX}}_shipping';
 		$this->instance_id        = absint( $instance_id );
-		$this->method_title       = __( '{{PLUGIN_NAME}} Shipping', '{{SLUG}}' );
-		$this->method_description = __( 'Custom shipping method scaffolded by {{PLUGIN_NAME}}.', '{{SLUG}}' );
+		$this->method_title       = __( '{{PLUGIN_NAME_ESC}} Shipping', '{{SLUG}}' );
+		$this->method_description = __( 'Custom shipping method scaffolded by {{PLUGIN_NAME_ESC}}.', '{{SLUG}}' );
 		$this->supports            = array( 'shipping-zones', 'instance-settings' );
 
 		$this->init();
@@ -49,7 +49,7 @@ class Shipping_Method extends \WC_Shipping_Method {
 		$this->enabled = $this->get_option( 'enabled' );
 		$this->cost    = $this->get_option( 'cost', '0' );
 
-		add_action( 'woocommerce_update_options_shipping_' . $this->id, array( $this, 'process_admin_options' ) );
+		add_action( 'woocommerce_update_options_shipping_' . $this->id, $this->process_admin_options( ... ) );
 	}
 
 	/**
@@ -62,7 +62,7 @@ class Shipping_Method extends \WC_Shipping_Method {
 			'title' => array(
 				'title'   => __( 'Method Title', '{{SLUG}}' ),
 				'type'    => 'text',
-				'default' => __( '{{PLUGIN_NAME}} Shipping', '{{SLUG}}' ),
+				'default' => __( '{{PLUGIN_NAME_ESC}} Shipping', '{{SLUG}}' ),
 			),
 			'cost'  => array(
 				'title'       => __( 'Cost', '{{SLUG}}' ),

@@ -54,8 +54,8 @@ class Gateway_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_filter( 'woocommerce_payment_gateways', array( $this, 'register_gateway' ) );
-		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_payment_method' ) );
+		add_filter( 'woocommerce_payment_gateways', $this->register_gateway( ... ) );
+		add_action( 'woocommerce_blocks_loaded', $this->register_blocks_payment_method( ... ) );
 	}
 
 	/**
@@ -76,7 +76,7 @@ class Gateway_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function register_blocks_payment_method(): void {
-		add_action( 'woocommerce_blocks_payment_method_type_registration', array( $this, 'add_payment_method_type' ) );
+		add_action( 'woocommerce_blocks_payment_method_type_registration', $this->add_payment_method_type( ... ) );
 	}
 
 	/**

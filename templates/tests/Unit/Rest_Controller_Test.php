@@ -54,13 +54,15 @@ class Rest_Controller_Test extends TestCase {
 	}
 
 	/**
-	 * Test permission callback.
+	 * The permission callback fails closed — it gates on a capability, it does
+	 * not blanket-allow.
 	 */
-	public function test_permissions_check(): void {
+	public function test_permissions_check_gates_on_capability(): void {
+		Functions\expect( 'current_user_can' )->once()->with( 'read' )->andReturn( false );
+
 		$controller = new Rest_Controller();
 		$request    = \Mockery::mock( 'WP_REST_Request' );
-		$result     = $controller->get_items_permissions_check( $request );
 
-		$this->assertTrue( $result );
+		$this->assertFalse( $controller->get_items_permissions_check( $request ) );
 	}
 }

@@ -37,7 +37,7 @@ class Dependency_Notice implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'admin_notices', array( $this, 'render_notice' ) );
+		add_action( 'admin_notices', $this->render_notice( ... ) );
 	}
 
 	/**
@@ -63,7 +63,7 @@ class Dependency_Notice implements Service_Provider {
 					sprintf(
 						/* translators: 1: Plugin name, 2: Install Elementor link */
 						__( '%1$s requires Elementor to be installed and activated. %2$s', '{{SLUG}}' ),
-						'<strong>' . esc_html( '{{PLUGIN_NAME}}' ) . '</strong>',
+						'<strong>' . esc_html( '{{PLUGIN_NAME_ESC}}' ) . '</strong>',
 						'<a href="' . esc_url( $install_url ) . '">' . esc_html__( 'Install Elementor', '{{SLUG}}' ) . '</a>'
 					)
 				);

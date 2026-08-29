@@ -49,19 +49,23 @@ class Interactivity implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'init', array( $this, 'register_script_module' ) );
-		add_shortcode( '{{PREFIX}}_interactivity_demo', array( $this, 'render_demo' ) );
+		add_action( 'init', $this->register_script_module( ... ) );
+		add_shortcode( '{{PREFIX}}_interactivity_demo', $this->render_demo( ... ) );
 	}
 
 	/**
-	 * Register the view Script Module (bundled from assets/src/view.js).
+	 * Register the view Script Module.
+	 *
+	 * The assets/js/view.js file is hand-written ESM served as-is: WordPress
+	 * emits an import map so `import … from '@wordpress/interactivity'` resolves
+	 * to core's module. No build step, no bundler.
 	 *
 	 * @return void
 	 */
 	public function register_script_module(): void {
 		wp_register_script_module(
 			'{{PREFIX}}-interactivity-view',
-			{{PREFIX_UPPER}}_URL . 'assets/build/view.js',
+			{{PREFIX_UPPER}}_URL . 'assets/js/view.js',
 			array( '@wordpress/interactivity' ),
 			{{PREFIX_UPPER}}_VERSION
 		);

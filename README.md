@@ -42,8 +42,12 @@ created.
 ### Flags
 
 `--help`, `--version`, `--yes`, `--name`, `--slug`, `--namespace`, `--prefix`,
-`--author`, `--email`, `--author-uri`, `--description`, `--min-php`, `--out`,
+`--author`, `--email`, `--author-uri`, `--description`, `--out`,
 `--modules`, `--react`, `--no-react`, `--lint-target`.
+
+Generated plugins target **PHP 8.3** — this is fixed, not configurable. The
+output uses constructor property promotion, `readonly` properties, and
+first-class callable syntax throughout.
 
 `--lint-target` picks the WPCS ruleset(s) `composer lint` enforces:
 `wp-org` (default — `WordPress-Extra` + `WordPress-Docs`), `vip`
@@ -152,9 +156,9 @@ npm run build
 ## Coding standards & CI
 
 - `composer lint` runs `WordPress-Extra` + `WordPress-Docs` (`wp-org`),
-  `WordPress-VIP-Go` (`vip`), or both, plus `PHPCompatibilityWP` against the
-  declared minimum PHP. Generated code passes with no blanket `phpcs:ignore`s.
-- The generated `.github/workflows/ci.yml`: PHPCS, a PHPUnit matrix, a
+  `WordPress-VIP-Go` (`vip`), or both, plus `PHPCompatibilityWP` against
+  `testVersion 8.3-`. Generated code passes with no blanket `phpcs:ignore`s.
+- The generated `.github/workflows/ci.yml`: PHPCS, a PHPUnit matrix (8.3, 8.4), a
   `node-build` job (build + Jest + Playwright) when there's a pipeline, JS/CSS
   lint, and an `integration` job with the `integration_tests` module.
 

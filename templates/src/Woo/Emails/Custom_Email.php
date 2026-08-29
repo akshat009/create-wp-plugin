@@ -26,7 +26,7 @@ class Custom_Email extends \WC_Email {
 	 */
 	public function __construct() {
 		$this->id             = '{{PREFIX}}_custom_email';
-		$this->title          = __( '{{PLUGIN_NAME}} Custom Email', '{{SLUG}}' );
+		$this->title          = __( '{{PLUGIN_NAME_ESC}} Custom Email', '{{SLUG}}' );
 		$this->description    = __( 'Sent when an order is marked complete. Change the trigger and content for your use case.', '{{SLUG}}' );
 		$this->customer_email = true;
 		$this->template_html  = 'emails/{{PREFIX}}-custom-email.php';
@@ -36,7 +36,7 @@ class Custom_Email extends \WC_Email {
 			'{order_number}' => '',
 		);
 
-		add_action( 'woocommerce_order_status_completed', array( $this, 'trigger' ) );
+		add_action( 'woocommerce_order_status_completed', $this->trigger( ... ) );
 
 		parent::__construct();
 	}

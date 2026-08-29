@@ -47,4 +47,24 @@ class Gateway_Test extends TestCase {
 		$gateway = new \{{NS}}\Woo\Gateways\Gateway();
 		$this->assertEquals( '{{PREFIX}}_gateway', $gateway->id );
 	}
+
+	/**
+	 * The unimplemented stub must fail closed — never mark an order paid.
+	 */
+	public function test_process_payment_fails_closed(): void {
+		Functions\stubs(
+			array(
+				'__'            => fn( $msg ) => $msg,
+				'wc_add_notice' => null,
+			)
+		);
+
+		$order = \Mockery::mock();
+		$order->shouldNotReceive( 'payment_complete' );
+		Functions\when( 'wc_get_order' )->justReturn( $order );
+
+		$result = ( new \{{NS}}\Woo\Gateways\Gateway() )->process_payment( 123 );
+
+		$this->assertSame( 'failure', $result['result'] );
+	}
 }

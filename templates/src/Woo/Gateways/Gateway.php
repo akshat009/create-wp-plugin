@@ -28,8 +28,8 @@ class Gateway extends \WC_Payment_Gateway {
 		$this->id                 = '{{PREFIX}}_gateway';
 		$this->icon               = '';
 		$this->has_fields         = false;
-		$this->method_title       = __( '{{PLUGIN_NAME}}', '{{SLUG}}' );
-		$this->method_description = __( 'Custom payment gateway scaffolded by {{PLUGIN_NAME}}.', '{{SLUG}}' );
+		$this->method_title       = __( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' );
+		$this->method_description = __( 'Custom payment gateway scaffolded by {{PLUGIN_NAME_ESC}}.', '{{SLUG}}' );
 		$this->supports           = array( 'products' );
 
 		$this->init_form_fields();
@@ -39,7 +39,7 @@ class Gateway extends \WC_Payment_Gateway {
 		$this->description = $this->get_option( 'description' );
 		$this->enabled      = $this->get_option( 'enabled' );
 
-		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, $this->process_admin_options( ... ) );
 	}
 
 	/**
@@ -59,7 +59,7 @@ class Gateway extends \WC_Payment_Gateway {
 				'title'       => __( 'Title', '{{SLUG}}' ),
 				'type'        => 'text',
 				'description' => __( 'Payment method title customers see at checkout.', '{{SLUG}}' ),
-				'default'     => __( '{{PLUGIN_NAME}}', '{{SLUG}}' ),
+				'default'     => __( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' ),
 				'desc_tip'    => true,
 			),
 			'description' => array(
@@ -74,8 +74,12 @@ class Gateway extends \WC_Payment_Gateway {
 	/**
 	 * Process the payment for an order.
 	 *
-	 * TODO: integrate with your real payment processor — this stub marks the
-	 * order paid immediately without charging anything.
+	 * Stub: fails closed so an unfinished gateway can never mark an order paid
+	 * without charging. Implement the real flow, then, on a confirmed charge:
+	 *
+	 *     $order->payment_complete( $transaction_id );
+	 *     WC()->cart->empty_cart();
+	 *     return array( 'result' => 'success', 'redirect' => $this->get_return_url( $order ) );
 	 *
 	 * @param int $order_id Order ID.
 	 * @return array
@@ -87,16 +91,11 @@ class Gateway extends \WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
-		$order->payment_complete();
-		$order->add_order_note( __( 'Paid via {{PLUGIN_NAME}} (stub gateway — no real charge was made).', '{{SLUG}}' ) );
-
-		if ( function_exists( 'WC' ) && WC()->cart ) {
-			WC()->cart->empty_cart();
-		}
-
-		return array(
-			'result'   => 'success',
-			'redirect' => $this->get_return_url( $order ),
+		wc_add_notice(
+			__( 'This payment gateway is not configured yet.', '{{SLUG}}' ),
+			'error'
 		);
+
+		return array( 'result' => 'failure' );
 	}
 }
