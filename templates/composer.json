@@ -19,9 +19,9 @@
 		"wp-coding-standards/wpcs": "^3.0",
 		"phpcompatibility/phpcompatibility-wp": "^2.1",
 		"dealerdirect/phpcodesniffer-composer-installer": "^1.0",
-		"php-stubs/wordpress-stubs": "^6.0",
+		"php-stubs/wordpress-stubs": "^6.0"{{#if integration_tests}},
 		"wp-phpunit/wp-phpunit": "^6.5",
-		"yoast/phpunit-polyfills": "^2.0"{{COMPOSER_EXTRA_REQUIRE_DEV}}
+		"yoast/phpunit-polyfills": "^2.0"{{/if}}{{COMPOSER_EXTRA_REQUIRE_DEV}}
 	},
 	"autoload": {
 		"psr-4": {
@@ -37,7 +37,9 @@
 		"lint": "phpcs",
 		"lint:fix": "phpcbf",
 		"test": "phpunit",
+{{#if integration_tests}}
 		"test:integration": "phpunit -c phpunit-integration.xml.dist",
+{{/if}}
 		"make-pot": "wp i18n make-pot . languages/{{SLUG}}.pot"
 	},
 	"config": {

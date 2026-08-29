@@ -739,36 +739,37 @@ test('cpt_taxonomy Activator resolves Post_Types through the container with a fu
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('WP integration test suite (wp-phpunit) is always scaffolded, independent of module selection', () => {
-	const outDir = path.join(__dirname, '../tmp-test-integration');
+test('0.8 the WP integration suite is an integration_tests module, not baseline', () => {
+	const off = path.join(__dirname, '../tmp-test-integration-off');
 	runGenerator({
-		name: 'Integration Plugin',
-		slug: 'integration-plugin',
-		prefix: 'intp',
-		namespace: 'IntegrationPlugin',
-		minPhp: '8.0',
-		modules: [],
-		useReact: false,
-		out: outDir
+		name: 'Int Off', slug: 'int-off', prefix: 'inof', namespace: 'IntOff',
+		minPhp: '8.0', modules: ['admin_settings'], useReact: false, out: off
 	});
-
-	const files = [
-		'tests/bootstrap-integration.php',
-		'phpunit-integration.xml.dist',
-		'tests/Integration/Plugin_Boot_Test.php'
-	];
-	for (const f of files) {
-		assert.ok(fs.existsSync(path.join(outDir, f)), `expected ${f} to exist`);
-		const content = fs.readFileSync(path.join(outDir, f), 'utf8');
-		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
+	for (const f of ['tests/bootstrap-integration.php', 'phpunit-integration.xml.dist', 'tests/Integration/Plugin_Boot_Test.php', '.wp-env.json']) {
+		assert.ok(!fs.existsSync(path.join(off, f)), `${f} must not ship without the module`);
 	}
+	const composerOff = JSON.parse(fs.readFileSync(path.join(off, 'composer.json'), 'utf8'));
+	assert.ok(!composerOff['require-dev']['wp-phpunit/wp-phpunit'], 'wp-phpunit is not pulled in');
+	assert.ok(!composerOff['require-dev']['yoast/phpunit-polyfills']);
+	assert.equal(composerOff.scripts['test:integration'], undefined);
+	assert.ok(!fs.readFileSync(path.join(off, '.github/workflows/ci.yml'), 'utf8').includes('Integration Tests (wp-phpunit)'), 'no integration CI job');
+	fs.rmSync(off, { recursive: true, force: true });
 
-	const composer = JSON.parse(fs.readFileSync(path.join(outDir, 'composer.json'), 'utf8'));
-	assert.ok(composer['require-dev']['wp-phpunit/wp-phpunit']);
-	assert.ok(composer['require-dev']['yoast/phpunit-polyfills']);
-	assert.equal(composer.scripts['test:integration'], 'phpunit -c phpunit-integration.xml.dist');
-
-	fs.rmSync(outDir, { recursive: true, force: true });
+	const on = path.join(__dirname, '../tmp-test-integration-on');
+	runGenerator({
+		name: 'Int On', slug: 'int-on', prefix: 'inon', namespace: 'IntOn',
+		minPhp: '8.0', modules: ['integration_tests'], useReact: false, out: on
+	});
+	for (const f of ['tests/bootstrap-integration.php', 'phpunit-integration.xml.dist', 'tests/Integration/Plugin_Boot_Test.php', '.wp-env.json']) {
+		const content = fs.readFileSync(path.join(on, f), 'utf8');
+		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced tokens in ${f}`);
+	}
+	const composerOn = JSON.parse(fs.readFileSync(path.join(on, 'composer.json'), 'utf8'));
+	assert.ok(composerOn['require-dev']['wp-phpunit/wp-phpunit']);
+	assert.ok(composerOn['require-dev']['yoast/phpunit-polyfills']);
+	assert.equal(composerOn.scripts['test:integration'], 'phpunit -c phpunit-integration.xml.dist');
+	assert.ok(fs.readFileSync(path.join(on, '.github/workflows/ci.yml'), 'utf8').includes('Integration Tests (wp-phpunit)'));
+	fs.rmSync(on, { recursive: true, force: true });
 });
 
 test('pure-PHP scaffold (no React/Interactivity/WooCommerce) gets no package.json, Jest, or Playwright', () => {
@@ -1089,7 +1090,7 @@ test('module selection scaffolds corresponding PHP & JS unit tests and .wp-env.j
 		namespace: 'AllModulesPlugin',
 		authorName: 'Test Author',
 		minPhp: '8.0',
-		modules: ['cpt_taxonomy', 'custom_table', 'admin_settings', 'rest_api', 'ajax_handler', 'caching', 'elementor_widget', 'shortcode', 'cron', 'woocommerce_hooks', 'interactivity'],
+		modules: ['cpt_taxonomy', 'custom_table', 'admin_settings', 'rest_api', 'ajax_handler', 'caching', 'elementor_widget', 'shortcode', 'cron', 'woocommerce_hooks', 'interactivity', 'integration_tests'],
 		useReact: true,
 		out: outDir
 	});

@@ -370,7 +370,7 @@ Options:
   --description <string>   Plugin description
   --min-php <string>       Minimum PHP version
   --out <string>           Output directory
-  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,interactivity,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
+  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
   --react                  Include React admin app build pipeline (wp-admin only)
   --no-react               Do not include React admin app build pipeline
   --lint-target <string>   Coding standard(s) to lint against: wp-org (default), vip, or both
@@ -805,17 +805,25 @@ export function runGenerator(answers) {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
-	// Real-WordPress integration suite (wp-phpunit/wp-phpunit), separate from the
-	// Brain Monkey unit suite above — needs a MySQL test DB, run via `composer test:integration`.
-	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap-integration.php'), 'tests/bootstrap-integration.php');
-	writeTemplateFile(path.join(templatesDir, 'phpunit-integration.xml.dist'), 'phpunit-integration.xml.dist');
-	writeTemplateFile(path.join(templatesDir, 'tests/Integration/Plugin_Boot_Test.php'), 'tests/Integration/Plugin_Boot_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'distignore.tpl'), '.distignore');
 	writeTemplateFile(path.join(templatesDir, 'readme.txt'), 'readme.txt');
 	writeTemplateFile(path.join(templatesDir, 'languages/.gitkeep'), 'languages/.gitkeep');
-	writeTemplateFile(path.join(templatesDir, '.wp-env.json'), '.wp-env.json');
+
+	// .wp-env.json backs both `wp-env start` for the integration suite and the
+	// running site Playwright drives, so it ships when either is present.
+	if (templateFlags.integration_tests || templateFlags.needs_build_pipeline) {
+		writeTemplateFile(path.join(templatesDir, '.wp-env.json'), '.wp-env.json');
+	}
+
+	if (selectedModules.includes('integration_tests')) {
+		// Real-WordPress integration suite (wp-phpunit/wp-phpunit), separate from the
+		// Brain Monkey unit suite — needs a MySQL test DB, run via `composer test:integration`.
+		writeTemplateFile(path.join(templatesDir, 'tests/bootstrap-integration.php'), 'tests/bootstrap-integration.php');
+		writeTemplateFile(path.join(templatesDir, 'phpunit-integration.xml.dist'), 'phpunit-integration.xml.dist');
+		writeTemplateFile(path.join(templatesDir, 'tests/Integration/Plugin_Boot_Test.php'), 'tests/Integration/Plugin_Boot_Test.php');
+	}
 
 	if (selectedModules.includes('editor_config')) {
 		writeTemplateFile(path.join(templatesDir, '.vscode/php.code-snippets'), '.vscode/php.code-snippets');
