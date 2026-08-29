@@ -16,10 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
-	return;
-}
-
 /**
  * WP-CLI Commands for {{PLUGIN_NAME}}.
  */
@@ -41,6 +37,13 @@ class Commands implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+		// Guard here rather than with a top-level `return` in this file — that
+		// would stop the class from ever being declared and break PSR-4
+		// autoloading (and unit tests) outside a WP-CLI context.
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return;
+		}
+
 		\WP_CLI::add_command( '{{PREFIX}} status', array( $this, 'status' ) );
 		\WP_CLI::add_command( '{{PREFIX}} cache clear', array( $this, 'cache_clear' ) );
 	}

@@ -719,6 +719,8 @@ export function runGenerator(answers) {
 		needs_build_pipeline: Boolean(answers.useReact) || hasInteractivity || hasWooJs,
 		admin_settings: selectedModules.includes('admin_settings'),
 		elementor_widget: selectedModules.includes('elementor_widget'),
+		cli: selectedModules.includes('cli'),
+		integration_tests: selectedModules.includes('integration_tests'),
 		has_woo: hasAnyWoo,
 		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
 		lint_vip: needsVip
@@ -800,7 +802,6 @@ export function runGenerator(answers) {
 	writeTemplateFile(path.join(templatesDir, 'plugin-main.php'), `${answers.slug}.php`);
 	writeTemplateFile(path.join(templatesDir, 'composer.json'), 'composer.json');
 	writeTemplateFile(path.join(templatesDir, 'phpcs.xml'), 'phpcs.xml');
-	writeTemplateFile(path.join(templatesDir, 'src/CLI/Commands.php'), 'src/CLI/Commands.php');
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
@@ -828,6 +829,12 @@ export function runGenerator(answers) {
 	// lines, injected into Plugin::create() (see {{PROVIDER_REGISTRATIONS}} below).
 	const providerRegistrations = [];
 
+	if (selectedModules.includes('cli')) {
+		// Registered in Plugin::create() itself (behind a WP_CLI guard and the
+		// {{#if cli}} template block), not via providerRegistrations.
+		writeTemplateFile(path.join(templatesDir, 'src/CLI/Commands.php'), 'src/CLI/Commands.php');
+		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Commands_Test.php'), 'tests/Unit/Commands_Test.php');
+	}
 	if (selectedModules.includes('admin_settings')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Repository.php'), 'src/Admin/Settings_Repository.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Registrar.php'), 'src/Admin/Settings_Registrar.php');

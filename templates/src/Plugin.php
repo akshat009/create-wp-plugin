@@ -59,11 +59,14 @@ final class Plugin {
 	public static function create(): self {
 		$container = new Container();
 		$providers = array();
+{{#if cli}}
 
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			$providers[] = new CLI\Commands();
 		}
+{{/if}}
 {{#if use_react}}
+
 		$providers[] = new Admin\Assets();
 {{/if}}{{PROVIDER_REGISTRATIONS}}
 		return new self( $container, $providers );

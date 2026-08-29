@@ -78,6 +78,42 @@ if ( ! class_exists( 'WP_REST_Server' ) ) {
 	}
 }
 
+if ( ! class_exists( 'WP_CLI' ) ) {
+	/**
+	 * Minimal stub for WP_CLI so the CLI\Commands service can be unit-tested
+	 * outside a real WP-CLI runtime.
+	 */
+	// phpcs:ignore Generic.Files.OneObjectStructurePerFile.MultipleFound, PSR1.Classes.ClassDeclaration.MultipleClasses
+	class WP_CLI {
+
+		/**
+		 * Commands registered via add_command(), keyed by name (for test assertions).
+		 *
+		 * @var array<string, callable>
+		 */
+		public static $commands = array();
+
+		/**
+		 * Record a command registration.
+		 *
+		 * @param string   $name     Command name.
+		 * @param callable $callable Command handler.
+		 * @return void
+		 */
+		public static function add_command( $name, $callable ) {
+			self::$commands[ $name ] = $callable;
+		}
+
+		/**
+		 * No-op success reporter.
+		 *
+		 * @param string $message Message. Unused in the stub.
+		 * @return void
+		 */
+		public static function success( $message ) {} // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	}
+}
+
 if ( ! class_exists( 'WC_Payment_Gateway' ) ) {
 	/**
 	 * Stub for WC_Payment_Gateway when WooCommerce is not loaded.

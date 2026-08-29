@@ -915,7 +915,7 @@ test('B6.16 cache cleanup goes through the {{PREFIX}}_cache_keys filter, not har
 	const bare = path.join(__dirname, '../tmp-test-cache-bare');
 	runGenerator({
 		name: 'Cache Bare', slug: 'cache-bare', prefix: 'cbre', namespace: 'CacheBare',
-		minPhp: '8.0', modules: [], useReact: false, out: bare
+		minPhp: '8.0', modules: ['cli'], useReact: false, out: bare
 	});
 	const commandsBare = fs.readFileSync(path.join(bare, 'src/CLI/Commands.php'), 'utf8');
 	assert.ok(commandsBare.includes("apply_filters( 'cbre_cache_keys'"), 'cache_clear iterates the filter');
@@ -957,6 +957,35 @@ test('0.10 editor_config module owns every .vscode file', () => {
 	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/settings.json')));
 	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/php-elementor.code-snippets')), 'the elementor snippet needs both modules');
 	fs.rmSync(withCfg, { recursive: true, force: true });
+});
+
+test('0.6 cli module owns src/CLI/Commands.php and its Plugin.php wiring', () => {
+	const off = path.join(__dirname, '../tmp-test-cli-off');
+	runGenerator({
+		name: 'Cli Off', slug: 'cli-off', prefix: 'clof', namespace: 'CliOff',
+		minPhp: '8.0', modules: [], useReact: false, out: off
+	});
+	assert.ok(!fs.existsSync(path.join(off, 'src/CLI/Commands.php')), 'no Commands.php without the cli module');
+	assert.ok(!fs.existsSync(path.join(off, 'tests/Unit/Commands_Test.php')));
+	const pluginOff = fs.readFileSync(path.join(off, 'src/Plugin.php'), 'utf8');
+	assert.ok(!pluginOff.includes('WP_CLI'), 'Plugin::create() must not reference WP_CLI without the module');
+	assert.ok(!pluginOff.includes('new CLI\\Commands()'));
+	assert.ok(!/\{\{[#/]?[A-Za-z_]/.test(pluginOff), 'no leftover template tags');
+	fs.rmSync(off, { recursive: true, force: true });
+
+	const on = path.join(__dirname, '../tmp-test-cli-on');
+	runGenerator({
+		name: 'Cli On', slug: 'cli-on', prefix: 'clon', namespace: 'CliOn',
+		minPhp: '8.0', modules: ['cli'], useReact: false, out: on
+	});
+	const commands = fs.readFileSync(path.join(on, 'src/CLI/Commands.php'), 'utf8');
+	assert.ok(!/^\s*if \( ! defined\( 'WP_CLI' \) \|\| ! WP_CLI \) \{\s*$/m.test(commands.split('class Commands')[0]), 'no top-level return guard before the class (B6.17)');
+	assert.ok(commands.includes('class Commands implements Service_Provider'));
+	assert.ok(fs.existsSync(path.join(on, 'tests/Unit/Commands_Test.php')));
+	const pluginOn = fs.readFileSync(path.join(on, 'src/Plugin.php'), 'utf8');
+	assert.ok(pluginOn.includes("if ( defined( 'WP_CLI' ) && WP_CLI ) {"));
+	assert.ok(pluginOn.includes('new CLI\\Commands();'));
+	fs.rmSync(on, { recursive: true, force: true });
 });
 
 test('composer.json package name falls back to "vendor/" when no author name is given', () => {
