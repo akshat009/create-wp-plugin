@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use {{NS}}\Database\Item_Repository;
 use {{NS}}\Database\Schema;
@@ -17,7 +16,7 @@ use {{NS}}\Database\Schema;
 /**
  * Class Item_Repository_Test.
  */
-class Item_Repository_Test extends TestCase {
+class Item_Repository_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

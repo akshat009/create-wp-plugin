@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Rest\Rest_Controller;
@@ -17,7 +16,7 @@ use {{NS}}\Rest\Rest_Controller;
 /**
  * Class Rest_Controller_Test.
  */
-class Rest_Controller_Test extends TestCase {
+class Rest_Controller_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

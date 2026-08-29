@@ -1428,3 +1428,64 @@ test('WooCommerce bundle alias "woo:all" and "woocommerce" expand to all 9 sub-m
 });
 
 
+
+test('test isolation: Plugin_TestCase base always ships; Services_Test only with an accessor and tests it through the public API (#14, #15)', () => {
+	const withSvc = path.join(__dirname, '../tmp-test-iso-svc');
+	const bare = path.join(__dirname, '../tmp-test-iso-bare');
+	for (const d of [withSvc, bare]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+
+	runGenerator({
+		name: 'Iso Svc', slug: 'iso-svc', prefix: 'isvc', namespace: 'IsoSvc',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: ['caching', 'custom_table', 'cli'], useReact: false, out: withSvc
+	});
+	runGenerator({
+		name: 'Iso Bare', slug: 'iso-bare', prefix: 'ibar', namespace: 'IsoBare',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: [], useReact: false, out: bare
+	});
+
+	// Plugin_TestCase ships in every scaffold and resets both globals.
+	for (const d of [withSvc, bare]) {
+		const base = fs.readFileSync(path.join(d, 'tests/Unit/Plugin_TestCase.php'), 'utf8');
+		assert.match(base, /abstract class Plugin_TestCase extends TestCase/);
+		assert.match(base, /Services::reset\(\);/);
+		assert.match(base, /Plugin::set_instance\( null \);/);
+	}
+
+	// Every generated *_Test.php extends the base, not PHPUnit's TestCase directly.
+	for (const d of [withSvc, bare]) {
+		for (const f of fs.readdirSync(path.join(d, 'tests/Unit')).filter((n) => n.endsWith('_Test.php'))) {
+			const src = fs.readFileSync(path.join(d, 'tests/Unit', f), 'utf8');
+			assert.match(src, /extends Plugin_TestCase \{/, `${f} must extend Plugin_TestCase`);
+			assert.ok(!/^use PHPUnit\Framework\TestCase;/m.test(src), `${f} keeps the TestCase import out (base owns it)`);
+		}
+	}
+
+	// Commands_Test is process-isolated so its define('WP_CLI') can't leak.
+	const commandsTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Commands_Test.php'), 'utf8');
+	assert.match(commandsTest, /@runInSeparateProcess/);
+	assert.match(commandsTest, /@preserveGlobalState disabled/);
+
+	// Schema_Test's front-end gate test no longer has to skip on a leaked WP_CLI.
+	const schemaTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Schema_Test.php'), 'utf8');
+	assert.ok(schemaTest.includes('test_maybe_upgrade_skips_on_a_frontend_request'));
+	assert.ok(!schemaTest.includes('markTestSkipped'));
+
+	// Services_Test ships only when there's an accessor, and drives it through
+	// createMock() + the public accessor (no reflection).
+	const svcTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Services_Test.php'), 'utf8');
+	assert.match(svcTest, /public function test_cache_is_a_memoised_singleton\(\): void/);
+	assert.ok(svcTest.includes('$this->createMock( \\IsoSvc\\Cache\\Cache_Service::class )'));
+	assert.ok(svcTest.includes('$this->assertSame( $a, Services::cache() )'));
+	assert.ok(svcTest.includes('$this->assertSame( Services::cache(), Services::cache() )'), 'memoisation asserted');
+	assert.ok(!svcTest.includes('ReflectionProperty'), 'no reflection — public API only');
+	assert.ok(!fs.existsSync(path.join(bare, 'tests/Unit/Services_Test.php')), 'no Services_Test in a scaffold with zero accessors');
+	assert.ok(!fs.existsSync(path.join(withSvc, 'tests/Unit/Container_Test.php')));
+
+	for (const d of [withSvc, bare]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+});

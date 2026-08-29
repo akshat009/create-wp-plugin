@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\PostTypes\Post_Types;
@@ -17,7 +16,7 @@ use {{NS}}\PostTypes\Post_Types;
 /**
  * Class Post_Types_Test.
  */
-class Post_Types_Test extends TestCase {
+class Post_Types_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

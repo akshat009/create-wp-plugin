@@ -9,15 +9,21 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\CLI\Commands;
 
 /**
  * Class Commands_Test.
+ *
+ * Runs in a separate process: it defines the WP_CLI constant, and define()
+ * cannot be undone — without isolation that would leak into every test that
+ * ran afterwards (e.g. Schema_Test's front-end-context check).
+ *
+ * @runInSeparateProcess
+ * @preserveGlobalState disabled
  */
-class Commands_Test extends TestCase {
+class Commands_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

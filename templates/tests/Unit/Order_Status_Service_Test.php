@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Orders\Order_Status_Service;
 
 /**
  * Class Order_Status_Service_Test.
  */
-class Order_Status_Service_Test extends TestCase {
+class Order_Status_Service_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

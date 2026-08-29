@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Shipping\Shipping_Method;
 
 /**
  * Class Shipping_Method_Test.
  */
-class Shipping_Method_Test extends TestCase {
+class Shipping_Method_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

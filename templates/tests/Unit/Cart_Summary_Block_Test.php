@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Blocks\Cart_Summary_Block;
 
 /**
  * Class Cart_Summary_Block_Test.
  */
-class Cart_Summary_Block_Test extends TestCase {
+class Cart_Summary_Block_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

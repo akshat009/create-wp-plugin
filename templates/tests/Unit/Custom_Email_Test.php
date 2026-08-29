@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Emails\Custom_Email;
 
 /**
  * Class Custom_Email_Test.
  */
-class Custom_Email_Test extends TestCase {
+class Custom_Email_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

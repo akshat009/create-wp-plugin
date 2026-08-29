@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
@@ -18,7 +17,7 @@ use {{NS}}\Blocks\Block_Registrar;
 /**
  * Class Block_Registrar_Test.
  */
-class Block_Registrar_Test extends TestCase {
+class Block_Registrar_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

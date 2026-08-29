@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Frontend\Shortcode;
@@ -17,7 +16,7 @@ use {{NS}}\Frontend\Shortcode;
 /**
  * Class Shortcode_Test.
  */
-class Shortcode_Test extends TestCase {
+class Shortcode_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.
