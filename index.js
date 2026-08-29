@@ -813,8 +813,6 @@ export function runGenerator(answers) {
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'distignore.tpl'), '.distignore');
-	writeTemplateFile(path.join(templatesDir, 'assets/css/main.css'), 'assets/css/main.css');
-	writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
 	writeTemplateFile(path.join(templatesDir, 'readme.txt'), 'readme.txt');
 	writeTemplateFile(path.join(templatesDir, 'languages/.gitkeep'), 'languages/.gitkeep');
 	writeTemplateFile(path.join(templatesDir, '.wp-env.json'), '.wp-env.json');
@@ -858,6 +856,10 @@ export function runGenerator(answers) {
 	if (selectedModules.includes('ajax_handler')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Ajax/Ajax_Handler.php'), 'src/Ajax/Ajax_Handler.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Ajax_Handler_Test.php'), 'tests/Unit/Ajax_Handler_Test.php');
+		// The only thing that enqueues assets/js/main.js is this handler's
+		// front-end script (a nonce-guarded fetch wired to a click), so the
+		// file rides along with the module instead of the baseline.
+		writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
 		providerRegistrations.push('\n\t\t$providers[] = new Ajax\\Ajax_Handler();');
 	}
 	if (selectedModules.includes('cpt_taxonomy')) {

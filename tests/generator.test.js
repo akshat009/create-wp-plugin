@@ -988,6 +988,28 @@ test('0.6 cli module owns src/CLI/Commands.php and its Plugin.php wiring', () =>
 	fs.rmSync(on, { recursive: true, force: true });
 });
 
+test('0.9 assets/js/main.js rides with ajax_handler; assets/css/main.css is gone', () => {
+	const bare = path.join(__dirname, '../tmp-test-fa-bare');
+	runGenerator({
+		name: 'FA Bare', slug: 'fa-bare', prefix: 'fabr', namespace: 'FaBare',
+		minPhp: '8.0', modules: ['shortcode'], useReact: false, out: bare
+	});
+	assert.ok(!fs.existsSync(path.join(bare, 'assets/js/main.js')), 'no main.js without ajax_handler');
+	assert.ok(!fs.existsSync(path.join(bare, 'assets/css/main.css')), 'main.css is removed entirely (nothing ever enqueued it)');
+	fs.rmSync(bare, { recursive: true, force: true });
+
+	const ajax = path.join(__dirname, '../tmp-test-fa-ajax');
+	runGenerator({
+		name: 'FA Ajax', slug: 'fa-ajax', prefix: 'faaj', namespace: 'FaAjax',
+		minPhp: '8.0', modules: ['ajax_handler'], useReact: false, out: ajax
+	});
+	assert.ok(fs.existsSync(path.join(ajax, 'assets/js/main.js')));
+	assert.ok(!fs.existsSync(path.join(ajax, 'assets/css/main.css')));
+	const handler = fs.readFileSync(path.join(ajax, 'src/Ajax/Ajax_Handler.php'), 'utf8');
+	assert.ok(handler.includes("'assets/js/main.js'"), 'the handler still enqueues the file it now ships');
+	fs.rmSync(ajax, { recursive: true, force: true });
+});
+
 test('composer.json package name falls back to "vendor/" when no author name is given', () => {
 	const outDir = path.join(__dirname, '../tmp-test-composer-vendor-fallback');
 	runGenerator({
