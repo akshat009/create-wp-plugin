@@ -232,6 +232,51 @@ test('runGenerator throws (does not process.exit) when the output directory is n
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
+test('B1.3 a mid-scaffold failure rolls back a directory it created', () => {
+	const created = path.join(__dirname, '../tmp-test-rollback-created');
+	fs.rmSync(created, { recursive: true, force: true });
+
+	const realWrite = fs.writeFileSync;
+	let calls = 0;
+	fs.writeFileSync = (...args) => {
+		if (++calls === 4) {
+			throw new Error('simulated disk failure mid-scaffold');
+		}
+		return realWrite(...args);
+	};
+	try {
+		assert.throws(() => runGenerator({
+			name: 'Rollback', slug: 'rollback', prefix: 'rbk', namespace: 'Rollback',
+			minPhp: '8.0', modules: [], useReact: false, out: created
+		}), /simulated disk failure/);
+	} finally {
+		fs.writeFileSync = realWrite;
+	}
+	assert.ok(!fs.existsSync(created), 'the directory runGenerator created must be gone after a failure');
+
+	// A directory that already existed (empty) is left in place, not deleted.
+	const preExisting = path.join(__dirname, '../tmp-test-rollback-preexisting');
+	fs.rmSync(preExisting, { recursive: true, force: true });
+	fs.mkdirSync(preExisting, { recursive: true });
+	calls = 0;
+	fs.writeFileSync = (...args) => {
+		if (++calls === 4) {
+			throw new Error('simulated disk failure mid-scaffold');
+		}
+		return realWrite(...args);
+	};
+	try {
+		assert.throws(() => runGenerator({
+			name: 'Keep', slug: 'keep', prefix: 'keep', namespace: 'Keep',
+			minPhp: '8.0', modules: [], useReact: false, out: preExisting
+		}), /simulated disk failure/);
+	} finally {
+		fs.writeFileSync = realWrite;
+	}
+	assert.ok(fs.existsSync(preExisting), 'a pre-existing directory the user pointed us at is never deleted');
+	fs.rmSync(preExisting, { recursive: true, force: true });
+});
+
 test('React pipeline: package.json build/start scripts point wp-scripts at assets/src', () => {
 	const outDir = path.join(__dirname, '../tmp-test-react');
 	runGenerator({

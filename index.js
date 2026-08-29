@@ -626,15 +626,33 @@ async function main() {
 
 export function runGenerator(answers) {
 	answers.outputDir = answers.outputDir || answers.out;
-	const outputDir = answers.outputDir;
-	const targetDir = path.resolve(process.cwd(), outputDir);
+	const targetDir = path.resolve(process.cwd(), answers.outputDir);
 
 	if (fs.existsSync(targetDir) && fs.readdirSync(targetDir).length > 0) {
-		throw new Error(`Directory "${outputDir}" already exists and is not empty.`);
+		throw new Error(`Directory "${answers.outputDir}" already exists and is not empty.`);
 	}
 
+	// If anything below throws, tear down what we started writing — but never
+	// delete a directory that already existed before this run (the user may
+	// have pointed us at an intentionally-empty one).
+	const targetDirPreExisted = fs.existsSync(targetDir);
 	fs.mkdirSync(targetDir, { recursive: true });
 
+	try {
+		scaffoldInto(answers, targetDir);
+	} catch (err) {
+		if (!targetDirPreExisted) {
+			try {
+				fs.rmSync(targetDir, { recursive: true, force: true });
+			} catch {
+				// Best-effort rollback; the original error is what matters.
+			}
+		}
+		throw err;
+	}
+}
+
+function scaffoldInto(answers, targetDir) {
 	const rawModules = answers.modules || [];
 	const selectedModules = normalizeModules(rawModules);
 	const hasInteractivity = selectedModules.includes('interactivity');
