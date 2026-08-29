@@ -875,6 +875,10 @@ function scaffoldInto(answers, targetDir) {
 
 	const replacements = {
 		'{{PLUGIN_NAME}}': answers.name,
+		// Same value; processTemplateContent escapes this one for a PHP
+		// single-quoted string context (inside __(), sprintf(), …) while
+		// {{PLUGIN_NAME}} is sanitised for comment/header context instead.
+		'{{PLUGIN_NAME_ESC}}': answers.name,
 		'{{SLUG}}': answers.slug,
 		'{{NS}}': answers.namespace,
 		'{{NS_ROOT}}': answers.namespace.split('\\')[0],
@@ -911,7 +915,6 @@ function scaffoldInto(answers, targetDir) {
 		// substituted by the loop below and dropped blocks cost nothing.
 		let result = applyConditionals(content, templateFlags);
 		const isJson = destRelativePath.endsWith('.json');
-		const isPhp = destRelativePath.endsWith('.php');
 
 		const textTokens = new Set([
 			'{{PLUGIN_NAME}}',
@@ -921,14 +924,24 @@ function scaffoldInto(answers, targetDir) {
 			'{{AUTHOR_URI}}',
 			'{{SLUG}}'
 		]);
+		// Free-text tokens that land in a plugin header / docblock / readme,
+		// where a literal `*/` closes the comment early and a newline injects
+		// a bogus header line.
+		const commentTokens = new Set([ '{{PLUGIN_NAME}}', '{{DESCRIPTION}}', '{{AUTHOR}}' ]);
+		const commentSafe = (v) => v.replace( /\*\//g, '* /' ).replace( /[\r\n]+/g, ' ' );
+		// Same tokens when they land inside a PHP single-quoted string
+		// (backslash first, then the quote).
+		const phpStringSafe = (v) => v.replace( /\\/g, '\\\\' ).replace( /'/g, "\\'" ).replace( /[\r\n]+/g, ' ' );
 
 		for (const [key, val] of Object.entries(replacements)) {
 			let safeVal = val;
 			if (typeof val === 'string') {
 				if (isJson && textTokens.has(key)) {
 					safeVal = JSON.stringify(val).slice(1, -1);
-				} else if (isPhp && (key === '{{PLUGIN_NAME}}' || key === '{{DESCRIPTION}}' || key === '{{AUTHOR}}')) {
-					safeVal = val.replaceAll("'", "\\'");
+				} else if (key === '{{PLUGIN_NAME_ESC}}') {
+					safeVal = phpStringSafe(val);
+				} else if (! isJson && commentTokens.has(key)) {
+					safeVal = commentSafe(val);
 				}
 			}
 			result = result.replaceAll(key, () => safeVal);

@@ -64,8 +64,8 @@ class Settings_Registrar implements Service_Provider {
 	 */
 	public function add_menu_page() {
 		add_options_page(
-			__( '{{PLUGIN_NAME}} Settings', '{{SLUG}}' ),
-			__( '{{PLUGIN_NAME}}', '{{SLUG}}' ),
+			__( '{{PLUGIN_NAME_ESC}} Settings', '{{SLUG}}' ),
+			__( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' ),
 			'manage_options',
 			'{{SLUG}}',
 			array( $this, 'render_page' )

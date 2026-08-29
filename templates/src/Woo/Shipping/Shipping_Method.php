@@ -29,8 +29,8 @@ class Shipping_Method extends \WC_Shipping_Method {
 	public function __construct( $instance_id = 0 ) {
 		$this->id                 = '{{PREFIX}}_shipping';
 		$this->instance_id        = absint( $instance_id );
-		$this->method_title       = __( '{{PLUGIN_NAME}} Shipping', '{{SLUG}}' );
-		$this->method_description = __( 'Custom shipping method scaffolded by {{PLUGIN_NAME}}.', '{{SLUG}}' );
+		$this->method_title       = __( '{{PLUGIN_NAME_ESC}} Shipping', '{{SLUG}}' );
+		$this->method_description = __( 'Custom shipping method scaffolded by {{PLUGIN_NAME_ESC}}.', '{{SLUG}}' );
 		$this->supports            = array( 'shipping-zones', 'instance-settings' );
 
 		$this->init();
@@ -62,7 +62,7 @@ class Shipping_Method extends \WC_Shipping_Method {
 			'title' => array(
 				'title'   => __( 'Method Title', '{{SLUG}}' ),
 				'type'    => 'text',
-				'default' => __( '{{PLUGIN_NAME}} Shipping', '{{SLUG}}' ),
+				'default' => __( '{{PLUGIN_NAME_ESC}} Shipping', '{{SLUG}}' ),
 			),
 			'cost'  => array(
 				'title'       => __( 'Cost', '{{SLUG}}' ),

@@ -28,8 +28,8 @@ class Gateway extends \WC_Payment_Gateway {
 		$this->id                 = '{{PREFIX}}_gateway';
 		$this->icon               = '';
 		$this->has_fields         = false;
-		$this->method_title       = __( '{{PLUGIN_NAME}}', '{{SLUG}}' );
-		$this->method_description = __( 'Custom payment gateway scaffolded by {{PLUGIN_NAME}}.', '{{SLUG}}' );
+		$this->method_title       = __( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' );
+		$this->method_description = __( 'Custom payment gateway scaffolded by {{PLUGIN_NAME_ESC}}.', '{{SLUG}}' );
 		$this->supports           = array( 'products' );
 
 		$this->init_form_fields();
@@ -59,7 +59,7 @@ class Gateway extends \WC_Payment_Gateway {
 				'title'       => __( 'Title', '{{SLUG}}' ),
 				'type'        => 'text',
 				'description' => __( 'Payment method title customers see at checkout.', '{{SLUG}}' ),
-				'default'     => __( '{{PLUGIN_NAME}}', '{{SLUG}}' ),
+				'default'     => __( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' ),
 				'desc_tip'    => true,
 			),
 			'description' => array(
@@ -88,7 +88,7 @@ class Gateway extends \WC_Payment_Gateway {
 		}
 
 		$order->payment_complete();
-		$order->add_order_note( __( 'Paid via {{PLUGIN_NAME}} (stub gateway — no real charge was made).', '{{SLUG}}' ) );
+		$order->add_order_note( __( 'Paid via {{PLUGIN_NAME_ESC}} (stub gateway — no real charge was made).', '{{SLUG}}' ) );
 
 		if ( function_exists( 'WC' ) && WC()->cart ) {
 			WC()->cart->empty_cart();

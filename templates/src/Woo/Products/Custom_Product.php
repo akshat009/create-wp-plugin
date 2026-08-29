@@ -52,7 +52,7 @@ class Custom_Product extends \WC_Product {
 	 * @return array
 	 */
 	public static function filter_product_type_selector( $types ) {
-		$types['{{PREFIX}}_custom'] = __( '{{PLUGIN_NAME}} Product', '{{SLUG}}' );
+		$types['{{PREFIX}}_custom'] = __( '{{PLUGIN_NAME_ESC}} Product', '{{SLUG}}' );
 		return $types;
 	}
 }

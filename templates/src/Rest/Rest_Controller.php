@@ -97,7 +97,7 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 	public function get_items( $request ) {
 		$param = $request->get_param( 'param' );
 		$data  = array(
-			'message' => __( 'Hello from {{PLUGIN_NAME}} REST API', '{{SLUG}}' ),
+			'message' => __( 'Hello from {{PLUGIN_NAME_ESC}} REST API', '{{SLUG}}' ),
 			'param'   => ! empty( $param ) ? sanitize_text_field( (string) $param ) : null,
 		);
 
