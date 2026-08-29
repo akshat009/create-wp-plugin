@@ -912,6 +912,33 @@ test('custom_table module scaffolds a dbDelta Schema + Item_Repository, wired in
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
+test('B6.16 cache cleanup goes through the {{PREFIX}}_cache_keys filter, not hardcoded module keys', () => {
+	const bare = path.join(__dirname, '../tmp-test-cache-bare');
+	runGenerator({
+		name: 'Cache Bare', slug: 'cache-bare', prefix: 'cbre', namespace: 'CacheBare',
+		minPhp: '8.0', modules: [], useReact: false, out: bare
+	});
+	const commandsBare = fs.readFileSync(path.join(bare, 'src/CLI/Commands.php'), 'utf8');
+	assert.ok(commandsBare.includes("apply_filters( 'cbre_cache_keys'"), 'cache_clear iterates the filter');
+	assert.ok(!commandsBare.includes('_elementor_widgets'), 'CLI must not name the Elementor module in a non-Elementor build');
+	assert.ok(!/else\s*\{\s*delete_transient/.test(commandsBare), 'transient purge must not be gated behind an else branch (NEW-42)');
+	const uninstallerBare = fs.readFileSync(path.join(bare, 'src/Core/Uninstaller.php'), 'utf8');
+	assert.ok(!uninstallerBare.includes('_elementor_widgets'), 'Uninstaller must not name the Elementor transient without the module');
+	fs.rmSync(bare, { recursive: true, force: true });
+
+	const ele = path.join(__dirname, '../tmp-test-cache-elementor');
+	runGenerator({
+		name: 'Cache Ele', slug: 'cache-ele', prefix: 'cele', namespace: 'CacheEle',
+		minPhp: '8.0', modules: ['elementor_widget'], useReact: false, out: ele
+	});
+	const registrar = fs.readFileSync(path.join(ele, 'src/Elementor/Widget_Registrar.php'), 'utf8');
+	assert.ok(registrar.includes("add_filter( 'cele_cache_keys'"), 'the Elementor module registers its own key via the filter');
+	assert.ok(registrar.includes("'cele_elementor_widgets'"));
+	const uninstallerEle = fs.readFileSync(path.join(ele, 'src/Core/Uninstaller.php'), 'utf8');
+	assert.ok(uninstallerEle.includes("delete_transient( 'cele_elementor_widgets' )"), 'uninstall.php (unbooted) still purges it explicitly when the module is present');
+	fs.rmSync(ele, { recursive: true, force: true });
+});
+
 test('composer.json package name falls back to "vendor/" when no author name is given', () => {
 	const outDir = path.join(__dirname, '../tmp-test-composer-vendor-fallback');
 	runGenerator({

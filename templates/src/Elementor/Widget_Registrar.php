@@ -41,9 +41,25 @@ class Widget_Registrar implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+		add_filter( '{{PREFIX}}_cache_keys', array( $this, 'register_cache_keys' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'register_widget_assets' ) );
 		add_action( 'elementor/editor/after_enqueue_styles', array( $this, 'register_widget_assets' ) );
 		add_action( 'elementor/widgets/register', array( $this, 'register_widgets' ) );
+	}
+
+	/**
+	 * Declare the transient this registrar caches discovered widget classes in,
+	 * so `wp {{PREFIX}} cache clear` (and uninstall) can purge it without any
+	 * other module naming this one's internals.
+	 *
+	 * @param string[] $keys Cache keys collected so far.
+	 * @return string[]
+	 */
+	public function register_cache_keys( $keys ): array {
+		$keys   = is_array( $keys ) ? $keys : array();
+		$keys[] = '{{PREFIX}}_elementor_widgets';
+
+		return $keys;
 	}
 
 	/**

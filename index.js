@@ -1143,6 +1143,10 @@ ${entries.join('\n')}
 
 	if (selectedModules.includes('elementor_widget')) {
 		activatorLines.push('\t\tdelete_transient( \'{{PREFIX}}_elementor_widgets\' );');
+		// uninstall.php runs without the plugin booted, so the {{PREFIX}}_cache_keys
+		// filter has no listeners there — the widget-discovery transient has to be
+		// named explicitly, but only in a build that actually has the module.
+		uninstallLines.push('\t\tdelete_transient( \'{{PREFIX}}_elementor_widgets\' );');
 	}
 
 	if (selectedModules.includes('admin_settings')) {
