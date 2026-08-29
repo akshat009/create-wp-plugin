@@ -125,11 +125,14 @@ jobs:
         working-directory: ${{ runner.temp }}/generated-plugin
         run: composer test
 
-      - name: npm install + build (React admin pipeline)
+      - name: npm install + build + lint + JS unit tests
         working-directory: ${{ runner.temp }}/generated-plugin
         run: |
           npm install
+          npm run lint:js
+          npm run lint:style
           npm run build
+          npm run test:js
 
   verify:
     name: Verify Fixture Spread (npm run verify)

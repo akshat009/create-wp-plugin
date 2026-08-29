@@ -13,6 +13,10 @@ export default function save( { attributes } ) {
 	const blockProps = useBlockProps.save();
 
 	return (
-		<RichText.Content { ...blockProps } tagName="p" value={ attributes.content } />
+		<RichText.Content
+			{ ...blockProps }
+			tagName="p"
+			value={ attributes.content }
+		/>
 	);
 }

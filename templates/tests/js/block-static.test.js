@@ -1,17 +1,27 @@
 import { registerBlockType } from '@wordpress/blocks';
 
-jest.mock( '@wordpress/blocks', () => ( {
-	registerBlockType: jest.fn(),
-} ) );
+// `@wordpress/*` runtime packages are webpack externals, not devDependencies —
+// `virtual: true` lets Jest mock them without resolving them on disk.
+jest.mock(
+	'@wordpress/blocks',
+	() => ( {
+		registerBlockType: jest.fn(),
+	} ),
+	{ virtual: true }
+);
 
-jest.mock( '@wordpress/block-editor', () => {
-	const useBlockProps = () => ( {} );
-	useBlockProps.save = () => ( {} );
-	return {
-		useBlockProps,
-		RichText: { Content: 'rich-text-content' },
-	};
-} );
+jest.mock(
+	'@wordpress/block-editor',
+	() => {
+		const useBlockProps = () => ( {} );
+		useBlockProps.save = () => ( {} );
+		return {
+			useBlockProps,
+			RichText: { Content: 'rich-text-content' },
+		};
+	},
+	{ virtual: true }
+);
 
 require( '../../assets/src/blocks/example-static/index.js' );
 
@@ -23,6 +33,8 @@ describe( '{{SLUG}}/example-static block', () => {
 		expect( name ).toBe( '{{SLUG}}/example-static' );
 		expect( typeof settings.edit ).toBe( 'function' );
 		expect( typeof settings.save ).toBe( 'function' );
-		expect( settings.save( { attributes: { content: 'hello' } } ) ).not.toBeNull();
+		expect(
+			settings.save( { attributes: { content: 'hello' } } )
+		).not.toBeNull();
 	} );
 } );

@@ -1,6 +1,3 @@
-/**
- * @jest-environment jsdom
- */
 import { render, screen, fireEvent } from '@testing-library/react';
 import { App } from '../../assets/src/index.js';
 

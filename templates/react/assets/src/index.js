@@ -14,7 +14,8 @@ export function App() {
 
 	return (
 		<button type="button" onClick={ () => setCount( ( n ) => n + 1 ) }>
-			{ __( 'Clicked', '{{SLUG}}' ) } { count } { __( 'times', '{{SLUG}}' ) }
+			{ __( 'Clicked', '{{SLUG}}' ) } { count }{ ' ' }
+			{ __( 'times', '{{SLUG}}' ) }
 		</button>
 	);
 }

@@ -1188,6 +1188,23 @@ function scaffoldInto(answers, targetDir) {
 			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/jest-dom": "^6.0.0"');
 		}
+		// @wordpress/* runtime packages the authored JS imports. wp-scripts'
+		// dependency-extraction plugin still externalises these at build time
+		// (they don't bloat the bundle), but listing them keeps `npm run
+		// lint:js` import-resolution happy and gives editors real types.
+		if (hasBlock) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/blocks": "^15.0.0"');
+			packageExtraDevDependenciesEntries.push('"@wordpress/block-editor": "^17.0.0"');
+		}
+		if (hasBlock || answers.useReact) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/i18n": "^6.0.0"');
+		}
+		if (answers.useReact) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/element": "^8.0.0"');
+		}
+		if (hasInteractivity) {
+			packageExtraDevDependenciesEntries.push('"@wordpress/interactivity": "^6.0.0"');
+		}
 		const packageExtraScripts = ',\n\t\t' + packageExtraScriptsEntries.join(',\n\t\t');
 		const packageExtraDevDependencies = ',\n\t\t' + packageExtraDevDependenciesEntries.join(',\n\t\t');
 		replacements['{{PACKAGE_EXTRA_SCRIPTS}}'] = packageExtraScripts;
@@ -1260,7 +1277,9 @@ module.exports = {
 		path: path.resolve( process.cwd(), 'assets/build' ),
 	},
 	entry: () => ( {
-		...( typeof defaultConfig.entry === 'function' ? defaultConfig.entry() : defaultConfig.entry ),
+		...( typeof defaultConfig.entry === 'function'
+			? defaultConfig.entry()
+			: defaultConfig.entry ),
 ${entries.join('\n')}
 	} ),
 };
@@ -1305,30 +1324,6 @@ ${entries.join('\n')}
 
       - name: Run E2E Tests
         run: npm run test:e2e`;
-	} else if (selectedModules.includes('elementor_widget') || selectedModules.includes('ajax_handler')) {
-		// No build pipeline, but there are hand-written JS/CSS assets (the
-		// sample widget, the AJAX front-end script) — still lint them in CI.
-		ciNodeJob = `
-  lint-assets:
-    name: Lint JS & Styles
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Node Dependencies
-        run: npm install
-
-      - name: Lint JS & Styles
-        run: |
-          npm run lint:js
-          npm run lint:style`;
 	}
 
 	// Every scaffold gets a package.json: it's the distribution pipeline

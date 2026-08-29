@@ -25,8 +25,8 @@
 	],
 	"scripts": {
 		"plugin-zip": "wp-scripts plugin-zip",
-		"lint:js": "wp-scripts lint-js",
-		"lint:style": "wp-scripts lint-style"{{#if needs_build_pipeline}},
+		"lint:js": "wp-scripts lint-js assets/src tests/js --no-error-on-unmatched-pattern",
+		"lint:style": "wp-scripts lint-style \"assets/src/**/*.{css,scss}\" --allow-empty-input"{{#if needs_build_pipeline}},
 		"build": "wp-scripts build --webpack-src-dir=assets/src --output-path=assets/build",
 		"start": "wp-scripts start --webpack-src-dir=assets/src --output-path=assets/build"{{/if}}{{PACKAGE_EXTRA_SCRIPTS}}
 	},
