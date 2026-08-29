@@ -834,6 +834,9 @@ function scaffoldInto(answers, targetDir) {
 		elementor_widget: selectedModules.includes('elementor_widget'),
 		cli: selectedModules.includes('cli'),
 		integration_tests: selectedModules.includes('integration_tests'),
+		// Keep in sync with the uninstallLines.push() branches below: uninstall.php
+		// + Core\Uninstaller only ship when one of these modules persists state.
+		has_uninstall: ['admin_settings', 'cron', 'custom_table', 'elementor_widget'].some(m => selectedModules.includes(m)),
 		has_woo: hasAnyWoo,
 		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
 		lint_vip: needsVip

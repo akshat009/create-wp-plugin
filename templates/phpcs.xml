@@ -5,7 +5,9 @@
 	<file>./{{SLUG}}.php</file>
 	<file>./src</file>
 	<file>./tests</file>
+{{#if has_uninstall}}
 	<file>./uninstall.php</file>
+{{/if}}
 
 	<exclude-pattern>/vendor/</exclude-pattern>
 	<exclude-pattern>/node_modules/</exclude-pattern>
