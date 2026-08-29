@@ -983,7 +983,12 @@ Concrete widget classes placed in \`src/Widgets/\` are automatically discovered:
 		// lazy-entry form) so it can glob for block.json files at build time, not a
 		// plain object — `{ ...defaultConfig.entry }` silently spreads to `{}` and
 		// drops every auto-discovered block entry. It must be invoked, not spread.
-		if (needsBuildPipeline) {
+		//
+		// A React-only build has a single `./assets/src/index.js` entry that
+		// wp-scripts auto-detects via the `--webpack-src-dir` build flag, so it
+		// needs no override. Everything else (the Interactivity view script, the
+		// WooCommerce gateway/blocks scripts, a native block.json) does.
+		if (hasInteractivity || hasWooJs) {
 			const entries = [];
 			if (answers.useReact) entries.push('\t\tindex: \'./assets/src/index.js\',');
 			if (hasInteractivity) entries.push('\t\tview: \'./assets/src/view.js\',');
