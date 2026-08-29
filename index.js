@@ -57,6 +57,13 @@ export const WOO_SUB_MODULES = [
 
 export const ALL_WOO_MODULE_VALUES = WOO_SUB_MODULES.map(m => m.value);
 
+export const BLOCK_SUB_MODULES = [
+	{ title: 'Dynamic block (server-rendered via render.php)', value: 'block:dynamic' },
+	{ title: 'Static block (markup serialized by save())', value: 'block:static' }
+];
+
+export const ALL_BLOCK_MODULE_VALUES = BLOCK_SUB_MODULES.map(m => m.value);
+
 export const MODULE_DEFINITIONS = [
 	{ title: 'admin settings page', value: 'admin_settings' },
 	{ title: 'shortcode', value: 'shortcode' },
@@ -67,16 +74,18 @@ export const MODULE_DEFINITIONS = [
 	{ title: 'caching layer (object cache + transient fallback)', value: 'caching' },
 	{ title: 'custom database table (dbDelta schema + migrations)', value: 'custom_table' },
 	{ title: 'Elementor widget base', value: 'elementor_widget' },
-	{ title: 'native Gutenberg block (block.json + edit + server render)', value: 'block' },
+	{ title: 'native Gutenberg block (choose static / dynamic next)', value: 'block' },
 	{ title: 'WooCommerce integration', value: 'woocommerce_hooks' },
 	{ title: 'Frontend Interactivity (WordPress Interactivity API)', value: 'interactivity' },
 	{ title: 'WP-CLI commands (wp <prefix> status / cache clear)', value: 'cli' },
 	{ title: 'editor config (.vscode snippets, settings, extensions)', value: 'editor_config' },
 	{ title: 'WordPress integration test suite (wp-phpunit + wp-env)', value: 'integration_tests' },
+	...BLOCK_SUB_MODULES.map(m => ({ title: `Block: ${m.title}`, value: m.value })),
 	...WOO_SUB_MODULES.map(m => ({ title: `WooCommerce: ${m.title}`, value: m.value }))
 ];
 export const VALID_MODULES = new Set([
 	...MODULE_DEFINITIONS.map(m => m.value),
+	'block:all',
 	'woo:all',
 	'woocommerce'
 ]);
@@ -87,6 +96,10 @@ export function normalizeModules(modules = []) {
 		if (mod === 'woocommerce_hooks' || mod === 'woocommerce' || mod === 'woo:all') {
 			for (const wooMod of ALL_WOO_MODULE_VALUES) {
 				set.add(wooMod);
+			}
+		} else if (mod === 'block' || mod === 'block:all') {
+			for (const blockMod of ALL_BLOCK_MODULE_VALUES) {
+				set.add(blockMod);
 			}
 		} else {
 			set.add(mod);
@@ -405,7 +418,7 @@ Options:
   --description <string>   Plugin description
   --min-php <string>       Minimum PHP version
   --out <string>           Output directory
-  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
+  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,block:dynamic,block:static,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
   --react                  Include React admin app build pipeline (wp-admin only)
   --no-react               Do not include React admin app build pipeline
   --lint-target <string>   Coding standard(s) to lint against: wp-org (default), vip, or both
@@ -501,7 +514,7 @@ async function main() {
 		const initialModules = flags.modules !== undefined ? parseModules(flags.modules) : [];
 
 		// The woo: sub-modules are chosen in the secondary prompt below, not here.
-		const choices = MODULE_DEFINITIONS.filter(m => !m.value.startsWith('woo:')).map(m => ({
+		const choices = MODULE_DEFINITIONS.filter(m => !m.value.startsWith('woo:') && !m.value.startsWith('block:')).map(m => ({
 			title: m.title,
 			value: m.value,
 			selected: initialModules.includes(m.value)
@@ -630,6 +643,28 @@ async function main() {
 			answers.modules = [...otherModules, ...(wooAnswers.wooModules || [])];
 		}
 
+		if (answers.modules && answers.modules.includes('block')) {
+			const blockAnswers = await prompts({
+				type: 'multiselect',
+				name: 'blockModules',
+				message: '12b. Select block type(s) to scaffold:',
+				choices: BLOCK_SUB_MODULES.map(m => ({
+					title: m.title,
+					value: m.value,
+					selected: m.value === 'block:dynamic'
+				})),
+				hint: '- Space to select. Return to submit'
+			}, {
+				onCancel: () => {
+					console.log('\nOperation cancelled.');
+					process.exit(1);
+				}
+			});
+
+			const otherModules = answers.modules.filter(m => m !== 'block');
+			answers.modules = [...otherModules, ...(blockAnswers.blockModules || [])];
+		}
+
 		if (!answers.name) {
 			console.log('\nOperation cancelled.');
 			process.exit(1);
@@ -710,7 +745,9 @@ function scaffoldInto(answers, targetDir) {
 	const rawModules = answers.modules || [];
 	const selectedModules = normalizeModules(rawModules);
 	const hasInteractivity = selectedModules.includes('interactivity');
-	const hasBlock = selectedModules.includes('block');
+	const hasBlockDynamic = selectedModules.includes('block:dynamic');
+	const hasBlockStatic = selectedModules.includes('block:static');
+	const hasBlock = hasBlockDynamic || hasBlockStatic;
 
 	const hasWooGateway = selectedModules.includes('woo:gateway');
 	const hasWooShipping = selectedModules.includes('woo:shipping');
@@ -1092,18 +1129,23 @@ function scaffoldInto(answers, targetDir) {
 		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
 	}
 	if (hasBlock) {
+		// Block_Registrar's self::BLOCKS list is a {{#if block_dynamic}} /
+		// {{#if block_static}} block in the template, so it only registers the
+		// variant(s) actually scaffolded here.
 		writeTemplateFile(path.join(templatesDir, 'src/Blocks/Block_Registrar.php'), 'src/Blocks/Block_Registrar.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Block_Registrar_Test.php'), 'tests/Unit/Block_Registrar_Test.php');
-		// Two starters: a dynamic (server-rendered) block and a static
-		// (save()-serialized) block.
-		writeTemplateFile(path.join(templatesDir, 'blocks/example/block.json'), 'assets/src/blocks/example/block.json');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example/index.js'), 'assets/src/blocks/example/index.js');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example/edit.js'), 'assets/src/blocks/example/edit.js');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example/render.php'), 'assets/src/blocks/example/render.php');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/block.json'), 'assets/src/blocks/example-static/block.json');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/index.js'), 'assets/src/blocks/example-static/index.js');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/edit.js'), 'assets/src/blocks/example-static/edit.js');
-		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/save.js'), 'assets/src/blocks/example-static/save.js');
+		if (hasBlockDynamic) {
+			writeTemplateFile(path.join(templatesDir, 'blocks/example/block.json'), 'assets/src/blocks/example/block.json');
+			writeTemplateFile(path.join(templatesDir, 'blocks/example/index.js'), 'assets/src/blocks/example/index.js');
+			writeTemplateFile(path.join(templatesDir, 'blocks/example/edit.js'), 'assets/src/blocks/example/edit.js');
+			writeTemplateFile(path.join(templatesDir, 'blocks/example/render.php'), 'assets/src/blocks/example/render.php');
+		}
+		if (hasBlockStatic) {
+			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/block.json'), 'assets/src/blocks/example-static/block.json');
+			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/index.js'), 'assets/src/blocks/example-static/index.js');
+			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/edit.js'), 'assets/src/blocks/example-static/edit.js');
+			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/save.js'), 'assets/src/blocks/example-static/save.js');
+		}
 		providerRegistrations.push('\n\t\t$providers[] = new Blocks\\Block_Registrar();');
 	}
 
@@ -1162,8 +1204,10 @@ function scaffoldInto(answers, targetDir) {
 		if (hasInteractivity) {
 			writeTemplateFile(path.join(templatesDir, 'tests/js/view.test.js'), 'tests/js/view.test.js');
 		}
-		if (hasBlock) {
+		if (hasBlockDynamic) {
 			writeTemplateFile(path.join(templatesDir, 'tests/js/block.test.js'), 'tests/js/block.test.js');
+		}
+		if (hasBlockStatic) {
 			writeTemplateFile(path.join(templatesDir, 'tests/js/block-static.test.js'), 'tests/js/block-static.test.js');
 		}
 

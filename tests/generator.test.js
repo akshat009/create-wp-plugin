@@ -647,7 +647,8 @@ test('block module: native block.json + edit + server render, wired via Block_Re
 	const registrar = fs.readFileSync(path.join(outDir, 'src/Blocks/Block_Registrar.php'), 'utf8');
 	assert.ok(registrar.includes('implements Service_Provider'));
 	assert.ok(registrar.includes("add_action( 'init', array( $this, 'register_blocks' ) )"));
-	assert.ok(registrar.includes("'assets/build/blocks/example'") && registrar.includes("'assets/build/blocks/example-static'"), 'registers both build dirs');
+	assert.ok(registrar.includes("glob( $build_dir . '/*', GLOB_ONLYDIR )"), 'discovers every built block dir, so new blocks need no PHP change');
+	assert.ok(registrar.includes('register_block_type( $block_dir )'));
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(registrar), 'no unreplaced tokens');
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
@@ -677,6 +678,42 @@ test('block + React together: webpack.config.js keeps the admin entry alongside 
 	assert.ok(webpackConfig.includes("index: './assets/src/index.js'"), 'admin entry re-declared so block-json mode does not drop it');
 	assert.ok(webpackConfig.includes('defaultConfig.entry()'), 'and merged with wp-scripts own block.json globbing');
 
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('block sub-modules: block:dynamic and block:static scaffold independently', () => {
+	const dyn = path.join(__dirname, '../tmp-test-block-dyn');
+	runGenerator({
+		name: 'Block Dyn', slug: 'block-dyn', prefix: 'bdyn', namespace: 'BlockDyn',
+		minPhp: '8.0', modules: ['block:dynamic'], useReact: false, out: dyn
+	});
+	assert.ok(fs.existsSync(path.join(dyn, 'assets/src/blocks/example/render.php')));
+	assert.ok(!fs.existsSync(path.join(dyn, 'assets/src/blocks/example-static')), 'static block not scaffolded');
+	assert.ok(fs.existsSync(path.join(dyn, 'tests/js/block.test.js')));
+	assert.ok(!fs.existsSync(path.join(dyn, 'tests/js/block-static.test.js')));
+	assert.ok(fs.existsSync(path.join(dyn, 'src/Blocks/Block_Registrar.php')), 'registrar ships regardless of variant (it globs the build dir)');
+	fs.rmSync(dyn, { recursive: true, force: true });
+
+	const stat = path.join(__dirname, '../tmp-test-block-stat');
+	runGenerator({
+		name: 'Block Stat', slug: 'block-stat', prefix: 'bsta', namespace: 'BlockStat',
+		minPhp: '8.0', modules: ['block:static'], useReact: false, out: stat
+	});
+	assert.ok(fs.existsSync(path.join(stat, 'assets/src/blocks/example-static/save.js')));
+	assert.ok(!fs.existsSync(path.join(stat, 'assets/src/blocks/example')), 'dynamic block not scaffolded');
+	assert.ok(fs.existsSync(path.join(stat, 'tests/js/block-static.test.js')));
+	assert.ok(!fs.existsSync(path.join(stat, 'tests/js/block.test.js')));
+	fs.rmSync(stat, { recursive: true, force: true });
+});
+
+test('block bundle alias: plain "block" expands to both sub-modules', () => {
+	const outDir = path.join(__dirname, '../tmp-test-block-all');
+	runGenerator({
+		name: 'Block All', slug: 'block-all', prefix: 'blka', namespace: 'BlockAll',
+		minPhp: '8.0', modules: ['block'], useReact: false, out: outDir
+	});
+	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/blocks/example/render.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/blocks/example-static/save.js')));
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 

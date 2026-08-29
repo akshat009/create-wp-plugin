@@ -19,21 +19,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Block_Registrar.
  *
- * Registers the plugin's native blocks from their compiled block.json
- * metadata. `npm run build` compiles assets/src/blocks/* into
- * assets/build/blocks/*; each of those directories is registered on `init`.
- * Two starters ship: `example` (dynamic, server-rendered via render.php) and
- * `example-static` (save() serializes markup into post content).
+ * Discovers and registers every compiled block under assets/build/blocks/.
+ * `npm run build` compiles each assets/src/blocks/<name>/ source directory
+ * (block.json + index.js + edit.js, plus render.php for a dynamic block or
+ * save.js for a static one) into assets/build/blocks/<name>/.
+ *
+ * To add another block later, scaffold its source folder — e.g.
+ * `npx @wordpress/create-block <name> --no-plugin --target-dir assets/src/blocks/<name>`
+ * (add `--variant dynamic` for a server-rendered one) — then rebuild. It is
+ * picked up automatically; nothing here changes.
  */
 class Block_Registrar implements Service_Provider {
 
 	/**
-	 * Compiled metadata directories (relative to the plugin root) to register.
+	 * Directory (relative to the plugin root) holding compiled block metadata.
 	 */
-	private const BLOCKS = array(
-		'assets/build/blocks/example',
-		'assets/build/blocks/example-static',
-	);
+	private const BUILD_DIR = 'assets/build/blocks';
 
 	/**
 	 * No bindings needed.
@@ -55,22 +56,26 @@ class Block_Registrar implements Service_Provider {
 	}
 
 	/**
-	 * Register the bundled blocks.
+	 * Register every built block directory that carries a block.json.
 	 *
-	 * To add another block, drop a new assets/src/blocks/<name>/ directory
-	 * (block.json + index.js + edit.js, plus save.js for a static block or
-	 * render.php for a dynamic one) and add its build path to self::BLOCKS —
-	 * the build step picks the source up automatically.
+	 * A no-op until `npm run build` has produced assets/build/blocks/, so a
+	 * fresh checkout never fatals on activation.
 	 *
 	 * @return void
 	 */
 	public function register_blocks(): void {
-		foreach ( self::BLOCKS as $relative_dir ) {
-			$block_dir = {{PREFIX_UPPER}}_PATH . $relative_dir;
+		$build_dir = {{PREFIX_UPPER}}_PATH . self::BUILD_DIR;
 
-			// No-op until `npm run build` has produced the compiled metadata,
-			// so a fresh checkout never fatals on activation.
-			if ( file_exists( $block_dir . '/block.json' ) ) {
+		if ( ! is_dir( $build_dir ) ) {
+			return;
+		}
+
+		// Scanning the plugin's own compiled output, not user input — the VIP
+		// restriction on glob() does not apply here.
+		$dirs = glob( $build_dir . '/*', GLOB_ONLYDIR ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.glob_glob
+
+		foreach ( (array) $dirs as $block_dir ) {
+			if ( is_string( $block_dir ) && file_exists( $block_dir . '/block.json' ) ) {
 				register_block_type( $block_dir );
 			}
 		}

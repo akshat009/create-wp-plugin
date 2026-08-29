@@ -28,6 +28,24 @@ Concrete widget classes placed in `src/Widgets/` are automatically discovered:
 - **Asset Auto-Discovery**: If `assets/css/widgets/sample-widget.css` or `assets/js/widgets/sample-widget.js` exist, they are auto-registered for elementor on-demand enqueueing.
 
 {{/if}}
+{{#if block}}
+## Blocks
+
+Block source lives in `assets/src/blocks/<name>/` (not `src/`, which is the PHP
+PSR-4 root). `npm run build` compiles each folder into `assets/build/blocks/<name>/`,
+and `{{NS}}\Blocks\Block_Registrar` registers **every** built block dir on `init` —
+so adding a block needs no PHP change:
+
+```sh
+npx @wordpress/create-block my-block --no-plugin --target-dir assets/src/blocks/my-block
+# add --variant dynamic for a server-rendered (render.php) block
+npm run build
+```
+
+The bundled starters: `example` (dynamic, `render.php`) and/or `example-static`
+(`save()` serializes markup) depending on what you selected.
+
+{{/if}}
 {{#if cli}}
 ## WP-CLI Commands
 - `wp {{PREFIX}} status` — Display plugin version and cache backend.
