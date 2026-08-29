@@ -395,7 +395,6 @@ test('foundational contracts and container are always scaffolded with no leftove
 	const files = [
 		'src/Core/Container.php',
 		'src/Core/Exceptions/Not_Found_Exception.php',
-		'src/Core/Uninstaller.php',
 		'src/Contracts/Service_Provider.php',
 		'src/Contracts/Conditional.php',
 		'src/Contracts/Activatable.php',
@@ -407,6 +406,8 @@ test('foundational contracts and container are always scaffolded with no leftove
 		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
 	}
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Contracts/Registrable.php')), 'Registrable was replaced by Service_Provider');
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Core/Uninstaller.php')), 'no Uninstaller without a module that persists cleanup-worthy state (0.7)');
+	assert.ok(!fs.existsSync(path.join(outDir, 'uninstall.php')), 'no uninstall.php in a zero-module scaffold (0.7)');
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
@@ -915,7 +916,7 @@ test('B6.16 cache cleanup goes through the {{PREFIX}}_cache_keys filter, not har
 	const bare = path.join(__dirname, '../tmp-test-cache-bare');
 	runGenerator({
 		name: 'Cache Bare', slug: 'cache-bare', prefix: 'cbre', namespace: 'CacheBare',
-		minPhp: '8.0', modules: ['cli'], useReact: false, out: bare
+		minPhp: '8.0', modules: ['cli', 'cron'], useReact: false, out: bare
 	});
 	const commandsBare = fs.readFileSync(path.join(bare, 'src/CLI/Commands.php'), 'utf8');
 	assert.ok(commandsBare.includes("apply_filters( 'cbre_cache_keys'"), 'cache_clear iterates the filter');
@@ -1008,6 +1009,29 @@ test('0.9 assets/js/main.js rides with ajax_handler; assets/css/main.css is gone
 	const handler = fs.readFileSync(path.join(ajax, 'src/Ajax/Ajax_Handler.php'), 'utf8');
 	assert.ok(handler.includes("'assets/js/main.js'"), 'the handler still enqueues the file it now ships');
 	fs.rmSync(ajax, { recursive: true, force: true });
+});
+
+test('0.7 uninstall.php + Uninstaller are derived from modules that persist state', () => {
+	const none = path.join(__dirname, '../tmp-test-uninstall-none');
+	runGenerator({
+		name: 'Uni None', slug: 'uni-none', prefix: 'unin', namespace: 'UniNone',
+		minPhp: '8.0', modules: ['shortcode', 'rest_api'], useReact: false, out: none
+	});
+	assert.ok(!fs.existsSync(path.join(none, 'uninstall.php')), 'presentational modules persist nothing to clean');
+	assert.ok(!fs.existsSync(path.join(none, 'src/Core/Uninstaller.php')));
+	fs.rmSync(none, { recursive: true, force: true });
+
+	const opt = path.join(__dirname, '../tmp-test-uninstall-opt');
+	runGenerator({
+		name: 'Uni Opt', slug: 'uni-opt', prefix: 'unop', namespace: 'UniOpt',
+		minPhp: '8.0', modules: ['admin_settings'], useReact: false, out: opt
+	});
+	assert.ok(fs.existsSync(path.join(opt, 'uninstall.php')), 'admin_settings persists an option, so cleanup ships');
+	const uninstaller = fs.readFileSync(path.join(opt, 'src/Core/Uninstaller.php'), 'utf8');
+	assert.ok(uninstaller.includes("delete_option( 'unop_version' )"));
+	assert.ok(uninstaller.includes("delete_option( 'unop_option_name' )"));
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(uninstaller));
+	fs.rmSync(opt, { recursive: true, force: true });
 });
 
 test('composer.json package name falls back to "vendor/" when no author name is given', () => {

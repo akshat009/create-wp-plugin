@@ -1197,20 +1197,24 @@ ${entries.join('\n')}
 	fs.mkdirSync(path.dirname(deactivatorDestPath), { recursive: true });
 	fs.writeFileSync(deactivatorDestPath, deactivatorContent, 'utf8');
 
-	// uninstall.php itself is now a thin procedural shell with no {{UNINSTALL_BODY}}
-	// of its own — it just delegates to Core\Uninstaller::cleanup(), which is where
-	// the per-module cleanup lines below actually get injected.
-	let uninstallContent = fs.readFileSync(path.join(templatesDir, 'uninstall.php'), 'utf8');
-	uninstallContent = processTemplateContent(uninstallContent, 'uninstall.php');
-	const uninstallDestPath = path.join(targetDir, 'uninstall.php');
-	fs.writeFileSync(uninstallDestPath, uninstallContent, 'utf8');
+	// uninstall.php + Core\Uninstaller are derived, not a module toggle: a
+	// scaffold only needs delete-on-uninstall cleanup when a selected module
+	// actually persists something worth clearing (an option, a table, a
+	// scheduled event, a transient). A zero-module / presentational scaffold
+	// persists nothing but the {{PREFIX}}_version marker and ships neither file.
+	// uninstall.php is a thin shell that just delegates to Uninstaller::cleanup().
+	if (uninstallLines.length > 0) {
+		let uninstallContent = fs.readFileSync(path.join(templatesDir, 'uninstall.php'), 'utf8');
+		uninstallContent = processTemplateContent(uninstallContent, 'uninstall.php');
+		fs.writeFileSync(path.join(targetDir, 'uninstall.php'), uninstallContent, 'utf8');
 
-	let uninstallerContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Uninstaller.php'), 'utf8');
-	uninstallerContent = uninstallerContent.replace('{{UNINSTALL_BODY}}', () => uninstallBody);
-	uninstallerContent = processTemplateContent(uninstallerContent, 'src/Core/Uninstaller.php');
-	const uninstallerDestPath = path.join(targetDir, 'src/Core/Uninstaller.php');
-	fs.mkdirSync(path.dirname(uninstallerDestPath), { recursive: true });
-	fs.writeFileSync(uninstallerDestPath, uninstallerContent, 'utf8');
+		let uninstallerContent = fs.readFileSync(path.join(templatesDir, 'src/Core/Uninstaller.php'), 'utf8');
+		uninstallerContent = uninstallerContent.replace('{{UNINSTALL_BODY}}', () => uninstallBody);
+		uninstallerContent = processTemplateContent(uninstallerContent, 'src/Core/Uninstaller.php');
+		const uninstallerDestPath = path.join(targetDir, 'src/Core/Uninstaller.php');
+		fs.mkdirSync(path.dirname(uninstallerDestPath), { recursive: true });
+		fs.writeFileSync(uninstallerDestPath, uninstallerContent, 'utf8');
+	}
 
 	// README.md carries its own optional sections as {{#if ...}} blocks
 	// (React install step, build/test scripts, Elementor conventions).
