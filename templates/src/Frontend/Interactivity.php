@@ -14,9 +14,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Frontend;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -24,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Interactivity.
  */
-class Interactivity implements Service_Provider {
+class Interactivity {
 
 	/**
 	 * Interactivity API namespace, shared between data-wp-interactive and the JS store().
@@ -34,21 +31,11 @@ class Interactivity implements Service_Provider {
 	const NAMESPACE_KEY = '{{SLUG}}';
 
 	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
-
-	/**
 	 * Register hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'init', $this->register_script_module( ... ) );
 		add_shortcode( '{{PREFIX}}_interactivity_demo', $this->render_demo( ... ) );
 	}

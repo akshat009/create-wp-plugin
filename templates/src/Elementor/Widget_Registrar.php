@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Elementor;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -23,24 +20,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * glob() + reflection, and registers each one's on-demand assets plus the
  * widget itself.
  */
-class Widget_Registrar implements Service_Provider {
-
-	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
+class Widget_Registrar {
 
 	/**
 	 * Register hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_filter( '{{PREFIX}}_cache_keys', $this->register_cache_keys( ... ) );
 		add_action( 'wp_enqueue_scripts', $this->register_widget_assets( ... ) );
 		add_action( 'elementor/editor/after_enqueue_styles', $this->register_widget_assets( ... ) );

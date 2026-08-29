@@ -54,17 +54,13 @@ if ( file_exists( {{PREFIX_UPPER}}_PATH . 'vendor/autoload.php' ) ) {
 register_activation_hook(
 	__FILE__,
 	static function () {
-		$plugin = \{{NS}}\Plugin::create();
-		$plugin->register_all();
-		( new \{{NS}}\Core\Activator() )->activate( $plugin->get_container() );
+		( new \{{NS}}\Core\Activator() )->activate();
 	}
 );
 register_deactivation_hook(
 	__FILE__,
 	static function () {
-		$plugin = \{{NS}}\Plugin::create();
-		$plugin->register_all();
-		( new \{{NS}}\Core\Deactivator() )->deactivate( $plugin->get_container() );
+		( new \{{NS}}\Core\Deactivator() )->deactivate();
 	}
 );
 {{WOOCOMMERCE_HPOS}}
@@ -75,7 +71,7 @@ register_deactivation_hook(
  */
 function {{PREFIX}}_boot() {
 	load_plugin_textdomain( '{{SLUG}}', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
-	\{{NS}}\Plugin::create()->boot();
+	\{{NS}}\Plugin::instance()->boot();
 }
 
 add_action( 'plugins_loaded', '{{PREFIX}}_boot' );

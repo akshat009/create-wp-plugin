@@ -11,10 +11,7 @@ namespace {{NS}}\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
-use Brain\Monkey\Functions;
 use {{NS}}\Plugin;
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
 
 /**
  * Class Example_Test.
@@ -33,6 +30,7 @@ class Example_Test extends TestCase {
 	 * Tear down test environment after each test.
 	 */
 	protected function tearDown(): void {
+		Plugin::set_instance( null );
 		Monkey\tearDown();
 		parent::tearDown();
 	}
@@ -45,59 +43,40 @@ class Example_Test extends TestCase {
 	}
 
 	/**
-	 * Test that Plugin::boot() registers and boots every active provider,
-	 * using a fake Service_Provider injected directly into the constructor
-	 * rather than going through create()'s real module discovery.
+	 * instance() hands back the same object every time.
 	 */
-	public function test_plugin_boot() {
-		Functions\stubs(
-			array(
-				'apply_filters' => function ( $tag, $value ) {
-					return $value;
-				},
-			)
+	public function test_instance_is_shared() {
+		$this->assertSame( Plugin::instance(), Plugin::instance() );
+	}
+
+	/**
+	 * set_instance() swaps the shared instance; null clears it.
+	 */
+	public function test_set_instance_controls_the_singleton() {
+		$first = Plugin::instance();
+		Plugin::set_instance( null );
+
+		$this->assertNotSame( $first, Plugin::instance() );
+	}
+
+	/**
+	 * boot() runs once; a second call is a no-op (no double hook registration).
+	 */
+	public function test_boot_is_idempotent() {
+		$calls = 0;
+		Monkey\Functions\when( 'add_action' )->alias(
+			static function () use ( &$calls ) {
+				++$calls;
+			}
 		);
+		Monkey\Functions\when( 'add_filter' )->justReturn( true );
+		Monkey\Functions\when( 'add_shortcode' )->justReturn( true );
 
-		$provider = new class() implements Service_Provider {
-			/**
-			 * Whether register() ran.
-			 *
-			 * @var bool
-			 */
-			public bool $registered = false;
-
-			/**
-			 * Whether boot() ran.
-			 *
-			 * @var bool
-			 */
-			public bool $booted = false;
-
-			/**
-			 * Record that register() ran.
-			 *
-			 * @param Container $container Application container.
-			 * @return void
-			 */
-			public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-				$this->registered = true;
-			}
-
-			/**
-			 * Record that boot() ran.
-			 *
-			 * @param Container $container Application container.
-			 * @return void
-			 */
-			public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-				$this->booted = true;
-			}
-		};
-
-		$plugin = new Plugin( new Container(), array( $provider ) );
+		$plugin = Plugin::instance();
+		$plugin->boot();
+		$after_first = $calls;
 		$plugin->boot();
 
-		$this->assertTrue( $provider->registered );
-		$this->assertTrue( $provider->booted );
+		$this->assertSame( $after_first, $calls, 'boot() must not re-register hooks' );
 	}
 }

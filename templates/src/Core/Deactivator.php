@@ -25,9 +25,8 @@ class Deactivator implements Deactivatable {
 	/**
 	 * Execute deactivation tasks.
 	 *
-	 * @param Container $container Application container (already registered — register_all() has run).
 	 * @return void
 	 */
-	public function deactivate( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found -- required by the Deactivatable contract; not every generated deactivator body uses it.
+	public function deactivate(): void {
 {{DEACTIVATOR_BODY}}	}
 }

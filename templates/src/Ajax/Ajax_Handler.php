@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Ajax;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -19,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Ajax_Handler.
  */
-class Ajax_Handler implements Service_Provider {
+class Ajax_Handler {
 
 	/**
 	 * Whether to register unauthenticated (nopriv) AJAX action for logged-out visitors.
@@ -31,21 +28,11 @@ class Ajax_Handler implements Service_Provider {
 	protected bool $allow_nopriv = false;
 
 	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
-
-	/**
 	 * Register AJAX actions and asset enqueueing.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'wp_ajax_{{PREFIX}}_action', $this->handle_ajax( ... ) );
 		if ( $this->allow_nopriv ) {
 			add_action( 'wp_ajax_nopriv_{{PREFIX}}_action', $this->handle_ajax( ... ) );

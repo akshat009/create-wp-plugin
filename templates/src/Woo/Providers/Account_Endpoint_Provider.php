@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Woo\Providers;
 
-use {{NS}}\Contracts\Conditional;
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
 use {{NS}}\Woo\Account\Account_Endpoint_Service;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -21,52 +18,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Account_Endpoint_Provider.
  */
-class Account_Endpoint_Provider implements Service_Provider, Conditional {
+class Account_Endpoint_Provider {
 
 	/**
-	 * Accept an optional service override; the container builds a default
-	 * lazily when one isn't injected.
+	 * My Account endpoint service.
 	 *
-	 * @param Account_Endpoint_Service|null $service Service instance.
+	 * @param Account_Endpoint_Service $service Endpoint service.
 	 */
-	public function __construct( private readonly ?Account_Endpoint_Service $service = null ) {
-	}
-
-	/**
-	 * Only needed when WooCommerce is active.
-	 *
-	 * @return bool
-	 */
-	public function is_needed(): bool {
-		return class_exists( 'WooCommerce' );
-	}
-
-	/**
-	 * Register service in container.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void {
-		$container->singleton(
-			Account_Endpoint_Service::class,
-			function () {
-				return $this->service ?? new Account_Endpoint_Service();
-			}
-		);
+	public function __construct( private readonly Account_Endpoint_Service $service ) {
 	}
 
 	/**
 	 * Register hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void {
-		$service = $container->get( Account_Endpoint_Service::class );
-
-		add_action( 'init', array( $service, 'register_endpoint' ) );
-		add_filter( 'woocommerce_account_menu_items', array( $service, 'add_menu_item' ) );
-		add_action( 'woocommerce_account_' . Account_Endpoint_Service::ENDPOINT . '_endpoint', array( $service, 'render_endpoint' ) );
+	public function init_hooks(): void {
+		add_action( 'init', $this->service->register_endpoint( ... ) );
+		add_filter( 'woocommerce_account_menu_items', $this->service->add_menu_item( ... ) );
+		add_action( 'woocommerce_account_' . Account_Endpoint_Service::ENDPOINT . '_endpoint', $this->service->render_endpoint( ... ) );
 	}
 }

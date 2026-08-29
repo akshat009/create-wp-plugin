@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Elementor;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -19,24 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Dependency_Notice.
  */
-class Dependency_Notice implements Service_Provider {
-
-	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
+class Dependency_Notice {
 
 	/**
 	 * Register admin notice hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'admin_notices', $this->render_notice( ... ) );
 	}
 

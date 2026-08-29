@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\CLI;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -19,27 +16,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * WP-CLI Commands for {{PLUGIN_NAME}}.
  */
-class Commands implements Service_Provider {
-
-	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
+class Commands {
 
 	/**
 	 * Register WP-CLI commands.
 	 *
-	 * @param Container $container Application container.
+	 * The bootloader only instantiates this class behind a WP_CLI guard; the
+	 * repeat check here keeps the class safe to call directly (e.g. in tests).
+	 *
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// Guard here rather than with a top-level `return` in this file — that
-		// would stop the class from ever being declared and break PSR-4
-		// autoloading (and unit tests) outside a WP-CLI context.
+	public function init_hooks(): void {
 		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
 			return;
 		}

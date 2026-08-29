@@ -946,11 +946,8 @@ function scaffoldInto(answers, targetDir) {
 
 	const templatesDir = path.join(__dirname, 'templates');
 
-	// Copy standard templates
-	writeTemplateFile(path.join(templatesDir, 'src/Core/Container.php'), 'src/Core/Container.php');
-	writeTemplateFile(path.join(templatesDir, 'src/Core/Exceptions/Not_Found_Exception.php'), 'src/Core/Exceptions/Not_Found_Exception.php');
-	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Service_Provider.php'), 'src/Contracts/Service_Provider.php');
-	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Conditional.php'), 'src/Contracts/Conditional.php');
+	// Copy standard templates. (src/Services.php and src/Plugin.php are written
+	// further down, after their dynamic bodies are assembled.)
 	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Activatable.php'), 'src/Contracts/Activatable.php');
 	writeTemplateFile(path.join(templatesDir, 'src/Contracts/Deactivatable.php'), 'src/Contracts/Deactivatable.php');
 	writeTemplateFile(path.join(templatesDir, 'plugin-main.php'), `${answers.slug}.php`);
@@ -959,7 +956,7 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
-	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Container_Test.php'), 'tests/Unit/Container_Test.php');
+	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Services_Test.php'), 'tests/Unit/Services_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'LICENSE'), 'LICENSE');
@@ -986,15 +983,35 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, '.vscode/settings.json'), '.vscode/settings.json');
 	}
 
-	// Selected modules mapping: each module pushes one or more `$providers[] = new X();`
-	// lines, injected into Plugin::create() (see {{PROVIDER_REGISTRATIONS}} below).
-	const providerRegistrations = [];
+	// Each module contributes a `( new X() )->init_hooks();` line to Plugin::boot()
+	// ({{BOOTLOADER_LINES}}); WooCommerce modules go in wooBootLines and get wrapped
+	// in one class_exists( 'WooCommerce' ) guard. servicesAccessors holds the PHP for
+	// each shared-service getter on the Services locator ({{SERVICES_ACCESSORS}}).
+	const bootLines = [];
+	const wooBootLines = [];
+	const servicesAccessors = [];
+
+	// One memoised getter on Services: name() -> new <Type>(). $short is the
+	// class name relative to the plugin root namespace (Services lives there).
+	function servicesAccessor(name, short) {
+		const type = short.split('\\').pop();
+		return [
+			'\t/**',
+			`\t * Shared ${type} instance.`,
+			'\t *',
+			`\t * @return ${short}`,
+			'\t */',
+			`\tpublic static function ${name}(): ${short} {`,
+			`\t\treturn self::$instances['${name}'] ??= new ${short}();`,
+			'\t}',
+			'',
+		].join('\n');
+	}
 
 	if (selectedModules.includes('cli')) {
-		// Registered in Plugin::create() itself (behind a WP_CLI guard and the
-		// {{#if cli}} template block), not via providerRegistrations.
 		writeTemplateFile(path.join(templatesDir, 'src/CLI/Commands.php'), 'src/CLI/Commands.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Commands_Test.php'), 'tests/Unit/Commands_Test.php');
+		bootLines.push("\t\tif ( defined( 'WP_CLI' ) && WP_CLI ) {\n\t\t\t( new CLI\\Commands() )->init_hooks();\n\t\t}");
 	}
 	if (selectedModules.includes('admin_settings')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Repository.php'), 'src/Admin/Settings_Repository.php');
@@ -1004,17 +1021,18 @@ function scaffoldInto(answers, targetDir) {
 		// The React mount point is a {{#if use_react}} block inside the view now.
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/views/settings-page.php'), 'src/Admin/views/settings-page.php');
 
-		providerRegistrations.push('\n\t\t$providers[] = new Admin\\Settings_Registrar();');
+		bootLines.push('\t\t( new Admin\\Settings_Registrar( Services::settings_repository() ) )->init_hooks();');
+		servicesAccessors.push(servicesAccessor('settings_repository', 'Admin\\Settings_Repository'));
 	}
 	if (selectedModules.includes('shortcode')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Shortcode.php'), 'src/Frontend/Shortcode.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Shortcode_Test.php'), 'tests/Unit/Shortcode_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Shortcode();');
+		bootLines.push('\t\t( new Frontend\\Shortcode() )->init_hooks();');
 	}
 	if (selectedModules.includes('rest_api')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Rest/Rest_Controller.php'), 'src/Rest/Rest_Controller.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Rest_Controller_Test.php'), 'tests/Unit/Rest_Controller_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Rest\\Rest_Controller();');
+		bootLines.push('\t\t( new Rest\\Rest_Controller() )->init_hooks();');
 	}
 	if (selectedModules.includes('ajax_handler')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Ajax/Ajax_Handler.php'), 'src/Ajax/Ajax_Handler.php');
@@ -1023,29 +1041,30 @@ function scaffoldInto(answers, targetDir) {
 		// front-end script (a nonce-guarded fetch wired to a click), so the
 		// file rides along with the module instead of the baseline.
 		writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
-		providerRegistrations.push('\n\t\t$providers[] = new Ajax\\Ajax_Handler();');
+		bootLines.push('\t\t( new Ajax\\Ajax_Handler() )->init_hooks();');
 	}
 	if (selectedModules.includes('cpt_taxonomy')) {
 		writeTemplateFile(path.join(templatesDir, 'src/PostTypes/Post_Types.php'), 'src/PostTypes/Post_Types.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Post_Types_Test.php'), 'tests/Unit/Post_Types_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new PostTypes\\Post_Types();');
+		bootLines.push('\t\t( new PostTypes\\Post_Types() )->init_hooks();');
 	}
 	if (selectedModules.includes('cron')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cron/Scheduler.php'), 'src/Cron/Scheduler.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Scheduler_Test.php'), 'tests/Unit/Scheduler_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Cron\\Scheduler();');
+		bootLines.push('\t\t( new Cron\\Scheduler() )->init_hooks();');
 	}
 	if (selectedModules.includes('caching')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cache/Cache_Service.php'), 'src/Cache/Cache_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Cache_Service_Test.php'), 'tests/Unit/Cache_Service_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Cache\\Cache_Service();');
+		servicesAccessors.push(servicesAccessor('cache', 'Cache\\Cache_Service'));
 	}
 	if (selectedModules.includes('custom_table')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Database/Schema.php'), 'src/Database/Schema.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Database/Item_Repository.php'), 'src/Database/Item_Repository.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Schema_Test.php'), 'tests/Unit/Schema_Test.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Item_Repository_Test.php'), 'tests/Unit/Item_Repository_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Database\\Schema();');
+		bootLines.push('\t\t( new Database\\Schema() )->init_hooks();');
+		servicesAccessors.push(servicesAccessor('item_repository', 'Database\\Item_Repository'));
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		if (selectedModules.includes('editor_config')) {
@@ -1057,8 +1076,8 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'assets/css/widgets/sample-widget.css'), 'assets/css/widgets/sample-widget.css');
 		writeTemplateFile(path.join(templatesDir, 'assets/js/widgets/sample-widget.js'), 'assets/js/widgets/sample-widget.js');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Widget_Registrar_Test.php'), 'tests/Unit/Widget_Registrar_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Elementor\\Dependency_Notice();');
-		providerRegistrations.push('\n\t\t$providers[] = new Elementor\\Widget_Registrar();');
+		bootLines.push('\t\t( new Elementor\\Dependency_Notice() )->init_hooks();');
+		bootLines.push('\t\t( new Elementor\\Widget_Registrar() )->init_hooks();');
 	}
 	if (hasWooGateway) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Gateway_Provider.php'), 'src/Woo/Providers/Gateway_Provider.php');
@@ -1066,13 +1085,13 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Gateways/Blocks_Payment_Method_Type.php'), 'src/Woo/Gateways/Blocks_Payment_Method_Type.php');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/wc-gateway-block.js'), 'assets/src/wc-gateway-block.js');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Gateway_Test.php'), 'tests/Unit/Gateway_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Gateway_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Gateway_Provider() )->init_hooks();');
 	}
 	if (hasWooShipping) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Shipping_Provider.php'), 'src/Woo/Providers/Shipping_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Shipping/Shipping_Method.php'), 'src/Woo/Shipping/Shipping_Method.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Shipping_Method_Test.php'), 'tests/Unit/Shipping_Method_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Shipping_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Shipping_Provider() )->init_hooks();');
 	}
 	if (hasWooEmail) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Email_Provider.php'), 'src/Woo/Providers/Email_Provider.php');
@@ -1080,13 +1099,13 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'woo-email-templates/emails/custom-email.php'), `templates/emails/${answers.prefix.toLowerCase()}-custom-email.php`);
 		writeTemplateFile(path.join(templatesDir, 'woo-email-templates/emails/plain/custom-email.php'), `templates/emails/plain/${answers.prefix.toLowerCase()}-custom-email.php`);
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Custom_Email_Test.php'), 'tests/Unit/Custom_Email_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Email_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Email_Provider() )->init_hooks();');
 	}
 	if (hasWooProductType) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Product_Type_Provider.php'), 'src/Woo/Providers/Product_Type_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Products/Custom_Product.php'), 'src/Woo/Products/Custom_Product.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Custom_Product_Test.php'), 'tests/Unit/Custom_Product_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Product_Type_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Product_Type_Provider() )->init_hooks();');
 	}
 	if (hasWooBlocks) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Blocks_Provider.php'), 'src/Woo/Providers/Blocks_Provider.php');
@@ -1097,38 +1116,42 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/blocks/cart-summary/index.js'), 'assets/src/blocks/cart-summary/index.js');
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/blocks/cart-summary/render.php'), 'assets/src/blocks/cart-summary/render.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Cart_Summary_Block_Test.php'), 'tests/Unit/Cart_Summary_Block_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Blocks_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Blocks_Provider() )->init_hooks();');
 	}
 	if (hasWooOrderStatus) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Order_Status_Provider.php'), 'src/Woo/Providers/Order_Status_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Orders/Order_Status_Service.php'), 'src/Woo/Orders/Order_Status_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Order_Status_Service_Test.php'), 'tests/Unit/Order_Status_Service_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Order_Status_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Order_Status_Provider( Services::order_status_service() ) )->init_hooks();');
+		servicesAccessors.push(servicesAccessor('order_status_service', 'Woo\\Orders\\Order_Status_Service'));
 	}
 	if (hasWooActionScheduler) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Action_Scheduler_Provider.php'), 'src/Woo/Providers/Action_Scheduler_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Tasks/Action_Scheduler_Service.php'), 'src/Woo/Tasks/Action_Scheduler_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Action_Scheduler_Service_Test.php'), 'tests/Unit/Action_Scheduler_Service_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Action_Scheduler_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Action_Scheduler_Provider( Services::action_scheduler_service() ) )->init_hooks();');
+		servicesAccessors.push(servicesAccessor('action_scheduler_service', 'Woo\\Tasks\\Action_Scheduler_Service'));
 	}
 	if (hasWooStoreApi) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Store_Api_Provider.php'), 'src/Woo/Providers/Store_Api_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Api/Store_Api_Extension.php'), 'src/Woo/Api/Store_Api_Extension.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Store_Api_Extension_Test.php'), 'tests/Unit/Store_Api_Extension_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Store_Api_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Store_Api_Provider( Services::store_api_extension() ) )->init_hooks();');
+		servicesAccessors.push(servicesAccessor('store_api_extension', 'Woo\\Api\\Store_Api_Extension'));
 	}
 	if (hasWooMyAccount) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Account_Endpoint_Provider.php'), 'src/Woo/Providers/Account_Endpoint_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Account/Account_Endpoint_Service.php'), 'src/Woo/Account/Account_Endpoint_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'woo-account-templates/my-account/custom-endpoint.php'), `templates/my-account/${answers.prefix.toLowerCase()}-custom.php`);
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Account_Endpoint_Service_Test.php'), 'tests/Unit/Account_Endpoint_Service_Test.php');
-		providerRegistrations.push('\n\t\t$providers[] = new Woo\\Providers\\Account_Endpoint_Provider();');
+		wooBootLines.push('\t\t\t( new Woo\\Providers\\Account_Endpoint_Provider( Services::account_endpoint_service() ) )->init_hooks();');
+		servicesAccessors.push(servicesAccessor('account_endpoint_service', 'Woo\\Account\\Account_Endpoint_Service'));
 	}
 	if (selectedModules.includes('interactivity')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Interactivity.php'), 'src/Frontend/Interactivity.php');
 		// Hand-written ESM served directly as a script module — no build step.
 		writeTemplateFile(path.join(templatesDir, 'interactivity/view.js'), 'assets/js/view.js');
-		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
+		bootLines.push('\t\t( new Frontend\\Interactivity() )->init_hooks();');
 	}
 	if (hasBlock) {
 		// Block_Registrar globs assets/build/blocks/*, so it's variant-agnostic;
@@ -1148,7 +1171,7 @@ function scaffoldInto(answers, targetDir) {
 			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/edit.js'), 'assets/src/blocks/example-static/edit.js');
 			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/save.js'), 'assets/src/blocks/example-static/save.js');
 		}
-		providerRegistrations.push('\n\t\t$providers[] = new Blocks\\Block_Registrar();');
+		bootLines.push('\t\t( new Blocks\\Block_Registrar() )->init_hooks();');
 	}
 
 	// React admin app (wp-admin only) + WooCommerce Blocks/Gateway + native
@@ -1173,6 +1196,7 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/index.js'), 'assets/src/index.js');
 		// Assets.php scopes its enqueue via a {{#if admin_settings}}/{{else}} block.
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Assets.php'), 'src/Admin/Assets.php');
+		bootLines.push('\t\t( new Admin\\Assets() )->init_hooks();');
 	}
 
 	if (needsBuildPipeline) {
@@ -1328,16 +1352,28 @@ ${entries.join('\n')}
 	writeTemplateFile(path.join(templatesDir, 'package.json'), 'package.json');
 
 
-	// Process Plugin.php template with dynamic registrations. The React
-	// Assets provider is a {{#if use_react}} block in the template itself;
-	// the per-module $providers[] lines are accumulated here because that's
-	// where each module's file-copy branch already lives.
+	// Assemble Plugin::boot()'s body: non-woo module lines, then every woo
+	// line inside one class_exists( 'WooCommerce' ) guard.
+	const allBootLines = [...bootLines];
+	if (wooBootLines.length > 0) {
+		allBootLines.push("\t\tif ( class_exists( 'WooCommerce' ) ) {\n" + wooBootLines.join('\n') + '\n\t\t}');
+	}
+	const bootloaderBody = allBootLines.length > 0 ? allBootLines.join('\n') + '\n' : '';
+
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
-	pluginContent = pluginContent.replace('{{PROVIDER_REGISTRATIONS}}', () => providerRegistrations.length > 0 ? providerRegistrations.join('\n') + '\n' : '');
+	pluginContent = pluginContent.replace('{{BOOTLOADER_LINES}}', () => bootloaderBody);
 	pluginContent = processTemplateContent(pluginContent, 'src/Plugin.php');
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
+
+	// Services.php: the memoised accessors for this module set (or none).
+	let servicesContent = fs.readFileSync(path.join(templatesDir, 'src/Services.php'), 'utf8');
+	servicesContent = servicesContent.replace('{{SERVICES_ACCESSORS}}', () => servicesAccessors.join('\n'));
+	servicesContent = processTemplateContent(servicesContent, 'src/Services.php');
+	const servicesDestPath = path.join(targetDir, 'src/Services.php');
+	fs.mkdirSync(path.dirname(servicesDestPath), { recursive: true });
+	fs.writeFileSync(servicesDestPath, servicesContent, 'utf8');
 
 	// Single supported PHP line — see MIN_PHP. The matrix also runs the next
 	// minor so a scaffold surfaces forward-compat breakage early.
@@ -1361,8 +1397,7 @@ ${entries.join('\n')}
 		// Fully-qualified on purpose: Activator.php lives in the {{NS}}\Core namespace,
 		// so an unqualified "PostTypes\Post_Types" reference here would resolve to the
 		// (nonexistent) {{NS}}\Core\PostTypes\Post_Types and fatal at runtime.
-		activatorLines.push('\t\t$post_types = $container->get( \\{{NS}}\\PostTypes\\Post_Types::class );');
-		activatorLines.push('\t\t$post_types->register_cpt_and_taxonomy();');
+		activatorLines.push('\t\t( new \\{{NS}}\\PostTypes\\Post_Types() )->register_cpt_and_taxonomy();');
 		if (needsVip) {
 			// WordPress VIP forbids flush_rewrite_rules() (rewrite rules there are
 			// regenerated from deploys / a permalink re-save), so rather than
@@ -1402,7 +1437,7 @@ ${entries.join('\n')}
 		// dbDelta() must run synchronously on activation so the table exists
 		// immediately — Schema::boot()'s plugins_loaded hook only catches
 		// updates, which don't fire register_activation_hook().
-		activatorLines.push('\t\t$container->get( \\{{NS}}\\Database\\Schema::class )->create_table();');
+		activatorLines.push('\t\t( new \\{{NS}}\\Database\\Schema() )->create_table();');
 		uninstallLines.push('\t\t\\{{NS}}\\Database\\Schema::drop_table();');
 	}
 

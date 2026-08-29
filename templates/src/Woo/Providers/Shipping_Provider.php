@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Woo\Providers;
 
-use {{NS}}\Contracts\Conditional;
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
 use {{NS}}\Woo\Shipping\Shipping_Method;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -21,33 +18,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Shipping_Provider.
  */
-class Shipping_Provider implements Service_Provider, Conditional {
-
-	/**
-	 * Only needed when WooCommerce is active.
-	 *
-	 * @return bool
-	 */
-	public function is_needed(): bool {
-		return class_exists( 'WooCommerce' );
-	}
-
-	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
+class Shipping_Provider {
 
 	/**
 	 * Register hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_filter( 'woocommerce_shipping_methods', $this->register_shipping_method( ... ) );
 	}
 

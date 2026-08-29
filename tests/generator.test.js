@@ -220,20 +220,20 @@ test('every scaffold pins PHP 8.3 and emits modern PHP (promotion, readonly, fir
 	assert.match(ci, /php-version:\s*\['8\.3', '8\.4'\]/);
 
 	const plugin = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.match(plugin, /private readonly Container \$container/, 'constructor property promotion');
-	assert.doesNotMatch(plugin, /\$this->container = \$container;/, 'no hand-written assignment');
+	assert.match(plugin, /public static function instance\(\): self/, 'singleton accessor');
+	assert.match(plugin, /self::\$instance \?\?= new self\(\)/);
 
-	const container = fs.readFileSync(path.join(outDir, 'src/Core/Container.php'), 'utf8');
-	assert.match(container, /public function get\( string \$id \): mixed \{/, '`: mixed` is unconditional');
+	const services = fs.readFileSync(path.join(outDir, 'src/Services.php'), 'utf8');
+	assert.match(services, /public static function store_api_extension\(\): Woo\\Api\\Store_Api_Extension/);
 
 	const settings = fs.readFileSync(path.join(outDir, 'src/Admin/Settings_Registrar.php'), 'utf8');
 	assert.match(settings, /add_action\( '[^']+', \$this->[a-z_]+\( \.\.\. \) \)/, 'first-class callable hook');
 	assert.doesNotMatch(settings, /array\( \$this, '/, 'no array-style callbacks');
 
 	const storeApiProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Store_Api_Provider.php'), 'utf8');
-	assert.match(storeApiProvider, /public function __construct\( private readonly \?Store_Api_Extension \$service = null \)/);
+	assert.match(storeApiProvider, /public function __construct\( private readonly Store_Api_Extension \$service \)/);
 
-	assert.doesNotMatch(plugin + container, /\{\{[#/]?if/, 'no leftover conditional tags');
+	assert.doesNotMatch(plugin + services, /\{\{[#/]?if/, 'no leftover conditional tags');
 
 	fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
@@ -451,7 +451,7 @@ test('generated plugin version defaults to 1.0.0', () => {
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('foundational contracts and container are always scaffolded with no leftover tokens', () => {
+test('foundational classes (Plugin bootloader + Services locator) always scaffold with no leftover tokens', () => {
 	const outDir = path.join(__dirname, '../tmp-test-foundation');
 	runGenerator({
 		name: 'Foundation Plugin',
@@ -464,10 +464,8 @@ test('foundational contracts and container are always scaffolded with no leftove
 	});
 
 	const files = [
-		'src/Core/Container.php',
-		'src/Core/Exceptions/Not_Found_Exception.php',
-		'src/Contracts/Service_Provider.php',
-		'src/Contracts/Conditional.php',
+		'src/Plugin.php',
+		'src/Services.php',
 		'src/Contracts/Activatable.php',
 		'src/Contracts/Deactivatable.php'
 	];
@@ -476,7 +474,8 @@ test('foundational contracts and container are always scaffolded with no leftove
 		const content = fs.readFileSync(path.join(outDir, f), 'utf8');
 		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
 	}
-	assert.ok(!fs.existsSync(path.join(outDir, 'src/Contracts/Registrable.php')), 'Registrable was replaced by Service_Provider');
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Core/Container.php')), 'the DI container is gone: static bootloader + Services locator');
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Contracts/Service_Provider.php')), 'no Service_Provider contract');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Core/Uninstaller.php')), 'no Uninstaller without a module that persists cleanup-worthy state (0.7)');
 	assert.ok(!fs.existsSync(path.join(outDir, 'uninstall.php')), 'no uninstall.php in a zero-module scaffold (0.7)');
 
@@ -488,7 +487,7 @@ test('foundational contracts and container are always scaffolded with no leftove
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('Plugin.php is a pure composition root (no hooks registered directly), and Widget_Registrar owns Elementor\'s hooks in its own boot()', () => {
+test('Plugin.php is a pure bootloader (no hooks registered directly), and Widget_Registrar owns Elementor\'s hooks in its own init_hooks()', () => {
 	const outDir = path.join(__dirname, '../tmp-test-elementor-boot');
 	runGenerator({
 		name: 'Elementor Boot Plugin',
@@ -502,15 +501,13 @@ test('Plugin.php is a pure composition root (no hooks registered directly), and 
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
 	assert.ok(!pluginPhp.includes('add_action'), 'Plugin.php itself should never register WordPress hooks directly');
-	assert.ok(pluginPhp.includes('private readonly Container $container'));
-	assert.ok(pluginPhp.includes('private readonly array $providers'));
-	assert.ok(pluginPhp.includes('public static function create(): self'));
-	assert.ok(pluginPhp.includes('new Elementor\\Widget_Registrar();'));
-	assert.ok(pluginPhp.includes('new Elementor\\Dependency_Notice();'));
+	assert.ok(pluginPhp.includes('public static function instance(): self'));
+	assert.ok(pluginPhp.includes('( new Elementor\\Widget_Registrar() )->init_hooks();'));
+	assert.ok(pluginPhp.includes('( new Elementor\\Dependency_Notice() )->init_hooks();'));
 
 	const widgetRegistrar = fs.readFileSync(path.join(outDir, 'src/Elementor/Widget_Registrar.php'), 'utf8');
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(widgetRegistrar), 'no unreplaced template tokens should remain');
-	const registrarBootBody = widgetRegistrar.slice(widgetRegistrar.indexOf('public function boot('));
+	const registrarBootBody = widgetRegistrar.slice(widgetRegistrar.indexOf('public function init_hooks('));
 	assert.ok(registrarBootBody.includes("add_action( 'elementor/widgets/register'"));
 	assert.ok(registrarBootBody.includes("add_action( 'wp_enqueue_scripts'"));
 
@@ -544,8 +541,8 @@ test('React admin app + admin_settings: root div mounted, Assets.php scoped to t
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(assetsPhp), 'no unreplaced template tokens should remain');
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhp.includes("new Admin\\Assets()"));
-	assert.ok(pluginPhp.includes("new Admin\\Settings_Registrar()"));
+	assert.ok(pluginPhp.includes("( new Admin\\Assets() )->init_hooks();"));
+	assert.ok(pluginPhp.includes("( new Admin\\Settings_Registrar( Services::settings_repository() ) )->init_hooks();"));
 
 	const mainPhp = fs.readFileSync(path.join(outDir, 'react-admin-plugin.php'), 'utf8');
 	assert.ok(mainPhp.includes('Requires at least: 6.0'), 'React alone must not bump the minimum WP version');
@@ -663,14 +660,15 @@ test('block module: native block.json + edit + server render, wired via Block_Re
 	assert.ok(fs.readFileSync(path.join(outDir, 'assets/src/blocks/example-static/save.js'), 'utf8').includes('RichText.Content'), 'static save() serializes markup');
 
 	const registrar = fs.readFileSync(path.join(outDir, 'src/Blocks/Block_Registrar.php'), 'utf8');
-	assert.ok(registrar.includes('implements Service_Provider'));
+	assert.ok(!registrar.includes('implements'), 'plain class, no Service_Provider contract');
+	assert.ok(registrar.includes('public function init_hooks(): void'));
 	assert.ok(registrar.includes("add_action( 'init', $this->register_blocks( ... ) )"));
 	assert.ok(registrar.includes("glob( $build_dir . '/*', GLOB_ONLYDIR )"), 'discovers every built block dir, so new blocks need no PHP change');
 	assert.ok(registrar.includes('register_block_type( $block_dir )'));
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(registrar), 'no unreplaced tokens');
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhp.includes('new Blocks\\Block_Registrar();'));
+	assert.ok(pluginPhp.includes('( new Blocks\\Block_Registrar() )->init_hooks();'));
 
 	// block flips the build pipeline on, but a block-only build needs no
 	// webpack.config.js override — wp-scripts finds block.json on its own.
@@ -774,7 +772,8 @@ test('WooCommerce module: gateway, shipping, email, product type, blocks payment
 	const gatewayProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Gateway_Provider.php'), 'utf8');
 	assert.ok(gatewayProvider.includes("add_filter( 'woocommerce_payment_gateways'"));
 	assert.ok(gatewayProvider.includes('woocommerce_blocks_payment_method_type_registration'));
-	assert.ok(gatewayProvider.includes('function is_needed(): bool'));
+	assert.ok(gatewayProvider.includes('public function init_hooks(): void'));
+	assert.ok(!gatewayProvider.includes('is_needed'), 'the class_exists guard lives in Plugin::boot() now');
 
 	const shippingProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Shipping_Provider.php'), 'utf8');
 	assert.ok(shippingProvider.includes("add_filter( 'woocommerce_shipping_methods'"));
@@ -787,11 +786,12 @@ test('WooCommerce module: gateway, shipping, email, product type, blocks payment
 	assert.ok(productTypeProvider.includes("add_filter( 'product_type_selector'"));
 
 	const pluginPhpWoo = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Gateway_Provider();'));
-	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Shipping_Provider();'));
-	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Email_Provider();'));
-	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Product_Type_Provider();'));
-	assert.ok(pluginPhpWoo.includes('new Woo\\Providers\\Blocks_Provider();'));
+	assert.ok(pluginPhpWoo.includes("if ( class_exists( 'WooCommerce' ) ) {"), 'woo providers wrapped in one guard');
+	assert.ok(pluginPhpWoo.includes('( new Woo\\Providers\\Gateway_Provider() )->init_hooks();'));
+	assert.ok(pluginPhpWoo.includes('( new Woo\\Providers\\Shipping_Provider() )->init_hooks();'));
+	assert.ok(pluginPhpWoo.includes('( new Woo\\Providers\\Email_Provider() )->init_hooks();'));
+	assert.ok(pluginPhpWoo.includes('( new Woo\\Providers\\Product_Type_Provider() )->init_hooks();'));
+	assert.ok(pluginPhpWoo.includes('( new Woo\\Providers\\Blocks_Provider() )->init_hooks();'));
 
 	const blocksType = fs.readFileSync(path.join(outDir, 'src/Woo/Gateways/Blocks_Payment_Method_Type.php'), 'utf8');
 	assert.ok(blocksType.includes("protected $name = 'wfp_gateway';"));
@@ -885,7 +885,7 @@ test('composer.json package name derives from the author, not a literal "vendor/
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('cpt_taxonomy Activator resolves Post_Types through the container with a fully-qualified class reference', () => {
+test('cpt_taxonomy Activator news up Post_Types with a fully-qualified class reference', () => {
 	const outDir = path.join(__dirname, '../tmp-test-cpt-activator');
 	runGenerator({
 		name: 'Cpt Activator Plugin',
@@ -900,12 +900,12 @@ test('cpt_taxonomy Activator resolves Post_Types through the container with a fu
 	const activatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Activator.php'), 'utf8');
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(activatorPhp), 'no unreplaced template tokens should remain');
 	assert.ok(activatorPhp.includes('implements Activatable'));
-	assert.ok(activatorPhp.includes('public function activate( Container $container )'));
+	assert.ok(activatorPhp.includes('public function activate(): void'));
 	// Must be fully-qualified (leading backslash): Activator.php lives in the
 	// {{NS}}\Core namespace, so an unqualified "PostTypes\Post_Types" reference
 	// would resolve to the nonexistent {{NS}}\Core\PostTypes\Post_Types and
 	// fatal at runtime the moment the plugin is activated.
-	assert.ok(activatorPhp.includes('$container->get( \\CptActivatorPlugin\\PostTypes\\Post_Types::class )'));
+	assert.ok(activatorPhp.includes('( new \\CptActivatorPlugin\\PostTypes\\Post_Types() )->register_cpt_and_taxonomy();'));
 	// B6.19: soft flush, and no phpcs:ignore papering over the VIP sniff.
 	assert.ok(activatorPhp.includes('flush_rewrite_rules( false );'));
 	assert.ok(!activatorPhp.includes('phpcs:ignore'), 'wp-org target needs no suppression for flush_rewrite_rules');
@@ -1050,7 +1050,7 @@ test('Jest unit tests + admin_settings-aware E2E spec ship with React admin app'
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('caching module scaffolds Cache_Service as a container-resolvable provider', () => {
+test('caching module scaffolds Cache_Service, reachable via Services::cache()', () => {
 	const outDir = path.join(__dirname, '../tmp-test-caching');
 	runGenerator({
 		name: 'Caching Plugin',
@@ -1064,12 +1064,12 @@ test('caching module scaffolds Cache_Service as a container-resolvable provider'
 
 	const cacheService = fs.readFileSync(path.join(outDir, 'src/Cache/Cache_Service.php'), 'utf8');
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(cacheService), 'no unreplaced template tokens should remain');
-	assert.ok(cacheService.includes('implements Service_Provider'));
+	assert.ok(!cacheService.includes('implements'), 'plain class now');
 	assert.ok(cacheService.includes("wp_cache_get"));
 	assert.ok(cacheService.includes('get_transient'));
 
-	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhp.includes('new Cache\\Cache_Service();'));
+	const services = fs.readFileSync(path.join(outDir, 'src/Services.php'), 'utf8');
+	assert.ok(services.includes('public static function cache(): Cache\\Cache_Service'));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
@@ -1088,7 +1088,8 @@ test('custom_table module scaffolds a dbDelta Schema + Item_Repository, wired in
 
 	const schema = fs.readFileSync(path.join(outDir, 'src/Database/Schema.php'), 'utf8');
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(schema), 'no unreplaced template tokens should remain');
-	assert.ok(schema.includes('implements Service_Provider'));
+	assert.ok(!schema.includes('implements'), 'plain class now');
+	assert.ok(schema.includes('public function init_hooks(): void'));
 	assert.ok(schema.includes('dbDelta('));
 	assert.ok(schema.includes("PRIMARY KEY"));
 	assert.ok(schema.includes('KEY status'));
@@ -1097,11 +1098,11 @@ test('custom_table module scaffolds a dbDelta Schema + Item_Repository, wired in
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(repository));
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhp.includes('new Database\\Schema();'));
+	assert.ok(pluginPhp.includes('( new Database\\Schema() )->init_hooks();'));
 
 	const activatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Activator.php'), 'utf8');
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(activatorPhp));
-	assert.ok(activatorPhp.includes('$container->get( \\CustomTablePlugin\\Database\\Schema::class )->create_table();'));
+	assert.ok(activatorPhp.includes('( new \\CustomTablePlugin\\Database\\Schema() )->create_table();'));
 
 	const uninstallerPhp = fs.readFileSync(path.join(outDir, 'src/Core/Uninstaller.php'), 'utf8');
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(uninstallerPhp));
@@ -1167,7 +1168,7 @@ test('0.6 cli module owns src/CLI/Commands.php and its Plugin.php wiring', () =>
 	assert.ok(!fs.existsSync(path.join(off, 'src/CLI/Commands.php')), 'no Commands.php without the cli module');
 	assert.ok(!fs.existsSync(path.join(off, 'tests/Unit/Commands_Test.php')));
 	const pluginOff = fs.readFileSync(path.join(off, 'src/Plugin.php'), 'utf8');
-	assert.ok(!pluginOff.includes('WP_CLI'), 'Plugin::create() must not reference WP_CLI without the module');
+	assert.ok(!pluginOff.includes('WP_CLI'), 'Plugin::boot() must not reference WP_CLI without the module');
 	assert.ok(!pluginOff.includes('new CLI\\Commands()'));
 	assert.ok(!/\{\{[#/]?[A-Za-z_]/.test(pluginOff), 'no leftover template tags');
 	fs.rmSync(off, { recursive: true, force: true });
@@ -1179,11 +1180,11 @@ test('0.6 cli module owns src/CLI/Commands.php and its Plugin.php wiring', () =>
 	});
 	const commands = fs.readFileSync(path.join(on, 'src/CLI/Commands.php'), 'utf8');
 	assert.ok(!/^\s*if \( ! defined\( 'WP_CLI' \) \|\| ! WP_CLI \) \{\s*$/m.test(commands.split('class Commands')[0]), 'no top-level return guard before the class (B6.17)');
-	assert.ok(commands.includes('class Commands implements Service_Provider'));
+	assert.ok(/class Commands \{/.test(commands), 'plain class, no Service_Provider contract');
 	assert.ok(fs.existsSync(path.join(on, 'tests/Unit/Commands_Test.php')));
 	const pluginOn = fs.readFileSync(path.join(on, 'src/Plugin.php'), 'utf8');
 	assert.ok(pluginOn.includes("if ( defined( 'WP_CLI' ) && WP_CLI ) {"));
-	assert.ok(pluginOn.includes('new CLI\\Commands();'));
+	assert.ok(pluginOn.includes('( new CLI\\Commands() )->init_hooks();'));
 	fs.rmSync(on, { recursive: true, force: true });
 });
 
@@ -1393,10 +1394,10 @@ test('WooCommerce granular sub-modules: order-status, action-scheduler, store-ap
 	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Account_Endpoint_Service_Test.php')));
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
-	assert.ok(pluginPhp.includes('new Woo\\Providers\\Order_Status_Provider();'));
-	assert.ok(pluginPhp.includes('new Woo\\Providers\\Action_Scheduler_Provider();'));
-	assert.ok(pluginPhp.includes('new Woo\\Providers\\Store_Api_Provider();'));
-	assert.ok(pluginPhp.includes('new Woo\\Providers\\Account_Endpoint_Provider();'));
+	assert.ok(pluginPhp.includes('( new Woo\\Providers\\Order_Status_Provider( Services::order_status_service() ) )->init_hooks();'));
+	assert.ok(pluginPhp.includes('( new Woo\\Providers\\Action_Scheduler_Provider( Services::action_scheduler_service() ) )->init_hooks();'));
+	assert.ok(pluginPhp.includes('( new Woo\\Providers\\Store_Api_Provider( Services::store_api_extension() ) )->init_hooks();'));
+	assert.ok(pluginPhp.includes('( new Woo\\Providers\\Account_Endpoint_Provider( Services::account_endpoint_service() ) )->init_hooks();'));
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
