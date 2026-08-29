@@ -634,6 +634,15 @@ async function main() {
 			process.exit(1);
 		}
 
+		// Per-field prompt validators can't see the whole picture (and the
+		// WooCommerce sub-module merge above happens after they've run), so
+		// re-check the assembled answers the same way --yes mode does.
+		const validationError = validateAll(answers);
+		if (validationError !== true) {
+			console.error(`${icon('❌', '[x]')} ${validationError}`);
+			process.exit(1);
+		}
+
 		console.log('\nSummary:');
 		console.log(`  Name:      ${answers.name}`);
 		console.log(`  Slug:      ${answers.slug}`);
