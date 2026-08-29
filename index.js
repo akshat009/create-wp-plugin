@@ -963,6 +963,7 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
+	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Container_Test.php'), 'tests/Unit/Container_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'LICENSE'), 'LICENSE');
