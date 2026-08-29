@@ -9,6 +9,40 @@ import prompts from 'prompts';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Whether it's safe to print emoji: not when NO_COLOR is set, not into a
+ * non-TTY (pipes, CI log capture, redirected files), and on Windows only
+ * from a modern terminal (Windows Terminal / VS Code / ConEmu / a real
+ * $TERM) — the legacy conhost mangles them.
+ *
+ * @return {boolean}
+ */
+function supportsUnicode() {
+	if (process.env.NO_COLOR !== undefined) return false;
+	if (!process.stdout.isTTY) return false;
+	if (process.platform !== 'win32') return true;
+	return Boolean(
+		process.env.WT_SESSION ||
+		process.env.TERM_PROGRAM ||
+		process.env.ConEmuTask ||
+		process.env.TERM
+	);
+}
+
+const UNICODE_OK = supportsUnicode();
+
+/**
+ * Return `glyph` when the terminal can render it, otherwise a plain-ASCII
+ * stand-in so nothing shows up as mojibake in a minimal console.
+ *
+ * @param {string} glyph Preferred emoji/symbol.
+ * @param {string} ascii ASCII fallback.
+ * @return {string}
+ */
+function icon(glyph, ascii) {
+	return UNICODE_OK ? glyph : ascii;
+}
+
 export const WOO_SUB_MODULES = [
 	{ title: 'Payment Gateway (Classic + Block Checkout)', value: 'woo:gateway', needsJs: true },
 	{ title: 'Custom Shipping Method', value: 'woo:shipping', needsJs: false },
@@ -347,7 +381,7 @@ function parseCLIArgs() {
 		}
 		return values;
 	} catch (err) {
-		console.error(`❌ Invalid argument: ${err.message}`);
+		console.error(`${icon('❌', '[x]')} Invalid argument: ${err.message}`);
 		process.exit(1);
 	}
 }
@@ -407,11 +441,11 @@ async function main() {
 
 	if (flags.yes) {
 		if (!flags.name) {
-			console.error('❌ Error: --name is required when --yes is set.');
+			console.error(`${icon('❌', '[x]')} Error: --name is required when --yes is set.`);
 			process.exit(1);
 		}
 		if (!flags.out) {
-			console.error('❌ Error: --out is required when --yes is set.');
+			console.error(`${icon('❌', '[x]')} Error: --out is required when --yes is set.`);
 			process.exit(1);
 		}
 
@@ -447,21 +481,21 @@ async function main() {
 
 		const validationError = validateAll(answers);
 		if (validationError !== true) {
-			console.error(`❌ Validation failed: ${validationError}`);
+			console.error(`${icon('❌', '[x]')} Validation failed: ${validationError}`);
 			process.exit(1);
 		}
 	} else {
 		// Interactive prompts read stdin — in a pipe/CI without a TTY they'd
 		// block forever waiting for input that never comes. Fail fast instead.
 		if (!process.stdin.isTTY) {
-			console.error('❌ No interactive terminal detected (stdin is not a TTY).');
+			console.error(`${icon('❌', '[x]')} No interactive terminal detected (stdin is not a TTY).`);
 			console.error('   Re-run non-interactively with --yes plus at least --name and --out, e.g.:');
 			console.error('   npx create-wp-plugin-cli --yes --name "My Plugin" --out ./my-plugin');
 			console.error('   See --help for all flags.');
 			process.exit(1);
 		}
 
-		console.log('\n🚀 Welcome to create-wp-plugin-cli scaffold generator!\n');
+		console.log(`\n${icon('🚀', '>>')} Welcome to create-wp-plugin-cli scaffold generator!\n`);
 
 		const initialModules = flags.modules !== undefined ? parseModules(flags.modules) : [];
 
@@ -629,7 +663,7 @@ async function main() {
 	try {
 		runGenerator(answers);
 	} catch (err) {
-		console.error(`\n❌ Error: ${err.message}`);
+		console.error(`\n${icon('❌', '[x]')} Error: ${err.message}`);
 		process.exit(1);
 	}
 }
@@ -1256,7 +1290,7 @@ ${entries.join('\n')}
 	// (React install step, build/test scripts, Elementor conventions).
 	writeTemplateFile(path.join(templatesDir, 'README.md'), 'README.md');
 
-	console.log(`\n✅ Successfully scaffolded plugin "${answers.name}" in ${answers.outputDir}!\n`);
+	console.log(`\n${icon('✅', '[ok]')} Successfully scaffolded plugin "${answers.name}" in ${answers.outputDir}!\n`);
 	console.log('Next steps:');
 	console.log(`  cd ${answers.outputDir}`);
 	console.log('  composer install');
