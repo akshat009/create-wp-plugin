@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Cache;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -26,10 +23,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * `set_transient()` already routes to the object cache when one is present,
  * so writing to both would just store every value twice on a Redis site —
- * this picks one. Resolve from the container:
- * $container->get( Cache_Service::class ).
+ * this picks one. Reach the shared instance via Services::cache().
  */
-class Cache_Service implements Service_Provider {
+class Cache_Service {
 
 	/**
 	 * Object cache group / transient key prefix.
@@ -37,25 +33,6 @@ class Cache_Service implements Service_Provider {
 	 * @var string
 	 */
 	private const GROUP = '{{PREFIX}}';
-
-	/**
-	 * Bind this instance so other services can resolve it from the container.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void {
-		$container->instance( self::class, $this );
-	}
-
-	/**
-	 * No hooks to register — this is a plain utility service, not a hook registrar.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
 
 	/**
 	 * Get a cached value, or $fallback if it isn't cached (or has expired).

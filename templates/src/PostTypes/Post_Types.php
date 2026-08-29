@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\PostTypes;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -19,27 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Post_Types.
  */
-class Post_Types implements Service_Provider {
-
-	/**
-	 * Bind this instance so Activator can resolve it to run
-	 * register_cpt_and_taxonomy() once, synchronously, on activation
-	 * (before the 'init' hook it's normally registered against would fire).
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void {
-		$container->instance( self::class, $this );
-	}
+class Post_Types {
 
 	/**
 	 * Register post types and taxonomies.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'init', $this->register_cpt_and_taxonomy( ... ) );
 	}
 

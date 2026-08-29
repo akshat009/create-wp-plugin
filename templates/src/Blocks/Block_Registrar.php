@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Blocks;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -29,7 +26,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * (add `--variant dynamic` for a server-rendered one) — then rebuild. It is
  * picked up automatically; nothing here changes.
  */
-class Block_Registrar implements Service_Provider {
+class Block_Registrar {
 
 	/**
 	 * Directory (relative to the plugin root) holding compiled block metadata.
@@ -37,21 +34,11 @@ class Block_Registrar implements Service_Provider {
 	private const BUILD_DIR = 'assets/build/blocks';
 
 	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
-
-	/**
 	 * Register block hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'init', $this->register_blocks( ... ) );
 	}
 

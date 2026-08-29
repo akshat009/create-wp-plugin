@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Woo\Providers;
 
-use {{NS}}\Contracts\Conditional;
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
 use {{NS}}\Woo\Blocks\Cart_Summary_Block;
 use {{NS}}\Woo\Blocks\Integration;
 
@@ -22,33 +19,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Blocks_Provider.
  */
-class Blocks_Provider implements Service_Provider, Conditional {
-
-	/**
-	 * Only needed when WooCommerce is active.
-	 *
-	 * @return bool
-	 */
-	public function is_needed(): bool {
-		return class_exists( 'WooCommerce' );
-	}
-
-	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
+class Blocks_Provider {
 
 	/**
 	 * Register hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'init', Cart_Summary_Block::register( ... ) );
 		add_action( 'woocommerce_blocks_loaded', $this->register_blocks_integration( ... ) );
 	}

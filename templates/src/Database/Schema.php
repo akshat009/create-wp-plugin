@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Database;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -20,14 +17,14 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Class Schema.
  *
  * Owns the plugin's custom table. dbDelta() creates or upgrades it — called
- * synchronously on activation (Activator resolves this from the container),
- * and again on every request via maybe_upgrade() so a plugin *update*
- * (which doesn't fire register_activation_hook()) still gets migrated.
- * dbDelta() is idempotent: re-running it against an up-to-date table is a
- * cheap no-op, it only ever adds/alters, and get_option() short-circuits
- * maybe_upgrade() once VERSION_OPTION already matches VERSION.
+ * synchronously on activation (Activator news one up), and again via
+ * maybe_upgrade() so a plugin *update* (which doesn't fire
+ * register_activation_hook()) still gets migrated. dbDelta() is idempotent:
+ * re-running it against an up-to-date table is a cheap no-op, it only ever
+ * adds/alters, and get_option() short-circuits maybe_upgrade() once
+ * VERSION_OPTION already matches VERSION.
  */
-class Schema implements Service_Provider {
+class Schema {
 
 	/**
 	 * Bump this whenever create_table()'s SQL changes — dbDelta() diffs
@@ -56,23 +53,11 @@ class Schema implements Service_Provider {
 	}
 
 	/**
-	 * Bind this instance so Activator can resolve it to run create_table()
-	 * once, synchronously, on activation.
+	 * Check for pending migrations.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function register( Container $container ): void {
-		$container->instance( self::class, $this );
-	}
-
-	/**
-	 * Check for pending migrations on every request.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( 'plugins_loaded', $this->maybe_upgrade( ... ) );
 	}
 

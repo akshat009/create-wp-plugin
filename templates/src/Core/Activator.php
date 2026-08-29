@@ -25,10 +25,9 @@ class Activator implements Activatable {
 	/**
 	 * Execute activation tasks.
 	 *
-	 * @param Container $container Application container (already registered — register_all() has run).
 	 * @return void
 	 */
-	public function activate( Container $container ): void {
+	public function activate(): void {
 		update_option( '{{PREFIX}}_version', {{PREFIX_UPPER}}_VERSION );
 {{ACTIVATOR_BODY}}	}
 }

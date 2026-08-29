@@ -10,8 +10,6 @@ declare(strict_types=1);
 namespace {{NS}}\Tests\Integration;
 
 use {{NS}}\Plugin;
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
 use {{NS}}\Core\Activator;
 use WP_UnitTestCase;
 
@@ -29,60 +27,36 @@ use WP_UnitTestCase;
 class Plugin_Boot_Test extends WP_UnitTestCase {
 
 	/**
-	 * A provider added via the '{{PREFIX}}_providers' filter should be
-	 * booted exactly like one built into Plugin::create().
+	 * Reset the singleton between tests.
 	 *
 	 * @return void
 	 */
-	public function test_plugin_boots_providers_added_via_the_providers_filter(): void {
-		$probe = new class() implements Service_Provider {
-			/**
-			 * Whether boot() ran.
-			 *
-			 * @var bool
-			 */
-			public bool $booted = false;
-
-			/**
-			 * No bindings needed.
-			 *
-			 * @param Container $container Application container.
-			 * @return void
-			 */
-			public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-			}
-
-			/**
-			 * Record that boot() ran.
-			 *
-			 * @param Container $container Application container.
-			 * @return void
-			 */
-			public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-				$this->booted = true;
-			}
-		};
-
-		add_filter(
-			'{{PREFIX}}_providers',
-			function ( $providers ) use ( $probe ) {
-				$providers[] = $probe;
-				return $providers;
-			}
-		);
-
-		Plugin::create()->boot();
-
-		$this->assertTrue( $probe->booted );
+	public function tear_down(): void {
+		Plugin::set_instance( null );
+		parent::tear_down();
 	}
 
 	/**
-	 * Activation should persist the current version through a real get_option()/update_option() round trip.
+	 * Booting the plugin against real WordPress registers hooks without error
+	 * and is safe to call twice.
+	 *
+	 * @return void
+	 */
+	public function test_plugin_boots_without_error(): void {
+		Plugin::instance()->boot();
+		Plugin::instance()->boot();
+
+		$this->assertTrue( did_action( 'plugins_loaded' ) > 0 );
+	}
+
+	/**
+	 * Activation persists the current version through a real
+	 * get_option()/update_option() round trip.
 	 *
 	 * @return void
 	 */
 	public function test_activation_persists_the_version_option(): void {
-		( new Activator() )->activate( new Container() );
+		( new Activator() )->activate();
 
 		$this->assertSame( {{PREFIX_UPPER}}_VERSION, get_option( '{{PREFIX}}_version' ) );
 	}

@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Cron;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -19,24 +16,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Scheduler.
  */
-class Scheduler implements Service_Provider {
-
-	/**
-	 * No bindings needed.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-	}
+class Scheduler {
 
 	/**
 	 * Register cron event actions.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+	public function init_hooks(): void {
 		add_action( '{{PREFIX}}_cron_event', $this->execute_cron_job( ... ) );
 	}
 

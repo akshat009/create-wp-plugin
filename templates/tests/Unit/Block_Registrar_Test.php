@@ -14,7 +14,6 @@ use Brain\Monkey;
 use Brain\Monkey\Actions;
 use Brain\Monkey\Functions;
 use {{NS}}\Blocks\Block_Registrar;
-use {{NS}}\Core\Container;
 
 /**
  * Class Block_Registrar_Test.
@@ -38,12 +37,12 @@ class Block_Registrar_Test extends TestCase {
 	}
 
 	/**
-	 * Block registration is deferred to the `init` hook by boot().
+	 * Block registration is deferred to the `init` hook by init_hooks().
 	 */
-	public function test_boot_hooks_init(): void {
+	public function test_init_hooks_hooks_init(): void {
 		Actions\expectAdded( 'init' )->once();
 
-		( new Block_Registrar() )->boot( new Container() );
+		( new Block_Registrar() )->init_hooks();
 
 		$this->assertTrue( true );
 	}

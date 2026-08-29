@@ -13,7 +13,6 @@ use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\CLI\Commands;
-use {{NS}}\Core\Container;
 
 /**
  * Class Commands_Test.
@@ -38,14 +37,14 @@ class Commands_Test extends TestCase {
 	}
 
 	/**
-	 * Both WP-CLI commands are registered by boot() when WP_CLI is defined.
+	 * Both WP-CLI commands are registered by init_hooks() when WP_CLI is defined.
 	 */
-	public function test_boot_registers_commands_under_wp_cli(): void {
+	public function test_init_hooks_registers_commands_under_wp_cli(): void {
 		if ( ! defined( 'WP_CLI' ) ) {
 			define( 'WP_CLI', true );
 		}
 
-		( new Commands() )->boot( new Container() );
+		( new Commands() )->init_hooks();
 
 		$this->assertArrayHasKey( '{{PREFIX}} status', \WP_CLI::$commands );
 		$this->assertArrayHasKey( '{{PREFIX}} cache clear', \WP_CLI::$commands );

@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Admin;
 
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
-
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
@@ -22,37 +19,22 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Registers the admin menu page and Settings API hooks. Data access is
  * delegated to Settings_Repository; markup lives in src/Admin/views/.
  */
-class Settings_Registrar implements Service_Provider {
+class Settings_Registrar {
 
 	/**
-	 * Application container, kept for on-demand Settings_Repository lookups
-	 * from inside WordPress-invoked callbacks (add_options_page() and
-	 * add_settings_field() call these with fixed signatures, so the
-	 * repository can't be a constructor argument here).
+	 * Data-access layer for the plugin's option.
 	 *
-	 * @var Container
+	 * @param Settings_Repository $repository Settings repository.
 	 */
-	private Container $container;
-
-	/**
-	 * Bind Settings_Repository as a singleton.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void {
-		$container->singleton( Settings_Repository::class, static fn () => new Settings_Repository() );
+	public function __construct( private readonly Settings_Repository $repository ) {
 	}
 
 	/**
 	 * Register admin menu and settings hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void {
-		$this->container = $container;
-
+	public function init_hooks(): void {
 		add_action( 'admin_menu', $this->add_menu_page( ... ) );
 		add_action( 'admin_init', $this->register_settings( ... ) );
 	}
@@ -78,8 +60,7 @@ class Settings_Registrar implements Service_Provider {
 	 * @return void
 	 */
 	public function register_settings() {
-		$repository = $this->container->get( Settings_Repository::class );
-		$repository->register_setting();
+		$this->repository->register_setting();
 
 		add_settings_section(
 			'{{PREFIX}}_main_section',
@@ -89,7 +70,7 @@ class Settings_Registrar implements Service_Provider {
 		);
 
 		add_settings_field(
-			$repository->get_option_name(),
+			$this->repository->get_option_name(),
 			__( 'Sample Setting', '{{SLUG}}' ),
 			$this->render_sample_field( ... ),
 			'{{SLUG}}',
@@ -103,7 +84,7 @@ class Settings_Registrar implements Service_Provider {
 	 * @return void
 	 */
 	public function render_sample_field() {
-		$repository = $this->container->get( Settings_Repository::class );
+		$repository = $this->repository;
 		$name       = $repository->get_option_name();
 		$value      = $repository->get_value();
 
@@ -120,7 +101,7 @@ class Settings_Registrar implements Service_Provider {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', '{{SLUG}}' ) );
 		}
 
-		$repository = $this->container->get( Settings_Repository::class );
+		$repository = $this->repository;
 
 		include {{PREFIX_UPPER}}_PATH . 'src/Admin/views/settings-page.php';
 	}

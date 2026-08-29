@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Woo\Providers;
 
-use {{NS}}\Contracts\Conditional;
-use {{NS}}\Contracts\Service_Provider;
-use {{NS}}\Core\Container;
 use {{NS}}\Woo\Api\Store_Api_Extension;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -21,50 +18,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Store_Api_Provider.
  */
-class Store_Api_Provider implements Service_Provider, Conditional {
+class Store_Api_Provider {
 
 	/**
-	 * Accept an optional service override; the container builds a default
-	 * lazily when one isn't injected.
+	 * Store API cart extension.
 	 *
-	 * @param Store_Api_Extension|null $service Extension instance.
+	 * @param Store_Api_Extension $service Extension instance.
 	 */
-	public function __construct( private readonly ?Store_Api_Extension $service = null ) {
-	}
-
-	/**
-	 * Only needed when WooCommerce is active.
-	 *
-	 * @return bool
-	 */
-	public function is_needed(): bool {
-		return class_exists( 'WooCommerce' );
-	}
-
-	/**
-	 * Register service in container.
-	 *
-	 * @param Container $container Application container.
-	 * @return void
-	 */
-	public function register( Container $container ): void {
-		$container->singleton(
-			Store_Api_Extension::class,
-			function () {
-				return $this->service ?? new Store_Api_Extension();
-			}
-		);
+	public function __construct( private readonly Store_Api_Extension $service ) {
 	}
 
 	/**
 	 * Register hooks.
 	 *
-	 * @param Container $container Application container.
 	 * @return void
 	 */
-	public function boot( Container $container ): void {
-		$service = $container->get( Store_Api_Extension::class );
-
-		add_action( 'woocommerce_blocks_loaded', array( $service, 'register_store_api_extension' ) );
+	public function init_hooks(): void {
+		add_action( 'woocommerce_blocks_loaded', $this->service->register_store_api_extension( ... ) );
 	}
 }
