@@ -322,6 +322,12 @@ export function validateMinPhp(val) {
 	if (!/^\d+\.\d+$/.test(val.trim())) {
 		return 'Minimum PHP version must be in format X.Y (e.g. 8.0).';
 	}
+	// The templates use PHP 8.0 syntax (mixed return type, typed properties,
+	// constructor promotion, readonly), so anything lower would generate code
+	// that fatals on the version it claims to support.
+	if (parseFloat(val.trim()) < 8.0) {
+		return 'Minimum PHP version must be at least 8.0 — the generated code uses 8.0 syntax.';
+	}
 	return true;
 }
 

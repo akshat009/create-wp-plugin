@@ -84,8 +84,9 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 	 * @return bool|\WP_Error
 	 */
 	public function get_items_permissions_check( $request ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		// Public endpoint. Replace with current_user_can() check if restricted access is required.
-		return true;
+		// Fails closed by default. For a genuinely public read endpoint,
+		// `return true;` — but decide that deliberately rather than inherit it.
+		return current_user_can( 'read' );
 	}
 
 	/**

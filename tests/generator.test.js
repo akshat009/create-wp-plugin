@@ -71,7 +71,9 @@ test('Group 2 Validators', () => {
 	assert.equal(typeof validateEmail('invalid-email'), 'string');
 
 	assert.equal(validateMinPhp('8.0'), true);
+	assert.equal(validateMinPhp('8.2'), true);
 	assert.equal(typeof validateMinPhp('invalid'), 'string');
+	assert.equal(typeof validateMinPhp('7.4'), 'string', 'templates use 8.0 syntax — sub-8.0 is rejected');
 
 	assert.equal(validateOutputDir('./some-dir'), true);
 	assert.equal(typeof validateOutputDir(''), 'string');

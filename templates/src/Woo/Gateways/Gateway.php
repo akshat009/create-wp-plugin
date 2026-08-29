@@ -74,8 +74,12 @@ class Gateway extends \WC_Payment_Gateway {
 	/**
 	 * Process the payment for an order.
 	 *
-	 * TODO: integrate with your real payment processor — this stub marks the
-	 * order paid immediately without charging anything.
+	 * Stub: fails closed so an unfinished gateway can never mark an order paid
+	 * without charging. Implement the real flow, then, on a confirmed charge:
+	 *
+	 *     $order->payment_complete( $transaction_id );
+	 *     WC()->cart->empty_cart();
+	 *     return array( 'result' => 'success', 'redirect' => $this->get_return_url( $order ) );
 	 *
 	 * @param int $order_id Order ID.
 	 * @return array
@@ -87,16 +91,11 @@ class Gateway extends \WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
-		$order->payment_complete();
-		$order->add_order_note( __( 'Paid via {{PLUGIN_NAME_ESC}} (stub gateway — no real charge was made).', '{{SLUG}}' ) );
-
-		if ( function_exists( 'WC' ) && WC()->cart ) {
-			WC()->cart->empty_cart();
-		}
-
-		return array(
-			'result'   => 'success',
-			'redirect' => $this->get_return_url( $order ),
+		wc_add_notice(
+			__( 'This payment gateway is not configured yet.', '{{SLUG}}' ),
+			'error'
 		);
+
+		return array( 'result' => 'failure' );
 	}
 }

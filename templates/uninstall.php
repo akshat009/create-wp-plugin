@@ -49,7 +49,15 @@ function {{PREFIX}}_uninstall_cleanup(): void {
 }
 
 if ( is_multisite() ) {
-	${{PREFIX}}_sites = get_sites( array( 'fields' => 'ids' ) );
+	// 'number' => 0 lifts get_sites()'s default 100-site cap so nothing is
+	// left behind on large networks. On a very large network prefer a batched
+	// or WP-CLI cleanup — this synchronous loop can time out.
+	${{PREFIX}}_sites = get_sites(
+		array(
+			'fields' => 'ids',
+			'number' => 0,
+		)
+	);
 	foreach ( ${{PREFIX}}_sites as ${{PREFIX}}_site_id ) {
 		switch_to_blog( ${{PREFIX}}_site_id );
 		{{PREFIX}}_uninstall_cleanup();
