@@ -1129,9 +1129,9 @@ function scaffoldInto(answers, targetDir) {
 		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
 	}
 	if (hasBlock) {
-		// Block_Registrar's self::BLOCKS list is a {{#if block_dynamic}} /
-		// {{#if block_static}} block in the template, so it only registers the
-		// variant(s) actually scaffolded here.
+		// Block_Registrar globs assets/build/blocks/*, so it's variant-agnostic;
+		// only the source folders + JS tests below depend on which type(s) were
+		// selected.
 		writeTemplateFile(path.join(templatesDir, 'src/Blocks/Block_Registrar.php'), 'src/Blocks/Block_Registrar.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Block_Registrar_Test.php'), 'tests/Unit/Block_Registrar_Test.php');
 		if (hasBlockDynamic) {
@@ -1177,11 +1177,11 @@ function scaffoldInto(answers, targetDir) {
 		const packageExtraScriptsEntries = ['"test:e2e": "playwright test"'];
 		const packageExtraDevDependenciesEntries = [
 			'"@playwright/test": "^1.47.0"',
-			'"@wordpress/e2e-test-utils-playwright": "^1.13.0"'
+			'"@wordpress/e2e-test-utils-playwright": "^1.54.0"'
 		];
 		if (wantsJest) {
 			packageExtraScriptsEntries.push('"test:js": "wp-scripts test-unit-js"');
-			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^21.0.0"');
+			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^14.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/jest-dom": "^6.0.0"');
 		}
