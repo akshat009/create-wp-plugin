@@ -812,6 +812,10 @@ function scaffoldInto(answers, targetDir) {
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': answers.minPhp,
 		'{{REQUIRES_AT_LEAST}}': requiredWpVersion,
+		// readme.txt "Tested up to". A generated scaffold can't know the WP
+		// release it'll be tested against, so seed a recent stable floor the
+		// developer bumps per release — never below what the plugin requires.
+		'{{TESTED_UP_TO}}': parseFloat(requiredWpVersion) > 6.8 ? requiredWpVersion : '6.8',
 		'{{VERSION}}': '1.0.0',
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
