@@ -903,7 +903,7 @@ function scaffoldInto(answers, targetDir) {
 		// readme.txt "Tested up to". A generated scaffold can't know the WP
 		// release it'll be tested against, so seed a recent stable floor the
 		// developer bumps per release — never below what the plugin requires.
-		'{{TESTED_UP_TO}}': parseFloat(requiredWpVersion) > 6.8 ? requiredWpVersion : '6.8',
+		'{{TESTED_UP_TO}}': parseFloat(requiredWpVersion) > 6.9 ? requiredWpVersion : '6.9',
 		'{{VERSION}}': '1.0.0',
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
@@ -1208,6 +1208,7 @@ function scaffoldInto(answers, targetDir) {
 		];
 		if (wantsJest) {
 			packageExtraScriptsEntries.push('"test:js": "wp-scripts test-unit-js"');
+			packageExtraScriptsEntries.push('"test": "npm run test:js"');
 			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^14.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/jest-dom": "^6.0.0"');
@@ -1315,7 +1316,8 @@ ${entries.join('\n')}
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # No cache: 'npm' — there's no committed package-lock.json yet, and
+          # setup-node fails the step when the lockfile is missing.
 
       - name: Install Node Dependencies
         run: npm install
