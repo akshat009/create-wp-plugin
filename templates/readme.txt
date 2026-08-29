@@ -1,8 +1,8 @@
 === {{PLUGIN_NAME}} ===
-Contributors: {{AUTHOR}}
-Tags: wordpress, plugin, scaffolding
+Contributors: {{CONTRIBUTOR}}
+Tags: {{TAGS}}
 Requires at least: {{REQUIRES_AT_LEAST}}
-Tested up to: 6.7
+Tested up to: {{TESTED_UP_TO}}
 Requires PHP: {{MIN_PHP}}
 Stable tag: {{VERSION}}
 License: GPLv2 or later

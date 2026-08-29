@@ -102,4 +102,57 @@ jobs:
 
       - name: Run PHPUnit
         run: composer test
+{{#if integration_tests}}
+
+  integration:
+    name: Integration Tests (wp-phpunit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+          coverage: none
+
+      - name: Get Composer Cache Directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer Dependencies
+        run: |
+          n=0
+          until composer install --prefer-dist --no-progress --no-interaction; do
+            n=$((n+1))
+            if [ "$n" -ge 3 ]; then
+              echo "composer install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "composer install failed (attempt $n/3) — retrying in 5s..."
+            sleep 5
+          done
+
+      - name: Setup Node.js for wp-env
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Start WordPress Environment
+        run: npx @wordpress/env start
+
+      - name: Run Integration Tests
+        run: composer test:integration
+{{/if}}
 {{CI_NODE_JOB}}
+

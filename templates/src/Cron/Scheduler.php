@@ -43,9 +43,11 @@ class Scheduler implements Service_Provider {
 	/**
 	 * Execute cron job logic.
 	 *
+	 * Demonstrates a scheduled background task (e.g., updating an option timestamp or running periodic maintenance).
+	 *
 	 * @return void
 	 */
 	public function execute_cron_job(): void {
-		// Cron task execution logic.
+		update_option( '{{PREFIX}}_last_cron_run', time() );
 	}
 }

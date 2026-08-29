@@ -18,8 +18,10 @@ defined( 'ABSPATH' ) || exit;
 
 echo esc_html( wp_strip_all_tags( $email_heading ) ) . "\n\n";
 
+$first_name = ( $order && method_exists( $order, 'get_billing_first_name' ) ) ? $order->get_billing_first_name() : __( 'Customer', '{{SLUG}}' );
+
 /* translators: %s: Customer first name. */
-echo esc_html( sprintf( __( 'Hi %s,', '{{SLUG}}' ), $order->get_billing_first_name() ) ) . "\n\n";
+echo esc_html( sprintf( __( 'Hi %s,', '{{SLUG}}' ), $first_name ) ) . "\n\n";
 
 esc_html_e( 'This is a custom notification email — replace this content with your own.', '{{SLUG}}' );
 

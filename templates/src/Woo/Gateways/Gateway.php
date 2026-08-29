@@ -90,6 +90,10 @@ class Gateway extends \WC_Payment_Gateway {
 		$order->payment_complete();
 		$order->add_order_note( __( 'Paid via {{PLUGIN_NAME}} (stub gateway — no real charge was made).', '{{SLUG}}' ) );
 
+		if ( function_exists( 'WC' ) && WC()->cart ) {
+			WC()->cart->empty_cart();
+		}
+
 		return array(
 			'result'   => 'success',
 			'redirect' => $this->get_return_url( $order ),

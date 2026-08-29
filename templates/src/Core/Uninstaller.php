@@ -28,6 +28,5 @@ class Uninstaller {
 	 */
 	public function cleanup(): void {
 		delete_option( '{{PREFIX}}_version' );
-{{UNINSTALL_BODY}}		delete_transient( '{{PREFIX}}_elementor_widgets' );
-	}
+{{UNINSTALL_BODY}}	}
 }

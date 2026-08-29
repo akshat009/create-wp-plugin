@@ -152,7 +152,7 @@ class Sample_Widget extends Widget_Base {
 				'label'     => __( 'Title Color', '{{SLUG}}' ),
 				'type'      => Controls_Manager::COLOR,
 				'selectors' => array(
-					'{{WRAPPER}} .sample-widget-title' => 'color: {{VALUE}};',
+					'{{WRAPPER}} .{{PREFIX}}-sample-widget-title' => 'color: {{VALUE}};',
 				),
 			)
 		);
@@ -171,23 +171,23 @@ class Sample_Widget extends Widget_Base {
 		$this->add_inline_editing_attributes( 'title', 'none' );
 		$this->add_inline_editing_attributes( 'description', 'basic' );
 		?>
-		<div class="sample-widget-wrapper">
+		<div class="{{PREFIX}}-sample-widget-wrapper">
 			<?php if ( ! empty( $settings['title'] ) ) : ?>
-				<h3 class="sample-widget-title" <?php echo $this->get_render_attribute_string( 'title' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $settings['title'] ); ?></h3>
+				<h3 class="{{PREFIX}}-sample-widget-title" <?php echo $this->get_render_attribute_string( 'title' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $settings['title'] ); ?></h3>
 			<?php endif; ?>
 
 			<?php if ( ! empty( $settings['description'] ) ) : ?>
-				<p class="sample-widget-description" <?php echo $this->get_render_attribute_string( 'description' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $settings['description'] ); ?></p>
+				<p class="{{PREFIX}}-sample-widget-description" <?php echo $this->get_render_attribute_string( 'description' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo wp_kses_post( $settings['description'] ); ?></p>
 			<?php endif; ?>
 
 			<?php if ( ! empty( $settings['items'] ) ) : ?>
-				<ul class="sample-widget-list">
+				<ul class="{{PREFIX}}-sample-widget-list">
 					<?php foreach ( $settings['items'] as $index => $item ) : ?>
 						<?php
 						$item_key = $this->get_repeater_setting_key( 'item_text', 'items', $index );
 						$this->add_inline_editing_attributes( $item_key, 'none' );
 						?>
-						<li class="sample-widget-item">
+						<li class="{{PREFIX}}-sample-widget-item">
 							<span <?php echo $this->get_render_attribute_string( $item_key ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php echo esc_html( $item['item_text'] ); ?></span>
 						</li>
 					<?php endforeach; ?>

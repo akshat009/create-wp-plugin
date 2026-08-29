@@ -20,10 +20,11 @@ do_action( 'woocommerce_email_header', $email_heading, $email );
 ?>
 <p>
 	<?php
+	$first_name = ( $order && method_exists( $order, 'get_billing_first_name' ) ) ? $order->get_billing_first_name() : __( 'Customer', '{{SLUG}}' );
 	printf(
 		/* translators: %s: Customer first name. */
 		esc_html__( 'Hi %s,', '{{SLUG}}' ),
-		esc_html( $order->get_billing_first_name() )
+		esc_html( $first_name )
 	);
 	?>
 </p>

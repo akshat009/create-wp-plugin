@@ -10,7 +10,7 @@
 	 * @param {jQuery} $scope The Widget wrapper element.
 	 */
 	const SampleWidgetHandler = function ($scope) {
-		console.log('Sample Widget initialized:', $scope);
+		// Elementor widget initialization handler.
 	};
 
 	$(window).on('elementor/frontend/init', function () {

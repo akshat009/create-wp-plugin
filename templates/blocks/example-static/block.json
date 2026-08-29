@@ -1,0 +1,25 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "{{SLUG}}/example-static",
+	"version": "{{VERSION}}",
+	"title": "{{PLUGIN_NAME}} Example (static)",
+	"category": "widgets",
+	"icon": "star-empty",
+	"description": "Starter static block for {{PLUGIN_NAME}}: save() serializes markup straight into post content, no render.php.",
+	"keywords": [ "{{SLUG}}" ],
+	"textdomain": "{{SLUG}}",
+	"attributes": {
+		"content": {
+			"type": "string",
+			"source": "html",
+			"selector": "p",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false,
+		"anchor": true
+	},
+	"editorScript": "file:./index.js"
+}

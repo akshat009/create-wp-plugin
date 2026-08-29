@@ -69,6 +69,73 @@ class Custom_Email extends \WC_Email {
 	}
 
 	/**
+	 * Get default email subject.
+	 *
+	 * @return string
+	 */
+	public function get_default_subject() {
+		return __( '[{site_title}]: Custom order notification #{order_number}', '{{SLUG}}' );
+	}
+
+	/**
+	 * Get default email heading.
+	 *
+	 * @return string
+	 */
+	public function get_default_heading() {
+		return __( 'Custom Order Notification: #{order_number}', '{{SLUG}}' );
+	}
+
+	/**
+	 * Initialise Settings Form Fields.
+	 *
+	 * @return void
+	 */
+	public function init_form_fields() {
+		$this->form_fields = array(
+			'enabled'    => array(
+				'title'   => __( 'Enable/Disable', '{{SLUG}}' ),
+				'type'    => 'checkbox',
+				'label'   => __( 'Enable this email notification', '{{SLUG}}' ),
+				'default' => 'yes',
+			),
+			'subject'    => array(
+				'title'       => __( 'Subject', '{{SLUG}}' ),
+				'type'        => 'text',
+				'desc_tip'    => true,
+				'description' => sprintf(
+					/* translators: %s: default subject */
+					__( 'Available placeholders: {site_title}, {order_number}. Default: %s', '{{SLUG}}' ),
+					'<code>' . $this->get_default_subject() . '</code>'
+				),
+				'placeholder' => $this->get_default_subject(),
+				'default'     => '',
+			),
+			'heading'    => array(
+				'title'       => __( 'Email heading', '{{SLUG}}' ),
+				'type'        => 'text',
+				'desc_tip'    => true,
+				'description' => sprintf(
+					/* translators: %s: default heading */
+					__( 'Available placeholders: {site_title}, {order_number}. Default: %s', '{{SLUG}}' ),
+					'<code>' . $this->get_default_heading() . '</code>'
+				),
+				'placeholder' => $this->get_default_heading(),
+				'default'     => '',
+			),
+			'email_type' => array(
+				'title'       => __( 'Email type', '{{SLUG}}' ),
+				'type'        => 'select',
+				'description' => __( 'Choose which format of email to send.', '{{SLUG}}' ),
+				'default'     => 'html',
+				'class'       => 'email_type wc-enhanced-select',
+				'options'     => $this->get_email_type_options(),
+				'desc_tip'    => true,
+			),
+		);
+	}
+
+	/**
 	 * Get the HTML content of the email.
 	 *
 	 * @return string
@@ -83,7 +150,7 @@ class Custom_Email extends \WC_Email {
 				'plain_text'    => false,
 				'email'         => $this,
 			),
-			'',
+			'woocommerce/',
 			$this->template_base
 		);
 	}
@@ -103,7 +170,7 @@ class Custom_Email extends \WC_Email {
 				'plain_text'    => true,
 				'email'         => $this,
 			),
-			'',
+			'woocommerce/',
 			$this->template_base
 		);
 	}

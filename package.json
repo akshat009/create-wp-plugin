@@ -4,11 +4,12 @@
   "description": "Interactive scaffold generator for modern WordPress plugins — SOLID/DI architecture (Container + Service Providers), PSR-4, selectable WPCS/VIP standards, PHPUnit unit + integration tests, Jest, Playwright, WP-CLI, WooCommerce, Interactivity API, and CI out of the box",
   "main": "index.js",
   "bin": {
-    "create-wp-plugin-cli": "index.js"
+    "create-wp-plugin-cli": "index.js",
+    "create-wp-plugin": "index.js"
   },
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "files": [
     "index.js",
@@ -16,7 +17,8 @@
   ],
   "scripts": {
     "start": "node index.js",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "verify": "node scripts/verify.js"
   },
   "keywords": [
     "wordpress",

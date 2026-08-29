@@ -5,23 +5,52 @@
 	<file>./{{SLUG}}.php</file>
 	<file>./src</file>
 	<file>./tests</file>
+{{#if has_uninstall}}
 	<file>./uninstall.php</file>
+{{/if}}
 
 	<exclude-pattern>/vendor/</exclude-pattern>
 	<exclude-pattern>/node_modules/</exclude-pattern>
 	<exclude-pattern>/assets/build/</exclude-pattern>
+	<!--
+	./templates/ (WooCommerce email + My Account overrides) is deliberately
+	not sniffed: those files run in WooCommerce's own context, call core WC
+	hooks like woocommerce_email_header, and echo values WooCommerce escapes
+	upstream — WPCS can only flag false positives there, and the directory
+	doesn't exist at all unless a woo:email / woo:my-account module is picked.
+	-->
+	<exclude-pattern>*/templates/*</exclude-pattern>
 
 	<arg value="sp"/>
 	<arg name="colors"/>
 	<arg name="extensions" value="php"/>
 
-{{PHPCS_RULESETS}}	<rule ref="PHPCompatibilityWP"/>
+{{#if lint_wp_org}}
+	<rule ref="WordPress-Extra">
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>
+		<exclude name="Generic.Formatting.MultipleStatementAlignment"/>
+	</rule>
+	<rule ref="WordPress-Docs"/>
+{{/if}}
+{{#if lint_vip}}
+	<rule ref="WordPress-VIP-Go">
+		<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>
+	</rule>
+{{/if}}
+	<rule ref="PHPCompatibilityWP"/>
 
 	<config name="minimum_supported_wp_version" value="{{REQUIRES_AT_LEAST}}"/>
 	<config name="testVersion" value="{{MIN_PHP}}-"/>
 
 	<rule ref="Squiz.Commenting.FileComment">
 		<exclude-pattern>/tests/</exclude-pattern>
+		<exclude name="Squiz.Commenting.FileComment.MissingSubpackageTag"/>
+		<exclude name="Squiz.Commenting.FileComment.MissingAuthorTag"/>
+		<exclude name="Squiz.Commenting.FileComment.MissingCopyrightTag"/>
+		<exclude name="Squiz.Commenting.FileComment.SubpackageTagOrder"/>
+		<exclude name="Squiz.Commenting.FileComment.AuthorTagOrder"/>
 	</rule>
 	<rule ref="Squiz.Commenting.ClassComment">
 		<exclude-pattern>/tests/</exclude-pattern>
@@ -35,7 +64,7 @@
 				<element value="{{PREFIX}}_"/>
 				<element value="{{PREFIX_UPPER}}"/>
 				<element value="{{PREFIX_UPPER}}_"/>
-				<element value="{{NS}}"/>
+				<element value="{{NS_ROOT}}"/>
 			</property>
 		</properties>
 	</rule>

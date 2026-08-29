@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "{{SLUG}}/example",
+	"version": "{{VERSION}}",
+	"title": "{{PLUGIN_NAME}} Example",
+	"category": "widgets",
+	"icon": "star-filled",
+	"description": "Starter block for {{PLUGIN_NAME}}: edit the text in the editor, markup is rendered server-side.",
+	"keywords": [ "{{SLUG}}" ],
+	"textdomain": "{{SLUG}}",
+	"attributes": {
+		"content": {
+			"type": "string",
+			"default": ""
+		}
+	},
+	"supports": {
+		"html": false,
+		"anchor": true
+	},
+	"editorScript": "file:./index.js",
+	"render": "file:./render.php"
+}

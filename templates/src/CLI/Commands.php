@@ -16,10 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
-	return;
-}
-
 /**
  * WP-CLI Commands for {{PLUGIN_NAME}}.
  */
@@ -41,6 +37,13 @@ class Commands implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+		// Guard here rather than with a top-level `return` in this file — that
+		// would stop the class from ever being declared and break PSR-4
+		// autoloading (and unit tests) outside a WP-CLI context.
+		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
+			return;
+		}
+
 		\WP_CLI::add_command( '{{PREFIX}} status', array( $this, 'status' ) );
 		\WP_CLI::add_command( '{{PREFIX}} cache clear', array( $this, 'cache_clear' ) );
 	}
@@ -75,11 +78,27 @@ class Commands implements Service_Provider {
 	 * @return void
 	 */
 	public function cache_clear( $args = array(), $assoc_args = array() ) { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
+		// Flush the plugin's own object-cache group (only does anything on
+		// installs with a persistent object cache such as Redis/Memcached).
 		if ( function_exists( 'wp_cache_flush_group' ) ) {
 			wp_cache_flush_group( '{{PREFIX}}' );
-		} else {
-			delete_transient( '{{PREFIX}}_elementor_widgets' );
 		}
+
+		/**
+		 * Transient keys this plugin owns. Any module that caches in a
+		 * transient adds its key here (via add_filter in its boot()) so this
+		 * command can purge it without the CLI module having to know another
+		 * module's internals. Runs unconditionally — database transients on a
+		 * plain MySQL install are not covered by wp_cache_flush_group().
+		 *
+		 * @param string[] $keys Transient key names.
+		 */
+		$keys = (array) apply_filters( '{{PREFIX}}_cache_keys', array() );
+
+		foreach ( array_unique( array_filter( array_map( 'strval', $keys ) ) ) as $key ) {
+			delete_transient( $key );
+		}
+
 		\WP_CLI::success( __( 'Plugin cache cleared successfully.', '{{SLUG}}' ) );
 	}
 }
