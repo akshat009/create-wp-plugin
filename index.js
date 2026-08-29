@@ -451,6 +451,16 @@ async function main() {
 			process.exit(1);
 		}
 	} else {
+		// Interactive prompts read stdin — in a pipe/CI without a TTY they'd
+		// block forever waiting for input that never comes. Fail fast instead.
+		if (!process.stdin.isTTY) {
+			console.error('❌ No interactive terminal detected (stdin is not a TTY).');
+			console.error('   Re-run non-interactively with --yes plus at least --name and --out, e.g.:');
+			console.error('   npx create-wp-plugin-cli --yes --name "My Plugin" --out ./my-plugin');
+			console.error('   See --help for all flags.');
+			process.exit(1);
+		}
+
 		console.log('\n🚀 Welcome to create-wp-plugin-cli scaffold generator!\n');
 
 		const initialModules = flags.modules !== undefined ? parseModules(flags.modules) : [];
