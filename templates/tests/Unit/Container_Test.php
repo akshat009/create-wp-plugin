@@ -22,7 +22,7 @@ use {{NS}}\Core\Exceptions\Not_Found_Exception;
 class Container_Test extends TestCase {
 
 	/**
-	 * bind() re-runs its factory on every get().
+	 * A bound factory re-runs on every get().
 	 */
 	public function test_bind_resolves_fresh_each_call(): void {
 		$container = new Container();
@@ -44,7 +44,7 @@ class Container_Test extends TestCase {
 	}
 
 	/**
-	 * singleton() runs its factory once and caches the result.
+	 * A singleton factory runs once and caches the result.
 	 */
 	public function test_singleton_resolves_once(): void {
 		$container = new Container();
@@ -85,7 +85,7 @@ class Container_Test extends TestCase {
 	}
 
 	/**
-	 * instance() returns exactly the object it was given.
+	 * An instance is returned exactly as it was given.
 	 */
 	public function test_instance_returns_the_same_object(): void {
 		$container = new Container();
@@ -128,7 +128,7 @@ class Container_Test extends TestCase {
 	}
 
 	/**
-	 * get() on an unknown id throws Not_Found_Exception; has() reports false.
+	 * An unknown id throws Not_Found_Exception from get(); has() reports false.
 	 */
 	public function test_unknown_id_throws_and_is_absent(): void {
 		$container = new Container();

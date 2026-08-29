@@ -56,9 +56,9 @@ class Interactivity implements Service_Provider {
 	/**
 	 * Register the view Script Module.
 	 *
-	 * assets/js/view.js is hand-written ESM served as-is: WordPress emits an
-	 * import map so `import … from '@wordpress/interactivity'` resolves to
-	 * core's module. No build step, no bundler.
+	 * The assets/js/view.js file is hand-written ESM served as-is: WordPress
+	 * emits an import map so `import … from '@wordpress/interactivity'` resolves
+	 * to core's module. No build step, no bundler.
 	 *
 	 * @return void
 	 */

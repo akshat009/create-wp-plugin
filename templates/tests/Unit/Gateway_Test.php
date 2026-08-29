@@ -54,7 +54,7 @@ class Gateway_Test extends TestCase {
 	public function test_process_payment_fails_closed(): void {
 		Functions\stubs(
 			array(
-				'__'           => fn( $msg ) => $msg,
+				'__'            => fn( $msg ) => $msg,
 				'wc_add_notice' => null,
 			)
 		);
