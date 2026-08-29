@@ -839,7 +839,7 @@ test('0.8 the WP integration suite is an integration_tests module, not baseline'
 	fs.rmSync(on, { recursive: true, force: true });
 });
 
-test('pure-PHP scaffold (no React/Interactivity/WooCommerce) gets no package.json, Jest, or Playwright', () => {
+test('pure-PHP scaffold gets a packaging-only package.json — no build pipeline, Jest, or Playwright', () => {
 	const outDir = path.join(__dirname, '../tmp-test-no-js-pipeline');
 	runGenerator({
 		name: 'No Js Pipeline Plugin',
@@ -852,7 +852,20 @@ test('pure-PHP scaffold (no React/Interactivity/WooCommerce) gets no package.jso
 		out: outDir
 	});
 
-	assert.ok(!fs.existsSync(path.join(outDir, 'package.json')));
+	// B6.14: package.json always ships for `npm run plugin-zip` + JS/CSS lint...
+	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
+	assert.equal(pkg.private, true);
+	assert.equal(pkg.scripts['plugin-zip'], 'wp-scripts plugin-zip');
+	assert.ok(pkg.scripts['lint:js'] && pkg.scripts['lint:style']);
+	assert.ok(Array.isArray(pkg.files) && pkg.files.includes('vendor') && pkg.files.includes('assets/src'), 'B6.14a: vendor/ and assets/src/ ship in the zip');
+	// ...but nothing build-pipeline-ish.
+	assert.equal(pkg.scripts.build, undefined);
+	assert.equal(pkg.scripts.start, undefined);
+	assert.equal(pkg.scripts['test:js'], undefined);
+	assert.equal(pkg.scripts['test:e2e'], undefined);
+	assert.equal(pkg.main, undefined);
+	assert.ok(!fs.existsSync(path.join(outDir, '.distignore')), 'B6.14: .distignore is gone; files[] is the source of truth');
+	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'playwright.config.js')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'jest.config.js')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'tests/e2e')));
@@ -1188,7 +1201,7 @@ test('module selection scaffolds corresponding PHP & JS unit tests and .wp-env.j
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('WooCommerce granular sub-modules: pure-PHP (e.g. woo:shipping + woo:email) emits no package.json or webpack config', () => {
+test('WooCommerce granular sub-modules: pure-PHP (e.g. woo:shipping + woo:email) emits no webpack/build pipeline', () => {
 	const outDir = path.join(__dirname, '../tmp-test-woo-pure-php');
 	runGenerator({
 		name: 'Woo Pure PHP Plugin',
@@ -1206,7 +1219,9 @@ test('WooCommerce granular sub-modules: pure-PHP (e.g. woo:shipping + woo:email)
 	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Shipping_Method_Test.php')));
 	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Custom_Email_Test.php')));
 
-	assert.ok(!fs.existsSync(path.join(outDir, 'package.json')), 'pure-PHP WooCommerce must not emit package.json');
+	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
+	assert.equal(pkg.scripts.build, undefined, 'pure-PHP WooCommerce gets no build script');
+	assert.equal(pkg.scripts['plugin-zip'], 'wp-scripts plugin-zip', 'but still the packaging script');
 	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')), 'pure-PHP WooCommerce must not emit webpack.config.js');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Woo/Gateways/Gateway.php')), 'unselected sub-module should not exist');
 

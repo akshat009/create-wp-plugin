@@ -52,3 +52,23 @@ Concrete widget classes placed in `src/Widgets/` are automatically discovered:
 - `npm run test:js` — Run Jest unit tests for the JS admin app.
 {{/if}}
 {{/if}}
+- `npm run lint:js` / `npm run lint:style` — Lint JS and stylesheets with `@wordpress/scripts`.
+
+## Releasing
+
+Build a distributable zip with `@wordpress/scripts`. The order matters — the
+production autoloader and built assets have to exist *before* the archive is
+created:
+
+```sh
+{{#if needs_build_pipeline}}
+npm install && npm run build
+{{/if}}
+composer install --no-dev --optimize-autoloader
+npm run plugin-zip
+```
+
+`plugin-zip` archives exactly the paths in package.json's `files` field
+(`vendor/` and `assets/src/` included, per WordPress.org guidelines) into
+`{{SLUG}}.zip`. There is no `.distignore` — `files` is the single source of
+truth. Re-run `composer install` afterwards to restore your dev dependencies.

@@ -1,0 +1,36 @@
+{
+	"name": "{{SLUG}}",
+	"version": "{{VERSION}}",
+	"description": "{{DESCRIPTION}}",
+	"author": "{{AUTHOR}}",
+	"license": "GPL-2.0-or-later",
+	"private": true,
+	"engines": {
+		"node": ">=20"
+	},
+	"files": [
+		"{{SLUG}}.php",
+		"uninstall.php",
+		"readme.txt",
+		"LICENSE",
+		"composer.json",
+		"src",
+		"vendor",
+		"languages",
+		"templates",
+		"assets/build",
+		"assets/css",
+		"assets/js",
+		"assets/src"
+	],
+	"scripts": {
+		"plugin-zip": "wp-scripts plugin-zip",
+		"lint:js": "wp-scripts lint-js",
+		"lint:style": "wp-scripts lint-style"{{#if needs_build_pipeline}},
+		"build": "wp-scripts build --webpack-src-dir=assets/src --output-path=assets/build",
+		"start": "wp-scripts start --webpack-src-dir=assets/src --output-path=assets/build"{{/if}}{{PACKAGE_EXTRA_SCRIPTS}}
+	},
+	"devDependencies": {
+		"@wordpress/scripts": "^30.0.0"{{PACKAGE_EXTRA_DEV_DEPENDENCIES}}
+	}
+}

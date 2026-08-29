@@ -851,7 +851,12 @@ function scaffoldInto(answers, targetDir) {
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
 		'{{WOOCOMMERCE_HPOS}}': woocommerceHpos,
-		'{{COMPOSER_EXTRA_REQUIRE_DEV}}': composerExtraRequireDev
+		'{{COMPOSER_EXTRA_REQUIRE_DEV}}': composerExtraRequireDev,
+		// Overridden below when a JS build pipeline is present; empty otherwise
+		// so the always-scaffolded package.json (packaging + JS/CSS lint) is
+		// still valid JSON for a pure-PHP plugin.
+		'{{PACKAGE_EXTRA_SCRIPTS}}': '',
+		'{{PACKAGE_EXTRA_DEV_DEPENDENCIES}}': ''
 	};
 
 	function processTemplateContent(content, destRelativePath = '') {
@@ -913,7 +918,6 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
-	writeTemplateFile(path.join(templatesDir, 'distignore.tpl'), '.distignore');
 	writeTemplateFile(path.join(templatesDir, 'LICENSE'), 'LICENSE');
 	writeTemplateFile(path.join(templatesDir, 'readme.txt'), 'readme.txt');
 	writeTemplateFile(path.join(templatesDir, 'languages/.gitkeep'), 'languages/.gitkeep');
@@ -1100,8 +1104,8 @@ function scaffoldInto(answers, targetDir) {
 	}
 
 	if (needsBuildPipeline) {
-		// Playwright E2E ships whenever there's already a Node/JS pipeline (a pure-PHP
-		// scaffold gets no package.json at all, so there'd be nowhere to hang it).
+		// Playwright E2E + the build/start scripts layer on top of the base
+		// package.json (which every scaffold now gets for packaging + lint).
 		const packageExtraScriptsEntries = ['"test:e2e": "playwright test"'];
 		const packageExtraDevDependenciesEntries = [
 			'"@playwright/test": "^1.47.0"',
@@ -1118,7 +1122,6 @@ function scaffoldInto(answers, targetDir) {
 		replacements['{{PACKAGE_EXTRA_SCRIPTS}}'] = packageExtraScripts;
 		replacements['{{PACKAGE_EXTRA_DEV_DEPENDENCIES}}'] = packageExtraDevDependencies;
 
-		writeTemplateFile(path.join(templatesDir, 'react/package.json'), 'package.json');
 		writeTemplateFile(path.join(templatesDir, 'playwright.config.js'), 'playwright.config.js');
 		writeTemplateFile(path.join(templatesDir, 'tests/e2e/homepage.spec.js'), 'tests/e2e/homepage.spec.js');
 		if (selectedModules.includes('admin_settings')) {
@@ -1204,6 +1207,11 @@ ${entries.join('\n')}
       - name: Install Node Dependencies
         run: npm install
 
+      - name: Lint JS & Styles
+        run: |
+          npm run lint:js
+          npm run lint:style
+
       - name: Build Assets
         run: npm run build` + (hasJsTests ? `
 
@@ -1218,7 +1226,38 @@ ${entries.join('\n')}
 
       - name: Run E2E Tests
         run: npm run test:e2e`;
+	} else if (selectedModules.includes('elementor_widget') || selectedModules.includes('ajax_handler')) {
+		// No build pipeline, but there are hand-written JS/CSS assets (the
+		// sample widget, the AJAX front-end script) — still lint them in CI.
+		ciNodeJob = `
+  lint-assets:
+    name: Lint JS & Styles
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Node Dependencies
+        run: npm install
+
+      - name: Lint JS & Styles
+        run: |
+          npm run lint:js
+          npm run lint:style`;
 	}
+
+	// Every scaffold gets a package.json: it's the distribution pipeline
+	// (`npm run plugin-zip`, backed by the `files` whitelist) and the JS/CSS
+	// linters (`lint:js` / `lint:style`), independent of whether there's a
+	// build pipeline. `.distignore` is deliberately not generated — the
+	// `files` field is the single source of truth for what ships.
+	writeTemplateFile(path.join(templatesDir, 'package.json'), 'package.json');
 
 
 	// Process Plugin.php template with dynamic registrations. The React
