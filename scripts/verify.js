@@ -79,7 +79,7 @@ const fixtures = [
 	},
 	{
 		name: 'full',
-		args: ['--name', 'Fixture Alpha', '--prefix', 'fxaa', '--namespace', 'FixtureAlpha', '--modules', 'admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,woocommerce_hooks,interactivity,cli,editor_config,integration_tests', '--react'],
+		args: ['--name', 'Fixture Alpha', '--prefix', 'fxaa', '--namespace', 'FixtureAlpha', '--modules', 'admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,woocommerce_hooks,interactivity,cli,editor_config,integration_tests', '--react'],
 	},
 ];
 

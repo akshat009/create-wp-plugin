@@ -609,6 +609,77 @@ test('React admin app + Frontend Interactivity together: webpack.config.js decla
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
+test('block module: native block.json + edit + server render, wired via Block_Registrar, WP requirement 6.3', () => {
+	const outDir = path.join(__dirname, '../tmp-test-block');
+	runGenerator({
+		name: 'Block Plugin', slug: 'block-plugin', prefix: 'blkp', namespace: 'BlockPlugin',
+		minPhp: '8.0', modules: ['block'], useReact: false, out: outDir
+	});
+
+	for (const f of [
+		'src/Blocks/Block_Registrar.php',
+		'assets/src/blocks/example/block.json',
+		'assets/src/blocks/example/index.js',
+		'assets/src/blocks/example/edit.js',
+		'assets/src/blocks/example/render.php',
+		'assets/src/blocks/example-static/block.json',
+		'assets/src/blocks/example-static/index.js',
+		'assets/src/blocks/example-static/edit.js',
+		'assets/src/blocks/example-static/save.js',
+		'tests/Unit/Block_Registrar_Test.php',
+		'tests/js/block.test.js',
+		'tests/js/block-static.test.js',
+	]) {
+		assert.ok(fs.existsSync(path.join(outDir, f)), `expected ${f}`);
+	}
+	assert.ok(!fs.existsSync(path.join(outDir, 'assets/src/blocks/example-static/render.php')), 'static block has no render.php');
+
+	const dynJson = JSON.parse(fs.readFileSync(path.join(outDir, 'assets/src/blocks/example/block.json'), 'utf8'));
+	assert.equal(dynJson.name, 'block-plugin/example', 'block name uses the slug, not the function prefix');
+	assert.equal(dynJson.apiVersion, 3);
+	assert.equal(dynJson.render, 'file:./render.php', 'dynamic block, server-rendered');
+
+	const staticJson = JSON.parse(fs.readFileSync(path.join(outDir, 'assets/src/blocks/example-static/block.json'), 'utf8'));
+	assert.equal(staticJson.name, 'block-plugin/example-static');
+	assert.equal(staticJson.render, undefined, 'static block has no render field');
+	assert.ok(fs.readFileSync(path.join(outDir, 'assets/src/blocks/example-static/save.js'), 'utf8').includes('RichText.Content'), 'static save() serializes markup');
+
+	const registrar = fs.readFileSync(path.join(outDir, 'src/Blocks/Block_Registrar.php'), 'utf8');
+	assert.ok(registrar.includes('implements Service_Provider'));
+	assert.ok(registrar.includes("add_action( 'init', array( $this, 'register_blocks' ) )"));
+	assert.ok(registrar.includes("'assets/build/blocks/example'") && registrar.includes("'assets/build/blocks/example-static'"), 'registers both build dirs');
+	assert.ok(!/\{\{[A-Z_]+\}\}/.test(registrar), 'no unreplaced tokens');
+
+	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
+	assert.ok(pluginPhp.includes('new Blocks\\Block_Registrar();'));
+
+	// block flips the build pipeline on, but a block-only build needs no
+	// webpack.config.js override — wp-scripts finds block.json on its own.
+	assert.ok(fs.existsSync(path.join(outDir, 'package.json')));
+	assert.equal(JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8')).scripts.build, 'wp-scripts build --webpack-src-dir=assets/src --output-path=assets/build');
+	assert.ok(fs.existsSync(path.join(outDir, 'jest.config.js')), 'block pulls in the Jest setup');
+	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')), 'block alone needs no entry override');
+
+	const mainPhp = fs.readFileSync(path.join(outDir, 'block-plugin.php'), 'utf8');
+	assert.ok(mainPhp.includes('Requires at least: 6.3'));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('block + React together: webpack.config.js keeps the admin entry alongside the auto-built block', () => {
+	const outDir = path.join(__dirname, '../tmp-test-block-react');
+	runGenerator({
+		name: 'Block React', slug: 'block-react', prefix: 'blkr', namespace: 'BlockReact',
+		minPhp: '8.0', modules: ['block'], useReact: true, out: outDir
+	});
+
+	const webpackConfig = fs.readFileSync(path.join(outDir, 'webpack.config.js'), 'utf8');
+	assert.ok(webpackConfig.includes("index: './assets/src/index.js'"), 'admin entry re-declared so block-json mode does not drop it');
+	assert.ok(webpackConfig.includes('defaultConfig.entry()'), 'and merged with wp-scripts own block.json globbing');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
 test('WooCommerce module: gateway, shipping, email, product type, blocks payment method, and email templates all scaffold with no leftover tokens', () => {
 	const outDir = path.join(__dirname, '../tmp-test-woo');
 	runGenerator({

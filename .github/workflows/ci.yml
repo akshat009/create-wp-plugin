@@ -86,7 +86,7 @@ jobs:
             --author "CI" \
             --email ci@example.com \
             --description "Self-consumption CI check" \
-            --modules "admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,woocommerce_hooks,interactivity" \
+            --modules "admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,woocommerce_hooks,interactivity,cli,editor_config,integration_tests" \
             --react \
             --out "$RUNNER_TEMP/generated-plugin"
 

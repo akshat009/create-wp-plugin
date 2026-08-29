@@ -67,6 +67,7 @@ export const MODULE_DEFINITIONS = [
 	{ title: 'caching layer (object cache + transient fallback)', value: 'caching' },
 	{ title: 'custom database table (dbDelta schema + migrations)', value: 'custom_table' },
 	{ title: 'Elementor widget base', value: 'elementor_widget' },
+	{ title: 'native Gutenberg block (block.json + edit + server render)', value: 'block' },
 	{ title: 'WooCommerce integration', value: 'woocommerce_hooks' },
 	{ title: 'Frontend Interactivity (WordPress Interactivity API)', value: 'interactivity' },
 	{ title: 'WP-CLI commands (wp <prefix> status / cache clear)', value: 'cli' },
@@ -404,7 +405,7 @@ Options:
   --description <string>   Plugin description
   --min-php <string>       Minimum PHP version
   --out <string>           Output directory
-  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
+  --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
   --react                  Include React admin app build pipeline (wp-admin only)
   --no-react               Do not include React admin app build pipeline
   --lint-target <string>   Coding standard(s) to lint against: wp-org (default), vip, or both
@@ -709,6 +710,7 @@ function scaffoldInto(answers, targetDir) {
 	const rawModules = answers.modules || [];
 	const selectedModules = normalizeModules(rawModules);
 	const hasInteractivity = selectedModules.includes('interactivity');
+	const hasBlock = selectedModules.includes('block');
 
 	const hasWooGateway = selectedModules.includes('woo:gateway');
 	const hasWooShipping = selectedModules.includes('woo:shipping');
@@ -738,7 +740,9 @@ function scaffoldInto(answers, targetDir) {
 
 	// The Interactivity API (wp_interactivity_state, Script Modules) requires WP 6.5+.
 	// The Cart Summary block's block.json "render" field requires WP 6.4+.
-	const requiredWpVersion = hasInteractivity ? '6.5' : (hasWooBlocks ? '6.4' : '6.0');
+	// Interactivity API + Script Modules need 6.5; WooCommerce Cart/Checkout
+	// block registration needs 6.4; block.json apiVersion 3 needs 6.3.
+	const requiredWpVersion = hasInteractivity ? '6.5' : hasWooBlocks ? '6.4' : hasBlock ? '6.3' : '6.0';
 
 	const lintTarget = ['wp-org', 'vip', 'both'].includes(answers.lintTarget) ? answers.lintTarget : 'wp-org';
 	const needsVip = lintTarget === 'vip' || lintTarget === 'both';
@@ -787,7 +791,8 @@ function scaffoldInto(answers, targetDir) {
 	const templateFlags = {
 		use_react: Boolean(answers.useReact),
 		interactivity: hasInteractivity,
-		needs_build_pipeline: Boolean(answers.useReact) || hasInteractivity || hasWooJs,
+		block: hasBlock,
+		needs_build_pipeline: Boolean(answers.useReact) || hasInteractivity || hasWooJs || hasBlock,
 		admin_settings: selectedModules.includes('admin_settings'),
 		elementor_widget: selectedModules.includes('elementor_widget'),
 		cli: selectedModules.includes('cli'),
@@ -813,6 +818,7 @@ function scaffoldInto(answers, targetDir) {
 	if (hasAnyWoo) readmeTagList.push('woocommerce');
 	if (selectedModules.includes('elementor_widget')) readmeTagList.push('elementor');
 	if (hasInteractivity) readmeTagList.push('interactivity api');
+	if (hasBlock) readmeTagList.push('block');
 	if (selectedModules.includes('cpt_taxonomy')) readmeTagList.push('custom post type');
 	if (selectedModules.includes('rest_api')) readmeTagList.push('rest api');
 	if (selectedModules.includes('custom_table')) readmeTagList.push('database');
@@ -1085,15 +1091,35 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/view.js'), 'assets/src/view.js');
 		providerRegistrations.push('\n\t\t$providers[] = new Frontend\\Interactivity();');
 	}
+	if (hasBlock) {
+		writeTemplateFile(path.join(templatesDir, 'src/Blocks/Block_Registrar.php'), 'src/Blocks/Block_Registrar.php');
+		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Block_Registrar_Test.php'), 'tests/Unit/Block_Registrar_Test.php');
+		// Two starters: a dynamic (server-rendered) block and a static
+		// (save()-serialized) block.
+		writeTemplateFile(path.join(templatesDir, 'blocks/example/block.json'), 'assets/src/blocks/example/block.json');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example/index.js'), 'assets/src/blocks/example/index.js');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example/edit.js'), 'assets/src/blocks/example/edit.js');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example/render.php'), 'assets/src/blocks/example/render.php');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/block.json'), 'assets/src/blocks/example-static/block.json');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/index.js'), 'assets/src/blocks/example-static/index.js');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/edit.js'), 'assets/src/blocks/example-static/edit.js');
+		writeTemplateFile(path.join(templatesDir, 'blocks/example-static/save.js'), 'assets/src/blocks/example-static/save.js');
+		providerRegistrations.push('\n\t\t$providers[] = new Blocks\\Block_Registrar();');
+	}
 
 	// React admin app (wp-admin only) + Interactivity API (frontend) + WooCommerce
 	// Blocks & Gateway build pipeline. These are independent toggles that share one
 	// @wordpress/scripts build:
 	// useReact       -> assets/src/index.js (wp-admin React app)
 	// interactivity  -> assets/src/view.js (frontend Interactivity API store)
+	// block          -> assets/src/blocks/example (native block.json, auto-built)
 	// woo:gateway    -> assets/src/wc-gateway-block.js (block checkout payment method)
 	// woo:blocks     -> assets/src/blocks-integration.js + assets/src/blocks/cart-summary
-	const needsBuildPipeline = answers.useReact || hasInteractivity || hasWooJs;
+	const needsBuildPipeline = answers.useReact || hasInteractivity || hasWooJs || hasBlock;
+
+	// The Jest unit-test setup (jest.config.js + preset + testing-library) ships
+	// with anything that has authored JS worth unit-testing.
+	const wantsJest = answers.useReact || hasInteractivity || hasBlock;
 
 	let ciNodeJob = '';
 
@@ -1111,7 +1137,7 @@ function scaffoldInto(answers, targetDir) {
 			'"@playwright/test": "^1.47.0"',
 			'"@wordpress/e2e-test-utils-playwright": "^1.13.0"'
 		];
-		if (answers.useReact || hasInteractivity) {
+		if (wantsJest) {
 			packageExtraScriptsEntries.push('"test:js": "wp-scripts test-unit-js"');
 			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^21.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
@@ -1127,7 +1153,7 @@ function scaffoldInto(answers, targetDir) {
 		if (selectedModules.includes('admin_settings')) {
 			writeTemplateFile(path.join(templatesDir, 'tests/e2e/settings-page.spec.js'), 'tests/e2e/settings-page.spec.js');
 		}
-		if (answers.useReact || hasInteractivity) {
+		if (wantsJest) {
 			writeTemplateFile(path.join(templatesDir, 'jest.config.js'), 'jest.config.js');
 		}
 		if (answers.useReact) {
@@ -1135,6 +1161,10 @@ function scaffoldInto(answers, targetDir) {
 		}
 		if (hasInteractivity) {
 			writeTemplateFile(path.join(templatesDir, 'tests/js/view.test.js'), 'tests/js/view.test.js');
+		}
+		if (hasBlock) {
+			writeTemplateFile(path.join(templatesDir, 'tests/js/block.test.js'), 'tests/js/block.test.js');
+			writeTemplateFile(path.join(templatesDir, 'tests/js/block-static.test.js'), 'tests/js/block-static.test.js');
 		}
 
 		// wp-scripts only auto-detects a single "src/index.js" entry (or, if any
@@ -1152,9 +1182,11 @@ function scaffoldInto(answers, targetDir) {
 		//
 		// A React-only build has a single `./assets/src/index.js` entry that
 		// wp-scripts auto-detects via the `--webpack-src-dir` build flag, so it
-		// needs no override. Everything else (the Interactivity view script, the
-		// WooCommerce gateway/blocks scripts, a native block.json) does.
-		if (hasInteractivity || hasWooJs) {
+		// needs no override. A block-only build is likewise fine — wp-scripts
+		// finds block.json on its own. But React *and* a block.json together
+		// tip wp-scripts into block-only mode and silently drop the admin
+		// entry, so that combination needs the override too.
+		if (hasInteractivity || hasWooJs || (hasBlock && answers.useReact)) {
 			const entries = [];
 			if (answers.useReact) entries.push('\t\tindex: \'./assets/src/index.js\',');
 			if (hasInteractivity) entries.push('\t\tview: \'./assets/src/view.js\',');
@@ -1189,7 +1221,7 @@ ${entries.join('\n')}
 			fs.writeFileSync(path.join(targetDir, 'webpack.config.js'), webpackConfig, 'utf8');
 		}
 
-		const hasJsTests = answers.useReact || hasInteractivity;
+		const hasJsTests = wantsJest;
 		ciNodeJob = `
   node-build:
     name: Build & Test JS Assets
