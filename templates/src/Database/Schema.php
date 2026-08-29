@@ -73,7 +73,7 @@ class Schema implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'plugins_loaded', $this->maybe_upgrade(...) );
+		add_action( 'plugins_loaded', $this->maybe_upgrade( ... ) );
 	}
 
 	/**

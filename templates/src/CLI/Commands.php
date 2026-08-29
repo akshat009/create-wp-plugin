@@ -44,8 +44,8 @@ class Commands implements Service_Provider {
 			return;
 		}
 
-		\WP_CLI::add_command( '{{PREFIX}} status', $this->status(...) );
-		\WP_CLI::add_command( '{{PREFIX}} cache clear', $this->cache_clear(...) );
+		\WP_CLI::add_command( '{{PREFIX}} status', $this->status( ... ) );
+		\WP_CLI::add_command( '{{PREFIX}} cache clear', $this->cache_clear( ... ) );
 	}
 
 	/**

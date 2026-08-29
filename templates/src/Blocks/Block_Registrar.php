@@ -52,7 +52,7 @@ class Block_Registrar implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'init', $this->register_blocks(...) );
+		add_action( 'init', $this->register_blocks( ... ) );
 	}
 
 	/**

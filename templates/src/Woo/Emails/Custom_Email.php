@@ -36,7 +36,7 @@ class Custom_Email extends \WC_Email {
 			'{order_number}' => '',
 		);
 
-		add_action( 'woocommerce_order_status_completed', $this->trigger(...) );
+		add_action( 'woocommerce_order_status_completed', $this->trigger( ... ) );
 
 		parent::__construct();
 	}

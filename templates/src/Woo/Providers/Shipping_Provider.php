@@ -48,7 +48,7 @@ class Shipping_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_filter( 'woocommerce_shipping_methods', $this->register_shipping_method(...) );
+		add_filter( 'woocommerce_shipping_methods', $this->register_shipping_method( ... ) );
 	}
 
 	/**

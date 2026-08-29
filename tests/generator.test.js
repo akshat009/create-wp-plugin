@@ -227,7 +227,7 @@ test('every scaffold pins PHP 8.3 and emits modern PHP (promotion, readonly, fir
 	assert.match(container, /public function get\( string \$id \): mixed \{/, '`: mixed` is unconditional');
 
 	const settings = fs.readFileSync(path.join(outDir, 'src/Admin/Settings_Registrar.php'), 'utf8');
-	assert.match(settings, /add_action\( '[^']+', \$this->[a-z_]+\(\.\.\.\) \)/, 'first-class callable hook');
+	assert.match(settings, /add_action\( '[^']+', \$this->[a-z_]+\( \.\.\. \) \)/, 'first-class callable hook');
 	assert.doesNotMatch(settings, /array\( \$this, '/, 'no array-style callbacks');
 
 	const storeApiProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Store_Api_Provider.php'), 'utf8');
@@ -664,7 +664,7 @@ test('block module: native block.json + edit + server render, wired via Block_Re
 
 	const registrar = fs.readFileSync(path.join(outDir, 'src/Blocks/Block_Registrar.php'), 'utf8');
 	assert.ok(registrar.includes('implements Service_Provider'));
-	assert.ok(registrar.includes("add_action( 'init', $this->register_blocks(...) )"));
+	assert.ok(registrar.includes("add_action( 'init', $this->register_blocks( ... ) )"));
 	assert.ok(registrar.includes("glob( $build_dir . '/*', GLOB_ONLYDIR )"), 'discovers every built block dir, so new blocks need no PHP change');
 	assert.ok(registrar.includes('register_block_type( $block_dir )'));
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(registrar), 'no unreplaced tokens');
@@ -848,7 +848,7 @@ test('WooCommerce Cart block: native cart-summary block + Blocks Integration sca
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(integration));
 
 	const blocksProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Blocks_Provider.php'), 'utf8');
-	assert.ok(blocksProvider.includes('Cart_Summary_Block::register(...)'));
+	assert.ok(blocksProvider.includes('Cart_Summary_Block::register( ... )'));
 	assert.ok(blocksProvider.includes('woocommerce_blocks_cart_block_registration'));
 	assert.ok(blocksProvider.includes('woocommerce_blocks_checkout_block_registration'));
 

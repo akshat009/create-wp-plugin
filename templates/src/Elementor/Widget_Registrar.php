@@ -41,10 +41,10 @@ class Widget_Registrar implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_filter( '{{PREFIX}}_cache_keys', $this->register_cache_keys(...) );
-		add_action( 'wp_enqueue_scripts', $this->register_widget_assets(...) );
-		add_action( 'elementor/editor/after_enqueue_styles', $this->register_widget_assets(...) );
-		add_action( 'elementor/widgets/register', $this->register_widgets(...) );
+		add_filter( '{{PREFIX}}_cache_keys', $this->register_cache_keys( ... ) );
+		add_action( 'wp_enqueue_scripts', $this->register_widget_assets( ... ) );
+		add_action( 'elementor/editor/after_enqueue_styles', $this->register_widget_assets( ... ) );
+		add_action( 'elementor/widgets/register', $this->register_widgets( ... ) );
 	}
 
 	/**

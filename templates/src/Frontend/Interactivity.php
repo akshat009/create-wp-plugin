@@ -49,8 +49,8 @@ class Interactivity implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'init', $this->register_script_module(...) );
-		add_shortcode( '{{PREFIX}}_interactivity_demo', $this->render_demo(...) );
+		add_action( 'init', $this->register_script_module( ... ) );
+		add_shortcode( '{{PREFIX}}_interactivity_demo', $this->render_demo( ... ) );
 	}
 
 	/**

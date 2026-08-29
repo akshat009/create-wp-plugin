@@ -48,9 +48,9 @@ class Product_Type_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_filter( 'woocommerce_product_class', Custom_Product::filter_product_class(...), 10, 2 );
-		add_filter( 'product_type_selector', Custom_Product::filter_product_type_selector(...) );
-		add_action( 'woocommerce_single_product_summary', $this->custom_product_summary_note(...), 25 );
+		add_filter( 'woocommerce_product_class', Custom_Product::filter_product_class( ... ), 10, 2 );
+		add_filter( 'product_type_selector', Custom_Product::filter_product_type_selector( ... ) );
+		add_action( 'woocommerce_single_product_summary', $this->custom_product_summary_note( ... ), 25 );
 	}
 
 	/**

@@ -48,7 +48,7 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'rest_api_init', $this->register_routes(...) );
+		add_action( 'rest_api_init', $this->register_routes( ... ) );
 	}
 
 	/**
@@ -62,8 +62,8 @@ class Rest_Controller extends \WP_REST_Controller implements Service_Provider {
 			'/' . $this->rest_base,
 			array(
 				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => $this->get_items(...),
-				'permission_callback' => $this->get_items_permissions_check(...),
+				'callback'            => $this->get_items( ... ),
+				'permission_callback' => $this->get_items_permissions_check( ... ),
 				'args'                => array(
 					'param' => array(
 						'required'          => false,

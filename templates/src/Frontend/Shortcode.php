@@ -37,7 +37,7 @@ class Shortcode implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_shortcode( '{{PREFIX}}_display', $this->render_shortcode(...) );
+		add_shortcode( '{{PREFIX}}_display', $this->render_shortcode( ... ) );
 	}
 
 	/**
