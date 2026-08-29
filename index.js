@@ -879,6 +879,7 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'distignore.tpl'), '.distignore');
+	writeTemplateFile(path.join(templatesDir, 'LICENSE'), 'LICENSE');
 	writeTemplateFile(path.join(templatesDir, 'readme.txt'), 'readme.txt');
 	writeTemplateFile(path.join(templatesDir, 'languages/.gitkeep'), 'languages/.gitkeep');
 

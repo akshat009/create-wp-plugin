@@ -454,6 +454,11 @@ test('foundational contracts and container are always scaffolded with no leftove
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Core/Uninstaller.php')), 'no Uninstaller without a module that persists cleanup-worthy state (0.7)');
 	assert.ok(!fs.existsSync(path.join(outDir, 'uninstall.php')), 'no uninstall.php in a zero-module scaffold (0.7)');
 
+	// B6.4: a GPL-2.0-or-later LICENSE file always ships (composer.json declares it).
+	const license = fs.readFileSync(path.join(outDir, 'LICENSE'), 'utf8');
+	assert.ok(license.includes('GNU GENERAL PUBLIC LICENSE'));
+	assert.ok(license.includes('Version 2, June 1991'));
+
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
