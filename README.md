@@ -10,17 +10,18 @@ suite, …) that stay freely combinable.
 
 ## Usage
 
-### Quick start via npx
+Run it without installing — pick whichever you prefer:
 
 ```bash
-npx create-wp-plugin-cli
+npm create wp-plugin-cli                      # npm's create-* shorthand
+npx create-wp-plugin-cli                      # same thing via npx
+npx github:akshat009/create-wp-plugin-cli     # latest main, straight from GitHub
 ```
 
 > Published on npm as [`create-wp-plugin-cli`](https://www.npmjs.com/package/create-wp-plugin-cli)
-> (the `create-wp-plugin` name was taken). Run the latest `main` straight from
-> GitHub with `npx github:akshat009/create-wp-plugin-cli`.
+> — the shorter `create-wp-plugin` name was already taken.
 
-### Local
+### From a clone
 
 ```bash
 node index.js
@@ -29,7 +30,7 @@ node index.js
 ### Non-interactive
 
 ```bash
-node index.js --yes --name "My Plugin" --prefix myp --namespace MyPlugin \
+npx create-wp-plugin-cli --yes --name "My Plugin" --prefix myp --namespace MyPlugin \
   --modules "admin_settings,rest_api,block:dynamic" --out ./my-plugin
 ```
 
