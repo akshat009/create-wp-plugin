@@ -797,6 +797,35 @@ function scaffoldInto(answers, targetDir) {
 		lint_vip: needsVip
 	};
 
+	// readme.txt "Contributors" are WordPress.org user logins — lowercase
+	// alphanumeric, no spaces — not a display name (a name with spaces/caps is
+	// an automatic review rejection). Best-effort from the author name.
+	const contributorSlug = (answers.authorName || '')
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, '')
+		.slice(0, 60) || 'yourusername';
+
+	// readme.txt "Tags": WordPress.org review rejects generic terms
+	// ("wordpress", "plugin") and only counts the first 5. Derive something
+	// specific from the selected modules; fall back to distinctive words from
+	// the plugin name.
+	const readmeTagList = [];
+	if (hasAnyWoo) readmeTagList.push('woocommerce');
+	if (selectedModules.includes('elementor_widget')) readmeTagList.push('elementor');
+	if (hasInteractivity) readmeTagList.push('interactivity api');
+	if (selectedModules.includes('cpt_taxonomy')) readmeTagList.push('custom post type');
+	if (selectedModules.includes('rest_api')) readmeTagList.push('rest api');
+	if (selectedModules.includes('custom_table')) readmeTagList.push('database');
+	if (selectedModules.includes('cron')) readmeTagList.push('cron');
+	if (selectedModules.includes('admin_settings')) readmeTagList.push('settings');
+	if (readmeTagList.length === 0) {
+		const stop = new Set(['the', 'a', 'an', 'for', 'and', 'of', 'to', 'plugin', 'wordpress', 'wp']);
+		for (const word of answers.name.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)) {
+			if (!stop.has(word) && !readmeTagList.includes(word)) readmeTagList.push(word);
+		}
+	}
+	const readmeTags = readmeTagList.slice(0, 5).join(', ') || 'utility';
+
 	const replacements = {
 		'{{PLUGIN_NAME}}': answers.name,
 		'{{SLUG}}': answers.slug,
@@ -807,6 +836,8 @@ function scaffoldInto(answers, targetDir) {
 		'{{PREFIX_UPPER}}': answers.prefix.toUpperCase(),
 		'{{AUTHOR}}': answers.authorName,
 		'{{AUTHOR_EMAIL}}': answers.authorEmail || 'author@example.com',
+		'{{CONTRIBUTOR}}': contributorSlug,
+		'{{TAGS}}': readmeTags,
 		'{{COMPOSER_VENDOR}}': slugify(answers.authorName) || 'vendor',
 		'{{AUTHOR_URI}}': answers.authorUri,
 		'{{DESCRIPTION}}': answers.description,

@@ -1,6 +1,6 @@
 === {{PLUGIN_NAME}} ===
-Contributors: {{AUTHOR}}
-Tags: wordpress, plugin, scaffolding
+Contributors: {{CONTRIBUTOR}}
+Tags: {{TAGS}}
 Requires at least: {{REQUIRES_AT_LEAST}}
 Tested up to: {{TESTED_UP_TO}}
 Requires PHP: {{MIN_PHP}}
