@@ -88,6 +88,9 @@ test('Group 2 Validators', () => {
 });
 
 test('Group 3 $& pattern replacement bug fix regression test', () => {
+	const outDir = path.join(__dirname, '../tmp-test-dollar');
+	fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+
 	const mockAnswers = {
 		name: 'Price $10 & Specials $& $1 $\'',
 		slug: 'price-test',
@@ -100,7 +103,7 @@ test('Group 3 $& pattern replacement bug fix regression test', () => {
 		minPhp: '8.0',
 		modules: [],
 		useReact: false,
-		out: path.join(__dirname, '../tmp-test-dollar')
+		out: outDir
 	};
 
 	runGenerator(mockAnswers);
@@ -112,7 +115,7 @@ test('Group 3 $& pattern replacement bug fix regression test', () => {
 	assert.ok(content.includes('Price $10 & Specials $& $1'));
 	assert.ok(content.includes('Author $&'));
 
-	fs.rmSync(mockAnswers.out, { recursive: true, force: true });
+	fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 test('Non-interactive scaffolding for zero-module minimal variant', () => {
@@ -806,17 +809,18 @@ test('Playwright E2E ships alongside any JS pipeline (here: Interactivity only, 
 	assert.ok(fs.existsSync(path.join(outDir, 'playwright.config.js')));
 	assert.ok(fs.existsSync(path.join(outDir, 'tests/e2e/homepage.spec.js')));
 	assert.ok(!fs.existsSync(path.join(outDir, 'tests/e2e/settings-page.spec.js')), 'no admin_settings module selected');
-	assert.ok(!fs.existsSync(path.join(outDir, 'jest.config.js')), 'Jest only ships alongside the React admin app');
-	assert.ok(!fs.existsSync(path.join(outDir, 'tests/js')));
+	assert.ok(fs.existsSync(path.join(outDir, 'jest.config.js')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/js/view.test.js')));
 
 	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
 	assert.equal(pkg.scripts['test:e2e'], 'playwright test');
 	assert.ok(pkg.devDependencies['@playwright/test']);
 	assert.ok(pkg.devDependencies['@wordpress/e2e-test-utils-playwright']);
-	assert.ok(!pkg.scripts['test:js']);
+	assert.equal(pkg.scripts['test:js'], 'wp-scripts test-unit-js');
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
+
 
 test('Jest unit tests + admin_settings-aware E2E spec ship with React admin app', () => {
 	const outDir = path.join(__dirname, '../tmp-test-jest-react');
@@ -953,3 +957,158 @@ test('quotes and apostrophes in plugin name and description are safely escaped i
 
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
+
+test('module selection scaffolds corresponding PHP & JS unit tests and .wp-env.json (0.1, 0.2, 0.3, 0.17)', () => {
+	const outDir = path.join(__dirname, '../tmp-test-module-unit-tests');
+	runGenerator({
+		name: 'All Modules Plugin',
+		slug: 'all-modules-plugin',
+		prefix: 'amp',
+		namespace: 'AllModulesPlugin',
+		authorName: 'Test Author',
+		minPhp: '8.0',
+		modules: ['cpt_taxonomy', 'custom_table', 'admin_settings', 'rest_api', 'ajax_handler', 'caching', 'elementor_widget', 'shortcode', 'cron', 'woocommerce_hooks', 'interactivity'],
+		useReact: true,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, '.wp-env.json')), '.wp-env.json must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Post_Types_Test.php')), 'Post_Types_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Item_Repository_Test.php')), 'Item_Repository_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Schema_Test.php')), 'Schema_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Settings_Repository_Test.php')), 'Settings_Repository_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Rest_Controller_Test.php')), 'Rest_Controller_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Ajax_Handler_Test.php')), 'Ajax_Handler_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Cache_Service_Test.php')), 'Cache_Service_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Widget_Registrar_Test.php')), 'Widget_Registrar_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Shortcode_Test.php')), 'Shortcode_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Scheduler_Test.php')), 'Scheduler_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Gateway_Test.php')), 'Gateway_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Shipping_Method_Test.php')), 'Shipping_Method_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Custom_Email_Test.php')), 'Custom_Email_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Custom_Product_Test.php')), 'Custom_Product_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Cart_Summary_Block_Test.php')), 'Cart_Summary_Block_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Order_Status_Service_Test.php')), 'Order_Status_Service_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Action_Scheduler_Service_Test.php')), 'Action_Scheduler_Service_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Store_Api_Extension_Test.php')), 'Store_Api_Extension_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Account_Endpoint_Service_Test.php')), 'Account_Endpoint_Service_Test must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/js/view.test.js')), 'view.test.js must exist');
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/js/App.test.js')), 'App.test.js must exist');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('WooCommerce granular sub-modules: pure-PHP (e.g. woo:shipping + woo:email) emits no package.json or webpack config', () => {
+	const outDir = path.join(__dirname, '../tmp-test-woo-pure-php');
+	runGenerator({
+		name: 'Woo Pure PHP Plugin',
+		slug: 'woo-pure-php-plugin',
+		prefix: 'wppp',
+		namespace: 'WooPurePhpPlugin',
+		minPhp: '8.0',
+		modules: ['woo:shipping', 'woo:email'],
+		useReact: false,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Shipping/Shipping_Method.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Emails/Custom_Email.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Shipping_Method_Test.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Custom_Email_Test.php')));
+
+	assert.ok(!fs.existsSync(path.join(outDir, 'package.json')), 'pure-PHP WooCommerce must not emit package.json');
+	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')), 'pure-PHP WooCommerce must not emit webpack.config.js');
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Woo/Gateways/Gateway.php')), 'unselected sub-module should not exist');
+
+	const pluginMain = fs.readFileSync(path.join(outDir, 'woo-pure-php-plugin.php'), 'utf8');
+	assert.ok(pluginMain.includes("declare_compatibility( 'custom_order_tables'"), 'HPOS compatibility must be declared');
+	assert.ok(!pluginMain.includes("declare_compatibility( 'cart_checkout_blocks'"), 'cart_checkout_blocks should only be declared when blocks/gateway selected');
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('WooCommerce granular sub-modules: woo:gateway alone emits Gateway.php, wc-gateway-block.js, and scoped webpack entry', () => {
+	const outDir = path.join(__dirname, '../tmp-test-woo-gateway-only');
+	runGenerator({
+		name: 'Woo Gateway Plugin',
+		slug: 'woo-gateway-plugin',
+		prefix: 'wgp',
+		namespace: 'WooGatewayPlugin',
+		minPhp: '8.0',
+		modules: ['woo:gateway'],
+		useReact: false,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Gateways/Gateway.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/wc-gateway-block.js')));
+	assert.ok(!fs.existsSync(path.join(outDir, 'assets/src/blocks-integration.js')));
+	assert.ok(fs.existsSync(path.join(outDir, 'package.json')));
+
+	const webpackConfig = fs.readFileSync(path.join(outDir, 'webpack.config.js'), 'utf8');
+	assert.ok(webpackConfig.includes("'wc-gateway-block': './assets/src/wc-gateway-block.js'"));
+	assert.ok(!webpackConfig.includes("'blocks-integration'"));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('WooCommerce granular sub-modules: order-status, action-scheduler, store-api, my-account emit services and unit tests', () => {
+	const outDir = path.join(__dirname, '../tmp-test-woo-misc-submodules');
+	runGenerator({
+		name: 'Woo Misc Plugin',
+		slug: 'woo-misc-plugin',
+		prefix: 'wmp',
+		namespace: 'WooMiscPlugin',
+		minPhp: '8.0',
+		modules: ['woo:order-status', 'woo:action-scheduler', 'woo:store-api', 'woo:my-account'],
+		useReact: false,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Orders/Order_Status_Service.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Tasks/Action_Scheduler_Service.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Api/Store_Api_Extension.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Account/Account_Endpoint_Service.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'templates/my-account/wmp-custom.php')));
+
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Order_Status_Service_Test.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Action_Scheduler_Service_Test.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Store_Api_Extension_Test.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'tests/Unit/Account_Endpoint_Service_Test.php')));
+
+	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
+	assert.ok(pluginPhp.includes('new Woo\\Providers\\Order_Status_Provider();'));
+	assert.ok(pluginPhp.includes('new Woo\\Providers\\Action_Scheduler_Provider();'));
+	assert.ok(pluginPhp.includes('new Woo\\Providers\\Store_Api_Provider();'));
+	assert.ok(pluginPhp.includes('new Woo\\Providers\\Account_Endpoint_Provider();'));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('WooCommerce bundle alias "woo:all" and "woocommerce" expand to all 9 sub-modules', () => {
+	const outDir = path.join(__dirname, '../tmp-test-woo-alias');
+	runGenerator({
+		name: 'Woo Alias Plugin',
+		slug: 'woo-alias-plugin',
+		prefix: 'wap',
+		namespace: 'WooAliasPlugin',
+		minPhp: '8.0',
+		modules: ['woo:all'],
+		useReact: false,
+		out: outDir
+	});
+
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Gateways/Gateway.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Shipping/Shipping_Method.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Emails/Custom_Email.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Products/Custom_Product.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Blocks/Cart_Summary_Block.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Orders/Order_Status_Service.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Tasks/Action_Scheduler_Service.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Api/Store_Api_Extension.php')));
+	assert.ok(fs.existsSync(path.join(outDir, 'src/Woo/Account/Account_Endpoint_Service.php')));
+
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+

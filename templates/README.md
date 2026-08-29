@@ -17,15 +17,7 @@ This plugin uses a modular composition root: `Plugin::create()` builds a `{{NS}}
 - A provider can optionally implement `{{NS}}\Contracts\Conditional` to self-exclude (e.g. only run when a required plugin is active).
 - Additional providers can be injected without modifying core files using the `{{PREFIX}}_providers` WordPress filter.
 
-## Elementor Widgets Convention
-Concrete widget classes placed in `src/Widgets/` are automatically discovered:
-- **Class Extension**: Custom widgets extend `\Elementor\Widget_Base` directly.
-- **Naming & Asset Handles**: Underscores in class names convert to hyphens (e.g. `Sample_Widget` in `src/Widgets/Sample_Widget.php` maps to handle `{{PREFIX}}-sample-widget`).
-- **Asset Auto-Discovery**: If `assets/css/widgets/sample-widget.css` or `assets/js/widgets/sample-widget.js` exist, they are auto-registered for elementor on-demand enqueueing.
-
-## WP-CLI Commands
-- `wp {{PREFIX}} status` — Display plugin version and cache backend.
-- `wp {{PREFIX}} cache clear` — Clear plugin cache.
+{{README_ELEMENTOR_DOCS}}{{README_CLI_DOCS}}
 
 ## Development Scripts
 - `composer lint` — Run PHPCS checks against WordPress Coding Standards.

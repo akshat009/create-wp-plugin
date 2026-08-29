@@ -85,10 +85,12 @@ class Ajax_Handler implements Service_Provider {
 	public function handle_ajax(): void {
 		if ( ! check_ajax_referer( '{{PREFIX}}_nonce', 'nonce', false ) ) {
 			wp_send_json_error( array( 'message' => __( 'Invalid security token.', '{{SLUG}}' ) ), 403 );
+			return;
 		}
 
 		if ( ! $this->allow_nopriv && ! current_user_can( 'read' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', '{{SLUG}}' ) ), 403 );
+			return;
 		}
 
 		$input_text = isset( $_POST['input_text'] ) ? sanitize_text_field( wp_unslash( $_POST['input_text'] ) ) : '';

@@ -27,15 +27,15 @@ Selecting `woocommerce_hooks` previously dumped **15 separate files** into every
 
 | Sub-Module ID | Feature Name | Generated Files | Needs JS Build? | Status |
 | :--- | :--- | :--- | :---: | :---: |
-| `woo:gateway` | **Payment Gateway** (Classic + Block Checkout) | `src/Woo/Gateways/Gateway.php`, `src/Woo/Gateways/Blocks_Payment_Method_Type.php`, `assets/src/wc-gateway-block.js` | **Yes** | [ ] |
-| `woo:shipping` | **Shipping Method** (Zone-based calculation) | `src/Woo/Shipping/Shipping_Method.php`, `src/Woo/Shipping/Shipping_Service.php` | **No** | [ ] |
-| `woo:email` | **Transactional Email** (HTML & Plain templates) | `src/Woo/Emails/Custom_Email.php`, `templates/emails/*` | **No** | [ ] |
-| `woo:product-type` | **Custom Product Type** (Pricing & Tabs) | `src/Woo/Products/Custom_Product.php`, `src/Woo/Products/Product_Data_Tab.php` | **No** | [ ] |
-| `woo:blocks` | **Cart & Checkout Block Slots** | `src/Woo/Blocks/Integration.php`, `src/Woo/Blocks/Cart_Summary_Block.php`, `assets/src/blocks-integration.js` | **Yes** | [ ] |
-| `woo:order-status` | **Custom Order Status** (HPOS-ready) | `src/Woo/Orders/Order_Status_Service.php` | **No** | [ ] |
-| `woo:action-scheduler`| **Action Scheduler** (Background queues) | `src/Woo/Tasks/Action_Scheduler_Service.php` | **No** | [ ] |
-| `woo:store-api` | **Store API Endpoint Extension** | `src/Woo/Api/Store_Api_Extension.php` | **No** | [ ] |
-| `woo:my-account` | **My Account Custom Endpoint** | `src/Woo/Account/Account_Endpoint_Service.php`, `templates/my-account/*` | **No** | [ ] |
+| `woo:gateway` | **Payment Gateway** (Classic + Block Checkout) | `src/Woo/Gateways/Gateway.php`, `src/Woo/Gateways/Blocks_Payment_Method_Type.php`, `assets/src/wc-gateway-block.js` | **Yes** | [x] |
+| `woo:shipping` | **Shipping Method** (Zone-based calculation) | `src/Woo/Shipping/Shipping_Method.php`, `src/Woo/Providers/Shipping_Provider.php` | **No** | [x] |
+| `woo:email` | **Transactional Email** (HTML & Plain templates) | `src/Woo/Emails/Custom_Email.php`, `templates/emails/*` | **No** | [x] |
+| `woo:product-type` | **Custom Product Type** (Pricing & Tabs) | `src/Woo/Products/Custom_Product.php`, `src/Woo/Providers/Product_Type_Provider.php` | **No** | [x] |
+| `woo:blocks` | **Cart & Checkout Block Slots** | `src/Woo/Blocks/Integration.php`, `src/Woo/Blocks/Cart_Summary_Block.php`, `assets/src/blocks-integration.js` | **Yes** | [x] |
+| `woo:order-status` | **Custom Order Status** (HPOS-ready) | `src/Woo/Orders/Order_Status_Service.php` | **No** | [x] |
+| `woo:action-scheduler`| **Action Scheduler** (Background queues) | `src/Woo/Tasks/Action_Scheduler_Service.php` | **No** | [x] |
+| `woo:store-api` | **Store API Endpoint Extension** | `src/Woo/Api/Store_Api_Extension.php` | **No** | [x] |
+| `woo:my-account` | **My Account Custom Endpoint** | `src/Woo/Account/Account_Endpoint_Service.php`, `templates/my-account/*` | **No** | [x] |
 
 ### Interactive Flow
 When `WooCommerce Integration` is selected in Question 11, the CLI opens a secondary multi-select prompt:

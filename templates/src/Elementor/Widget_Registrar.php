@@ -56,7 +56,11 @@ class Widget_Registrar implements Service_Provider {
 			return array();
 		}
 
-		if ( ! ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ) {
+		$is_dev = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG )
+			|| ( defined( 'WP_DEBUG' ) && WP_DEBUG )
+			|| ( function_exists( 'wp_get_environment_type' ) && 'development' === wp_get_environment_type() );
+
+		if ( ! $is_dev ) {
 			$cached = get_transient( '{{PREFIX}}_elementor_widgets' );
 			if ( is_array( $cached ) ) {
 				return $cached;

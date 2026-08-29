@@ -19,32 +19,41 @@ retry_composer_install() {
     echo "composer install failed (attempt $attempt/$max_attempts) — cleaning vendor/ and retrying in 10s..."
     # A locked file from the failed extraction can otherwise poison every
     # subsequent attempt too — start each retry from a clean slate.
+    chmod -R +w vendor composer.lock 2>/dev/null || true
     rm -rf vendor composer.lock
     attempt=$((attempt + 1))
     sleep 10
+
   done
 }
 
 # Clear tmp-verify directory
-rm -rf ./tmp-verify
+chmod -R +w ./tmp-verify 2>/dev/null || true
+rm -rf ./tmp-verify 2>/dev/null || true
 mkdir -p ./tmp-verify
 
+
+rm -rf ./tmp-verify/minimal 2>/dev/null || true
 echo "==> Scaffolding Fixture Beta (minimal)..."
 node index.js --yes --name "Fixture Beta" --prefix fxbb --namespace FixtureBeta \
   --modules "" --no-react --out ./tmp-verify/minimal
 
+rm -rf ./tmp-verify/elementor 2>/dev/null || true
 echo "==> Scaffolding Fixture Gamma (elementor)..."
 node index.js --yes --name "Fixture Gamma" --prefix fxgg --namespace FixtureGamma \
   --modules elementor_widget --min-php 8.2 --no-react --out ./tmp-verify/elementor
 
+rm -rf ./tmp-verify/woo 2>/dev/null || true
 echo "==> Scaffolding Fixture Delta (woocommerce only, isolates the 5-way provider split)..."
 node index.js --yes --name "Fixture Delta" --prefix fxdd --namespace FixtureDelta \
   --modules woocommerce_hooks --no-react --out ./tmp-verify/woo
 
+rm -rf ./tmp-verify/vip 2>/dev/null || true
 echo "==> Scaffolding Fixture Epsilon (VIP lint target)..."
 node index.js --yes --name "Fixture Epsilon" --prefix fxee --namespace FixtureEpsilon \
   --modules admin_settings,cpt_taxonomy --no-react --lint-target vip --out ./tmp-verify/vip
 
+rm -rf ./tmp-verify/full 2>/dev/null || true
 echo "==> Scaffolding Fixture Alpha (full — largest dependency set, verified last)..."
 node index.js --yes --name "Fixture Alpha" --prefix fxaa --namespace FixtureAlpha \
   --modules admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,woocommerce_hooks \
@@ -88,7 +97,7 @@ for var in "${VARIANTS[@]}"; do
     echo "Variant $var passed all checks!"
   else
     echo "Variant $var FAILED (see above)."
-    FAILED_VARIANTS+=("$var")
+    FAILED_VARIANTS=("${FAILED_VARIANTS[@]}" "$var")
   fi
 done
 
