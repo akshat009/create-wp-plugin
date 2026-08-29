@@ -784,8 +784,25 @@ test('cpt_taxonomy Activator resolves Post_Types through the container with a fu
 	// would resolve to the nonexistent {{NS}}\Core\PostTypes\Post_Types and
 	// fatal at runtime the moment the plugin is activated.
 	assert.ok(activatorPhp.includes('$container->get( \\CptActivatorPlugin\\PostTypes\\Post_Types::class )'));
+	// B6.19: soft flush, and no phpcs:ignore papering over the VIP sniff.
 	assert.ok(activatorPhp.includes('flush_rewrite_rules( false );'));
+	assert.ok(!activatorPhp.includes('phpcs:ignore'), 'wp-org target needs no suppression for flush_rewrite_rules');
 
+	fs.rmSync(outDir, { recursive: true, force: true });
+});
+
+test('B6.19 a VIP lint target drops flush_rewrite_rules() entirely rather than suppressing the sniff', () => {
+	const outDir = path.join(__dirname, '../tmp-test-frr-vip');
+	runGenerator({
+		name: 'Frr Vip', slug: 'frr-vip', prefix: 'frrv', namespace: 'FrrVip',
+		minPhp: '8.0', modules: ['cpt_taxonomy'], lintTarget: 'vip', useReact: false, out: outDir
+	});
+	const activatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Activator.php'), 'utf8');
+	assert.ok(!/^\s*flush_rewrite_rules\(/m.test(activatorPhp), 'no flush_rewrite_rules() call under a VIP target');
+	assert.ok(!activatorPhp.includes('phpcs:ignore'), 'and therefore no suppression');
+	assert.ok(activatorPhp.includes('Permalinks'), 'a comment explains what to do instead');
+	const deactivatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Deactivator.php'), 'utf8');
+	assert.ok(!/^\s*flush_rewrite_rules\(/m.test(deactivatorPhp));
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 

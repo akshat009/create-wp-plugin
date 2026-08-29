@@ -1261,8 +1261,18 @@ ${entries.join('\n')}
 		// (nonexistent) {{NS}}\Core\PostTypes\Post_Types and fatal at runtime.
 		activatorLines.push('\t\t$post_types = $container->get( \\{{NS}}\\PostTypes\\Post_Types::class );');
 		activatorLines.push('\t\t$post_types->register_cpt_and_taxonomy();');
-		activatorLines.push('\t\tflush_rewrite_rules( false ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
-		deactivatorLines.push('\t\tflush_rewrite_rules( false ); // phpcs:ignore WordPressVIPMinimum.Functions.RestrictedFunctions.flush_rewrite_rules_flush_rewrite_rules');
+		if (needsVip) {
+			// WordPress VIP forbids flush_rewrite_rules() (rewrite rules there are
+			// regenerated from deploys / a permalink re-save), so rather than
+			// suppress the sniff we simply don't call it under a VIP lint target.
+			activatorLines.push('\t\t// Not flushing rewrite rules here: WordPress VIP disallows flush_rewrite_rules().');
+			activatorLines.push('\t\t// Re-save Settings > Permalinks once after activating, or rely on your deploy.');
+		} else {
+			// Soft flush (no .htaccess write); the WordPress-Extra ruleset does not
+			// restrict this, so no phpcs:ignore is needed.
+			activatorLines.push('\t\tflush_rewrite_rules( false );');
+			deactivatorLines.push('\t\tflush_rewrite_rules( false );');
+		}
 	}
 
 	if (selectedModules.includes('cron')) {
