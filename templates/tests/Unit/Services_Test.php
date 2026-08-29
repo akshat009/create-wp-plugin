@@ -29,7 +29,7 @@ class Services_Test extends TestCase {
 	}
 
 	/**
-	 * set() then reset() controls what an accessor hands back.
+	 * A set() then reset() controls what an accessor hands back.
 	 */
 	public function test_set_overrides_and_reset_clears(): void {
 		$double = new \stdClass();
@@ -47,7 +47,7 @@ class Services_Test extends TestCase {
 	}
 
 	/**
-	 * set() keeps the exact instance it was handed.
+	 * A set() keeps the exact instance it was handed.
 	 */
 	public function test_set_stores_the_given_instance(): void {
 		$double = new \stdClass();

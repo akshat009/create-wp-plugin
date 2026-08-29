@@ -43,14 +43,14 @@ class Example_Test extends TestCase {
 	}
 
 	/**
-	 * instance() hands back the same object every time.
+	 * The shared instance is handed back on every instance() call.
 	 */
 	public function test_instance_is_shared() {
 		$this->assertSame( Plugin::instance(), Plugin::instance() );
 	}
 
 	/**
-	 * set_instance() swaps the shared instance; null clears it.
+	 * A set_instance() call swaps the shared instance; null clears it.
 	 */
 	public function test_set_instance_controls_the_singleton() {
 		$first = Plugin::instance();
@@ -60,7 +60,7 @@ class Example_Test extends TestCase {
 	}
 
 	/**
-	 * boot() runs once; a second call is a no-op (no double hook registration).
+	 * The first boot() wires hooks; a second call is a no-op (no double registration).
 	 */
 	public function test_boot_is_idempotent() {
 		$calls = 0;
