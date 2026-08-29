@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\CLI\Commands;
@@ -17,7 +16,7 @@ use {{NS}}\CLI\Commands;
 /**
  * Class Commands_Test.
  */
-class Commands_Test extends TestCase {
+class Commands_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.
@@ -37,13 +36,12 @@ class Commands_Test extends TestCase {
 	}
 
 	/**
-	 * Both WP-CLI commands are registered by init_hooks() when WP_CLI is defined.
+	 * Both WP-CLI commands are registered by init_hooks().
+	 *
+	 * No define( 'WP_CLI' ) here: Plugin::boot() owns that guard, so
+	 * init_hooks() runs unconditionally and this test stays isolated.
 	 */
-	public function test_init_hooks_registers_commands_under_wp_cli(): void {
-		if ( ! defined( 'WP_CLI' ) ) {
-			define( 'WP_CLI', true );
-		}
-
+	public function test_init_hooks_registers_both_commands(): void {
 		( new Commands() )->init_hooks();
 
 		$this->assertArrayHasKey( '{{PREFIX}} status', \WP_CLI::$commands );

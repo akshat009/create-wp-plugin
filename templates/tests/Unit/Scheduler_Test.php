@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Cron\Scheduler;
@@ -17,7 +16,7 @@ use {{NS}}\Cron\Scheduler;
 /**
  * Class Scheduler_Test.
  */
-class Scheduler_Test extends TestCase {
+class Scheduler_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

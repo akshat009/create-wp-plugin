@@ -12,18 +12,23 @@
 	<!-- Only the block render.php files here match the "php" extension filter. -->
 	<file>./assets/src</file>
 {{/if}}
+{{#if has_wc_template_overrides}}
+	<!--
+	./templates/ holds WooCommerce email / My Account overrides. They're linted
+	for everything (docblocks, spacing, i18n, …) except the two sniffs below,
+	which flag things the override cannot avoid:
+	  - PrefixAllGlobals: the overrides must call core WC hooks by their real,
+	    unprefixed names (woocommerce_email_header, …) and receive loosely-named
+	    locals ($first_name) from wc_get_template().
+	  - EscapeOutput (plain-text bodies only): a plain-text email uses
+	    wp_strip_all_tags(), which WPCS doesn't recognise as an escaper.
+	-->
+	<file>./templates</file>
+{{/if}}
 
 	<exclude-pattern>/vendor/</exclude-pattern>
 	<exclude-pattern>/node_modules/</exclude-pattern>
 	<exclude-pattern>/assets/build/</exclude-pattern>
-	<!--
-	./templates/ (WooCommerce email + My Account overrides) is deliberately
-	not sniffed: those files run in WooCommerce's own context, call core WC
-	hooks like woocommerce_email_header, and echo values WooCommerce escapes
-	upstream — WPCS can only flag false positives there, and the directory
-	doesn't exist at all unless a woo:email / woo:my-account module is picked.
-	-->
-	<exclude-pattern>*/templates/*</exclude-pattern>
 
 	<arg value="sp"/>
 	<arg name="colors"/>
@@ -62,6 +67,9 @@
 
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<exclude-pattern>/tests/</exclude-pattern>
+{{#if has_wc_template_overrides}}
+		<exclude-pattern>*/templates/*</exclude-pattern>
+{{/if}}
 		<properties>
 			<property name="prefixes" type="array">
 				<element value="{{PREFIX}}"/>
@@ -80,6 +88,15 @@
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound">
 		<exclude-pattern>*/blocks/*/render.php</exclude-pattern>
 	</rule>
+{{#if has_wc_template_overrides}}
+	<!--
+	Plain-text WooCommerce email bodies escape with wp_strip_all_tags(), which
+	WPCS doesn't know is an escaper. The HTML email template is still checked.
+	-->
+	<rule ref="WordPress.Security.EscapeOutput">
+		<exclude-pattern>*/templates/emails/plain/*</exclude-pattern>
+	</rule>
+{{/if}}
 	<rule ref="WordPress.WP.I18n">
 		<properties>
 			<property name="text_domain" type="array">

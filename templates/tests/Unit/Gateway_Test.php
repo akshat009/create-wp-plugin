@@ -9,14 +9,13 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 
 /**
  * Class Gateway_Test.
  */
-class Gateway_Test extends TestCase {
+class Gateway_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

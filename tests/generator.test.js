@@ -1428,3 +1428,103 @@ test('WooCommerce bundle alias "woo:all" and "woocommerce" expand to all 9 sub-m
 });
 
 
+
+test('test isolation: Plugin_TestCase base always ships; Services_Test only with an accessor and tests it through the public API (#14, #15)', () => {
+	const withSvc = path.join(__dirname, '../tmp-test-iso-svc');
+	const bare = path.join(__dirname, '../tmp-test-iso-bare');
+	for (const d of [withSvc, bare]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+
+	runGenerator({
+		name: 'Iso Svc', slug: 'iso-svc', prefix: 'isvc', namespace: 'IsoSvc',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: ['caching', 'custom_table', 'cli'], useReact: false, out: withSvc
+	});
+	runGenerator({
+		name: 'Iso Bare', slug: 'iso-bare', prefix: 'ibar', namespace: 'IsoBare',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: [], useReact: false, out: bare
+	});
+
+	// Plugin_TestCase ships in every scaffold and resets both globals.
+	for (const d of [withSvc, bare]) {
+		const base = fs.readFileSync(path.join(d, 'tests/Unit/Plugin_TestCase.php'), 'utf8');
+		assert.match(base, /abstract class Plugin_TestCase extends TestCase/);
+		assert.match(base, /Services::reset\(\);/);
+		assert.match(base, /Plugin::set_instance\( null \);/);
+	}
+
+	// Every generated *_Test.php extends the base, not PHPUnit's TestCase directly.
+	for (const d of [withSvc, bare]) {
+		for (const f of fs.readdirSync(path.join(d, 'tests/Unit')).filter((n) => n.endsWith('_Test.php'))) {
+			const src = fs.readFileSync(path.join(d, 'tests/Unit', f), 'utf8');
+			assert.match(src, /extends Plugin_TestCase \{/, `${f} must extend Plugin_TestCase`);
+			assert.ok(!/^use PHPUnit\Framework\TestCase;/m.test(src), `${f} keeps the TestCase import out (base owns it)`);
+		}
+	}
+
+	// Commands_Test no longer defines WP_CLI (the internal guard moved to
+	// Plugin::boot()), so there's no constant to leak into later tests.
+	const commandsTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Commands_Test.php'), 'utf8');
+	assert.ok(!/^\s*define\( 'WP_CLI', true \);/m.test(commandsTest), 'the test does not define WP_CLI');
+	const commandsSrc = fs.readFileSync(path.join(withSvc, 'src/CLI/Commands.php'), 'utf8');
+	assert.ok(!/init_hooks\(\): void \{\s*if \( ! defined\( 'WP_CLI' \)/.test(commandsSrc), 'init_hooks() carries no WP_CLI guard');
+
+	// Schema_Test's front-end gate test no longer has to skip on a leaked WP_CLI.
+	const schemaTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Schema_Test.php'), 'utf8');
+	assert.ok(schemaTest.includes('test_maybe_upgrade_skips_on_a_frontend_request'));
+	assert.ok(!schemaTest.includes('markTestSkipped'));
+
+	// Services_Test ships only when there's an accessor, and drives it through
+	// createMock() + the public accessor (no reflection).
+	const svcTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Services_Test.php'), 'utf8');
+	assert.match(svcTest, /public function test_cache_is_a_memoised_singleton\(\): void/);
+	assert.ok(svcTest.includes('$this->createMock( \\IsoSvc\\Cache\\Cache_Service::class )'));
+	assert.ok(svcTest.includes('$this->assertSame( $a, Services::cache() )'));
+	assert.ok(svcTest.includes('$this->assertSame( Services::cache(), Services::cache() )'), 'memoisation asserted');
+	assert.ok(!svcTest.includes('ReflectionProperty'), 'no reflection — public API only');
+	assert.ok(!fs.existsSync(path.join(bare, 'tests/Unit/Services_Test.php')), 'no Services_Test in a scaffold with zero accessors');
+	assert.ok(!fs.existsSync(path.join(withSvc, 'tests/Unit/Container_Test.php')));
+
+	for (const d of [withSvc, bare]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+});
+
+test('phpcs.xml lints templates/ (with two narrow sniff excludes) only when a WC override module ships it (#11 revised)', () => {
+	const withTpl = path.join(__dirname, '../tmp-test-phpcs-tpl');
+	const noTpl = path.join(__dirname, '../tmp-test-phpcs-notpl');
+	for (const d of [withTpl, noTpl]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+
+	runGenerator({
+		name: 'Tpl', slug: 'tpl', prefix: 'tplp', namespace: 'Tpl',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: ['woo:email', 'woo:my-account'], lintTarget: 'both', useReact: false, out: withTpl
+	});
+	runGenerator({
+		name: 'No Tpl', slug: 'no-tpl', prefix: 'ntpl', namespace: 'NoTpl',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: ['woo:gateway'], lintTarget: 'both', useReact: false, out: noTpl
+	});
+
+	const withXml = fs.readFileSync(path.join(withTpl, 'phpcs.xml'), 'utf8');
+	assert.match(withXml, /<file>\.\/templates<\/file>/);
+	assert.match(withXml, /<rule ref="WordPress\.NamingConventions\.PrefixAllGlobals">[\s\S]*?<exclude-pattern>\*\/templates\/\*<\/exclude-pattern>/);
+	assert.match(withXml, /<rule ref="WordPress\.Security\.EscapeOutput">\s*<exclude-pattern>\*\/templates\/emails\/plain\/\*<\/exclude-pattern>/);
+	assert.ok(!/\{\{[#/]?[A-Za-z]/.test(withXml), 'no leftover template tags');
+
+	const noXml = fs.readFileSync(path.join(noTpl, 'phpcs.xml'), 'utf8');
+	assert.ok(!noXml.includes('templates'), 'no templates/ references when no override module ships one');
+	assert.ok(!/\{\{[#/]?[A-Za-z]/.test(noXml), 'no leftover template tags');
+
+	// The dist-prep helper is present so plugin-zip does not depend on README discipline (#12 revised).
+	const composer = JSON.parse(fs.readFileSync(path.join(withTpl, 'composer.json'), 'utf8'));
+	assert.equal(composer.scripts['prepare-dist'], 'composer install --no-dev --optimize-autoloader');
+
+	for (const d of [withTpl, noTpl]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+});

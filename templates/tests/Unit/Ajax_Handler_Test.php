@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Ajax\Ajax_Handler;
@@ -17,7 +16,7 @@ use {{NS}}\Ajax\Ajax_Handler;
 /**
  * Class Ajax_Handler_Test.
  */
-class Ajax_Handler_Test extends TestCase {
+class Ajax_Handler_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

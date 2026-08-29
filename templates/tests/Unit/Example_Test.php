@@ -9,14 +9,13 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use {{NS}}\Plugin;
 
 /**
  * Class Example_Test.
  */
-class Example_Test extends TestCase {
+class Example_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment before each test.

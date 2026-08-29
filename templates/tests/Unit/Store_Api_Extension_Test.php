@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Api\Store_Api_Extension;
 
 /**
  * Class Store_Api_Extension_Test.
  */
-class Store_Api_Extension_Test extends TestCase {
+class Store_Api_Extension_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

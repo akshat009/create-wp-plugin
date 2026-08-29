@@ -40,7 +40,8 @@
 {{#if integration_tests}}
 		"test:integration": "phpunit -c phpunit-integration.xml.dist",
 {{/if}}
-		"make-pot": "wp i18n make-pot . languages/{{SLUG}}.pot"
+		"make-pot": "wp i18n make-pot . languages/{{SLUG}}.pot",
+		"prepare-dist": "composer install --no-dev --optimize-autoloader"
 	},
 	"config": {
 		"allow-plugins": {

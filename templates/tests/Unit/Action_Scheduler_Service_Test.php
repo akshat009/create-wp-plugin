@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Tasks\Action_Scheduler_Service;
 
 /**
  * Class Action_Scheduler_Service_Test.
  */
-class Action_Scheduler_Service_Test extends TestCase {
+class Action_Scheduler_Service_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

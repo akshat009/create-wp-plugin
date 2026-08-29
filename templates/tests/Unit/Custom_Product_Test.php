@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Products\Custom_Product;
 
 /**
  * Class Custom_Product_Test.
  */
-class Custom_Product_Test extends TestCase {
+class Custom_Product_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

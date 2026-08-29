@@ -11,13 +11,12 @@ namespace {{NS}}\Tests\Unit;
 
 use Brain\Monkey\Functions;
 use Mockery\Adapter\Phpunit\MockeryPHPUnitIntegration;
-use PHPUnit\Framework\TestCase;
 use {{NS}}\Woo\Account\Account_Endpoint_Service;
 
 /**
  * Class Account_Endpoint_Service_Test.
  */
-class Account_Endpoint_Service_Test extends TestCase {
+class Account_Endpoint_Service_Test extends Plugin_TestCase {
 
 	use MockeryPHPUnitIntegration;
 

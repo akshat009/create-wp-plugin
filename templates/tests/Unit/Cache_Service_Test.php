@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Cache\Cache_Service;
@@ -17,7 +16,7 @@ use {{NS}}\Cache\Cache_Service;
 /**
  * Class Cache_Service_Test.
  */
-class Cache_Service_Test extends TestCase {
+class Cache_Service_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Admin\Settings_Repository;
@@ -17,7 +16,7 @@ use {{NS}}\Admin\Settings_Repository;
 /**
  * Class Settings_Repository_Test.
  */
-class Settings_Repository_Test extends TestCase {
+class Settings_Repository_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.

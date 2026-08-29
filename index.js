@@ -823,6 +823,8 @@ function scaffoldInto(answers, targetDir) {
 		// + Core\Uninstaller only ship when one of these modules persists state.
 		has_uninstall: ['admin_settings', 'cron', 'custom_table', 'elementor_widget'].some(m => selectedModules.includes(m)),
 		has_woo: hasAnyWoo,
+		// The only modules that write a templates/ directory (WC template overrides).
+		has_wc_template_overrides: hasWooEmail || hasWooMyAccount,
 		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
 		lint_vip: needsVip
 	};
@@ -956,8 +958,8 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'phpcs.xml'), 'phpcs.xml');
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
+	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Plugin_TestCase.php'), 'tests/Unit/Plugin_TestCase.php');
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
-	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Services_Test.php'), 'tests/Unit/Services_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
 	writeTemplateFile(path.join(templatesDir, 'LICENSE'), 'LICENSE');
@@ -991,12 +993,15 @@ function scaffoldInto(answers, targetDir) {
 	const bootLines = [];
 	const wooBootLines = [];
 	const servicesAccessors = [];
+	const servicesAccessorTests = [];
 
-	// One memoised getter on Services: name() -> new <Type>(). $short is the
-	// class name relative to the plugin root namespace (Services lives there).
-	function servicesAccessor(name, short) {
+	// Register a shared-service getter: emits the Services::name() accessor
+	// ({{SERVICES_ACCESSORS}}) and a matching Services_Test method
+	// ({{SERVICES_ACCESSOR_TESTS}}). `short` is the class name relative to the
+	// plugin root namespace (Services lives there).
+	function addService(name, short) {
 		const type = short.split('\\').pop();
-		return [
+		servicesAccessors.push([
 			'\t/**',
 			`\t * Shared ${type} instance.`,
 			'\t *',
@@ -1006,7 +1011,28 @@ function scaffoldInto(answers, targetDir) {
 			`\t\treturn self::$instances['${name}'] ??= new ${short}();`,
 			'\t}',
 			'',
-		].join('\n');
+		].join('\n'));
+		servicesAccessorTests.push([
+			'\t/**',
+			`\t * Services::${name}() is a memoised singleton, overridable via set()/reset().`,
+			'\t *',
+			'\t * @return void',
+			'\t */',
+			`\tpublic function test_${name}_is_a_memoised_singleton(): void {`,
+			`\t\t$a = $this->createMock( \\{{NS}}\\${short}::class );`,
+			`\t\tServices::set( '${name}', $a );`,
+			'',
+			`\t\t$this->assertSame( $a, Services::${name}() );`,
+			`\t\t$this->assertSame( Services::${name}(), Services::${name}() );`,
+			'',
+			'\t\tServices::reset();',
+			`\t\t$b = $this->createMock( \\{{NS}}\\${short}::class );`,
+			`\t\tServices::set( '${name}', $b );`,
+			'',
+			`\t\t$this->assertSame( $b, Services::${name}(), 'reset() cleared the previous override' );`,
+			'\t}',
+			'',
+		].join('\n'));
 	}
 
 	if (selectedModules.includes('cli')) {
@@ -1023,7 +1049,7 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/views/settings-page.php'), 'src/Admin/views/settings-page.php');
 
 		bootLines.push('\t\t( new Admin\\Settings_Registrar( Services::settings_repository() ) )->init_hooks();');
-		servicesAccessors.push(servicesAccessor('settings_repository', 'Admin\\Settings_Repository'));
+		addService('settings_repository', 'Admin\\Settings_Repository');
 	}
 	if (selectedModules.includes('shortcode')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Shortcode.php'), 'src/Frontend/Shortcode.php');
@@ -1057,7 +1083,7 @@ function scaffoldInto(answers, targetDir) {
 	if (selectedModules.includes('caching')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cache/Cache_Service.php'), 'src/Cache/Cache_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Cache_Service_Test.php'), 'tests/Unit/Cache_Service_Test.php');
-		servicesAccessors.push(servicesAccessor('cache', 'Cache\\Cache_Service'));
+		addService('cache', 'Cache\\Cache_Service');
 	}
 	if (selectedModules.includes('custom_table')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Database/Schema.php'), 'src/Database/Schema.php');
@@ -1065,7 +1091,7 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Schema_Test.php'), 'tests/Unit/Schema_Test.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Item_Repository_Test.php'), 'tests/Unit/Item_Repository_Test.php');
 		bootLines.push('\t\t( new Database\\Schema() )->init_hooks();');
-		servicesAccessors.push(servicesAccessor('item_repository', 'Database\\Item_Repository'));
+		addService('item_repository', 'Database\\Item_Repository');
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		if (selectedModules.includes('editor_config')) {
@@ -1124,21 +1150,21 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Orders/Order_Status_Service.php'), 'src/Woo/Orders/Order_Status_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Order_Status_Service_Test.php'), 'tests/Unit/Order_Status_Service_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Order_Status_Provider( Services::order_status_service() ) )->init_hooks();');
-		servicesAccessors.push(servicesAccessor('order_status_service', 'Woo\\Orders\\Order_Status_Service'));
+		addService('order_status_service', 'Woo\\Orders\\Order_Status_Service');
 	}
 	if (hasWooActionScheduler) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Action_Scheduler_Provider.php'), 'src/Woo/Providers/Action_Scheduler_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Tasks/Action_Scheduler_Service.php'), 'src/Woo/Tasks/Action_Scheduler_Service.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Action_Scheduler_Service_Test.php'), 'tests/Unit/Action_Scheduler_Service_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Action_Scheduler_Provider( Services::action_scheduler_service() ) )->init_hooks();');
-		servicesAccessors.push(servicesAccessor('action_scheduler_service', 'Woo\\Tasks\\Action_Scheduler_Service'));
+		addService('action_scheduler_service', 'Woo\\Tasks\\Action_Scheduler_Service');
 	}
 	if (hasWooStoreApi) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Store_Api_Provider.php'), 'src/Woo/Providers/Store_Api_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Api/Store_Api_Extension.php'), 'src/Woo/Api/Store_Api_Extension.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Store_Api_Extension_Test.php'), 'tests/Unit/Store_Api_Extension_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Store_Api_Provider( Services::store_api_extension() ) )->init_hooks();');
-		servicesAccessors.push(servicesAccessor('store_api_extension', 'Woo\\Api\\Store_Api_Extension'));
+		addService('store_api_extension', 'Woo\\Api\\Store_Api_Extension');
 	}
 	if (hasWooMyAccount) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Account_Endpoint_Provider.php'), 'src/Woo/Providers/Account_Endpoint_Provider.php');
@@ -1146,7 +1172,7 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'woo-account-templates/my-account/custom-endpoint.php'), `templates/my-account/${answers.prefix.toLowerCase()}-custom.php`);
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Account_Endpoint_Service_Test.php'), 'tests/Unit/Account_Endpoint_Service_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Account_Endpoint_Provider( Services::account_endpoint_service() ) )->init_hooks();');
-		servicesAccessors.push(servicesAccessor('account_endpoint_service', 'Woo\\Account\\Account_Endpoint_Service'));
+		addService('account_endpoint_service', 'Woo\\Account\\Account_Endpoint_Service');
 	}
 	if (selectedModules.includes('interactivity')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Interactivity.php'), 'src/Frontend/Interactivity.php');
@@ -1375,6 +1401,17 @@ ${entries.join('\n')}
 	const servicesDestPath = path.join(targetDir, 'src/Services.php');
 	fs.mkdirSync(path.dirname(servicesDestPath), { recursive: true });
 	fs.writeFileSync(servicesDestPath, servicesContent, 'utf8');
+
+	// Services_Test.php only ships when there's at least one accessor to
+	// exercise — with none, the class has nothing behavioural to test.
+	if (servicesAccessorTests.length > 0) {
+		let servicesTest = fs.readFileSync(path.join(templatesDir, 'tests/Unit/Services_Test.php'), 'utf8');
+		servicesTest = servicesTest.replace('{{SERVICES_ACCESSOR_TESTS}}', () => servicesAccessorTests.join('\n'));
+		servicesTest = processTemplateContent(servicesTest, 'tests/Unit/Services_Test.php');
+		const servicesTestDest = path.join(targetDir, 'tests/Unit/Services_Test.php');
+		fs.mkdirSync(path.dirname(servicesTestDest), { recursive: true });
+		fs.writeFileSync(servicesTestDest, servicesTest, 'utf8');
+	}
 
 	// Single supported PHP line — see MIN_PHP. The matrix also runs the next
 	// minor so a scaffold surfaces forward-compat breakage early.

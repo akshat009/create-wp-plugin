@@ -9,7 +9,6 @@ declare(strict_types=1);
 
 namespace {{NS}}\Tests\Unit;
 
-use PHPUnit\Framework\TestCase;
 use Brain\Monkey;
 use Brain\Monkey\Functions;
 use {{NS}}\Elementor\Widget_Registrar;
@@ -17,7 +16,7 @@ use {{NS}}\Elementor\Widget_Registrar;
 /**
  * Class Widget_Registrar_Test.
  */
-class Widget_Registrar_Test extends TestCase {
+class Widget_Registrar_Test extends Plugin_TestCase {
 
 	/**
 	 * Set up test environment.
