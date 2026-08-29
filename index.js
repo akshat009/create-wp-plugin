@@ -316,9 +316,10 @@ export function validateModules(modules) {
 }
 
 // The generated code targets a single modern PHP baseline — constructor
-// property promotion, readonly properties, first-class callable syntax — and
-// this is not configurable: every scaffold requires PHP 8.3.
-export const MIN_PHP = '8.3';
+// property promotion, readonly properties, first-class callable syntax (all
+// PHP 8.1) — pinned, not configurable. 8.2 is the floor: it's the oldest line
+// still getting security fixes, and matches the widest install base.
+export const MIN_PHP = '8.2';
 
 export function validateOutputDir(val) {
 	if (!val || typeof val !== 'string' || val.trim().length === 0) {
@@ -1377,7 +1378,7 @@ ${entries.join('\n')}
 
 	// Single supported PHP line — see MIN_PHP. The matrix also runs the next
 	// minor so a scaffold surfaces forward-compat breakage early.
-	const ciPhpMatrix = "['8.3', '8.4']";
+	const ciPhpMatrix = "['8.2', '8.3', '8.4']";
 
 	// Process ci.yml with dynamic node job
 	let ciContent = fs.readFileSync(path.join(templatesDir, 'github/workflows/ci.yml'), 'utf8');

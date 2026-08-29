@@ -48,14 +48,31 @@ class Schema_Test extends TestCase {
 	}
 
 	/**
-	 * Test maybe_upgrade skips when version is current.
+	 * Test maybe_upgrade skips when version is current (in an admin request).
 	 */
 	public function test_maybe_upgrade_skips_when_version_matches(): void {
 		Functions\stubs(
 			array(
-				'get_option' => \{{NS}}\Database\Schema::VERSION,
+				'is_admin'      => true,
+				'wp_doing_cron' => false,
+				'get_option'    => \{{NS}}\Database\Schema::VERSION,
 			)
 		);
+
+		$schema = new \{{NS}}\Database\Schema();
+		$schema->maybe_upgrade();
+
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * Test maybe_upgrade does not even read the version option on a plain
+	 * front-end request — dbDelta() is admin/cron/CLI-only.
+	 */
+	public function test_maybe_upgrade_skips_on_a_frontend_request(): void {
+		Functions\when( 'is_admin' )->justReturn( false );
+		Functions\when( 'wp_doing_cron' )->justReturn( false );
+		Functions\expect( 'get_option' )->never();
 
 		$schema = new \{{NS}}\Database\Schema();
 		$schema->maybe_upgrade();

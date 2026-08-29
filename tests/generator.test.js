@@ -197,8 +197,8 @@ test('validateModules rejects unknown module names but allows empty/known lists'
 	assert.equal(typeof validateModules(['admin_settings', 'not_a_real_module']), 'string');
 });
 
-test('every scaffold pins PHP 8.3 and emits modern PHP (promotion, readonly, first-class callables)', () => {
-	assert.equal(MIN_PHP, '8.3');
+test('every scaffold pins PHP 8.2 and emits modern PHP (promotion, readonly, first-class callables)', () => {
+	assert.equal(MIN_PHP, '8.2');
 
 	const outDir = path.join(__dirname, '../tmp-test-php83');
 	fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
@@ -212,12 +212,12 @@ test('every scaffold pins PHP 8.3 and emits modern PHP (promotion, readonly, fir
 	const requires = ['modern-php.php', 'composer.json', 'readme.txt'].map(
 		(f) => fs.readFileSync(path.join(outDir, f), 'utf8')
 	);
-	assert.match(requires[0], /Requires PHP:\s+8\.3/);
-	assert.match(requires[1], /"php":\s*">=8\.3"/);
-	assert.match(requires[2], /Requires PHP: 8\.3/);
+	assert.match(requires[0], /Requires PHP:\s+8\.2/);
+	assert.match(requires[1], /"php":\s*">=8\.2"/);
+	assert.match(requires[2], /Requires PHP: 8\.2/);
 
 	const ci = fs.readFileSync(path.join(outDir, '.github/workflows/ci.yml'), 'utf8');
-	assert.match(ci, /php-version:\s*\['8\.3', '8\.4'\]/);
+	assert.match(ci, /php-version:\s*\['8\.2', '8\.3', '8\.4'\]/);
 
 	const plugin = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
 	assert.match(plugin, /public static function instance\(\): self/, 'singleton accessor');
