@@ -16,6 +16,7 @@ import {
 	validateOutputDir,
 	validateModules,
 	validateAll,
+	requiredPhpFor,
 	runGenerator
 } from '../index.js';
 
@@ -70,10 +71,11 @@ test('Group 2 Validators', () => {
 	assert.equal(validateEmail('test@example.com'), true);
 	assert.equal(typeof validateEmail('invalid-email'), 'string');
 
+	assert.equal(validateMinPhp('7.4'), true);
 	assert.equal(validateMinPhp('8.0'), true);
 	assert.equal(validateMinPhp('8.2'), true);
 	assert.equal(typeof validateMinPhp('invalid'), 'string');
-	assert.equal(typeof validateMinPhp('7.4'), 'string', 'templates use 8.0 syntax — sub-8.0 is rejected');
+	assert.equal(typeof validateMinPhp('7.3'), 'string', 'templates use 7.4 syntax — sub-7.4 is rejected');
 
 	assert.equal(validateOutputDir('./some-dir'), true);
 	assert.equal(typeof validateOutputDir(''), 'string');
@@ -204,6 +206,41 @@ test('validateModules rejects unknown module names but allows empty/known lists'
 	assert.equal(validateModules(undefined), true);
 	assert.equal(validateModules(['admin_settings', 'rest_api']), true);
 	assert.equal(typeof validateModules(['admin_settings', 'not_a_real_module']), 'string');
+});
+
+test('requiredPhpFor floors at 7.4 and no module raises it today', () => {
+	assert.equal(requiredPhpFor([]), '7.4');
+	assert.equal(requiredPhpFor(['admin_settings', 'woo:gateway', 'block:dynamic', 'cli']), '7.4');
+});
+
+test('min-php 7.4 gates out the PHP 8.0 `: mixed` return type; 8.0 keeps it', () => {
+	const base = {
+		name: 'Php Floor', slug: 'php-floor', prefix: 'pflr', namespace: 'PhpFloor',
+		authorName: 'Author', authorEmail: 'test@example.com', authorUri: 'https://example.com',
+		description: 'php floor', modules: [], useReact: false
+	};
+
+	const dir74 = path.join(__dirname, '../tmp-test-php74');
+	const dir80 = path.join(__dirname, '../tmp-test-php80');
+	fs.rmSync(dir74, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	fs.rmSync(dir80, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+
+	runGenerator({ ...base, minPhp: '7.4', out: dir74 });
+	runGenerator({ ...base, minPhp: '8.0', out: dir80 });
+
+	const container74 = fs.readFileSync(path.join(dir74, 'src/Core/Container.php'), 'utf8');
+	const container80 = fs.readFileSync(path.join(dir80, 'src/Core/Container.php'), 'utf8');
+
+	assert.match(container74, /public function get\( string \$id \) \{/, '7.4 signature carries no return type');
+	assert.doesNotMatch(container74, /: mixed/);
+	assert.doesNotMatch(container74, /\{\{[#/]?if/, 'no leftover conditional tags');
+	assert.match(container80, /public function get\( string \$id \): mixed \{/, '8.0 signature keeps `: mixed`');
+
+	const ci74 = fs.readFileSync(path.join(dir74, '.github/workflows/ci.yml'), 'utf8');
+	assert.match(ci74, /'7\.4'/, 'the 7.4 leg is in the generated PHPUnit matrix');
+
+	fs.rmSync(dir74, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	fs.rmSync(dir80, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 test('validateEmail rejects garbage that merely contains "@"', () => {

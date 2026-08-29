@@ -320,15 +320,27 @@ export function validateMinPhp(val) {
 		return 'Minimum PHP version is required.';
 	}
 	if (!/^\d+\.\d+$/.test(val.trim())) {
-		return 'Minimum PHP version must be in format X.Y (e.g. 8.0).';
+		return 'Minimum PHP version must be in format X.Y (e.g. 7.4).';
 	}
-	// The templates use PHP 8.0 syntax (mixed return type, typed properties,
-	// constructor promotion, readonly), so anything lower would generate code
-	// that fatals on the version it claims to support.
-	if (parseFloat(val.trim()) < 8.0) {
-		return 'Minimum PHP version must be at least 8.0 — the generated code uses 8.0 syntax.';
+	// The newest syntax the templates use — arrow functions, typed properties,
+	// null-coalescing assignment — all landed in PHP 7.4, so that's the floor.
+	// (WordPress itself still supports 7.4; 7.2/7.3 are past EOL and untested here.)
+	if (parseFloat(val.trim()) < 7.4) {
+		return 'Minimum PHP version must be at least 7.4 — the generated code uses 7.4 syntax.';
 	}
 	return true;
+}
+
+// Every generated template compiles on PHP 7.4. A module that needs newer
+// syntax, or a dependency with a higher floor, raises the minimum for any
+// scaffold that includes it — mirroring how requiredWpVersion is derived from
+// the module set. Nothing needs more than 7.4 today; add entries here if that
+// changes (e.g. `some_module: '8.1'`).
+const MODULE_PHP_FLOOR = {};
+
+export function requiredPhpFor(modules = []) {
+	const floors = ['7.4', ...modules.map((m) => MODULE_PHP_FLOOR[m]).filter(Boolean)];
+	return floors.sort((a, b) => parseFloat(b) - parseFloat(a))[0];
 }
 
 export function validateOutputDir(val) {
@@ -422,7 +434,7 @@ Options:
   --email <string>         Author email
   --author-uri <string>    Author URI / GitHub URL
   --description <string>   Plugin description
-  --min-php <string>       Minimum PHP version
+  --min-php <string>       Minimum PHP version (default: 7.4, or higher if a module requires it)
   --out <string>           Output directory
   --modules <string>       Comma-separated list of modules (admin_settings,shortcode,rest_api,ajax_handler,cpt_taxonomy,cron,caching,custom_table,elementor_widget,block,block:dynamic,block:static,interactivity,cli,editor_config,integration_tests,woo:all,woo:gateway,woo:shipping,woo:email,woo:order-status,woo:product-type,woo:blocks,woo:action-scheduler,woo:store-api,woo:my-account)
   --react                  Include React admin app build pipeline (wp-admin only)
@@ -477,9 +489,14 @@ async function main() {
 		const authorEmail = flags.email || '';
 		const authorUri = flags['author-uri'] || '';
 		const description = flags.description || 'A powerful modern WordPress plugin scaffold.';
-		const minPhp = flags['min-php'] || '8.0';
 		const useReact = flags['no-react'] ? false : Boolean(flags.react);
 		const modules = flags.modules !== undefined ? parseModules(flags.modules) : [];
+		const phpFloor = requiredPhpFor(modules);
+		if (flags['min-php'] && parseFloat(flags['min-php']) < parseFloat(phpFloor)) {
+			console.error(`${icon('❌', '[x]')} --min-php ${flags['min-php']} is below ${phpFloor}, required by a selected module.`);
+			process.exit(1);
+		}
+		const minPhp = flags['min-php'] || phpFloor;
 		const outputDir = flags.out;
 		const lintTarget = flags['lint-target'] || 'wp-org';
 
@@ -584,7 +601,7 @@ async function main() {
 				type: 'text',
 				name: 'minPhp',
 				message: '9. Minimum PHP version:',
-				initial: flags['min-php'] || '8.0',
+				initial: flags['min-php'] || '7.4',
 				validate: validateMinPhp
 			},
 			{
@@ -669,6 +686,15 @@ async function main() {
 
 			const otherModules = answers.modules.filter(m => m !== 'block');
 			answers.modules = [...otherModules, ...(blockAnswers.blockModules || [])];
+		}
+
+		// The PHP-version prompt runs before modules are picked, so a module
+		// with a higher floor (see requiredPhpFor) can't be reflected there —
+		// reconcile it now.
+		const phpFloor = requiredPhpFor(answers.modules || []);
+		if (answers.minPhp && parseFloat(answers.minPhp) < parseFloat(phpFloor)) {
+			console.log(`${icon('ℹ️', '[i]')} Raising minimum PHP to ${phpFloor} — required by a selected module.`);
+			answers.minPhp = phpFloor;
 		}
 
 		if (!answers.name) {
@@ -846,7 +872,10 @@ function scaffoldInto(answers, targetDir) {
 		has_uninstall: ['admin_settings', 'cron', 'custom_table', 'elementor_widget'].some(m => selectedModules.includes(m)),
 		has_woo: hasAnyWoo,
 		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
-		lint_vip: needsVip
+		lint_vip: needsVip,
+		// Gates PHP 8.0-only syntax (currently just the `: mixed` return type on
+		// Container::get()) so a 7.4 target generates code that parses on 7.4.
+		php_8_0: parseFloat(answers.minPhp) >= 8.0
 	};
 
 	// readme.txt "Contributors" are WordPress.org user logins — lowercase
@@ -1362,8 +1391,8 @@ ${entries.join('\n')}
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
 
-	const allPhpVersions = ['8.0', '8.1', '8.2', '8.3'];
-	const minPhpNum = parseFloat(answers.minPhp || '8.0');
+	const allPhpVersions = ['7.4', '8.0', '8.1', '8.2', '8.3'];
+	const minPhpNum = parseFloat(answers.minPhp || '7.4');
 	let validMatrixVersions = allPhpVersions.filter(v => parseFloat(v) >= minPhpNum);
 	if (!validMatrixVersions.includes(answers.minPhp)) {
 		validMatrixVersions.push(answers.minPhp);
