@@ -19,10 +19,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Class Cache_Service.
  *
- * Reads/writes through both the object cache (wp_cache_*) and a transient —
- * fast when a persistent object cache (Redis/Memcached) is configured,
- * correct without one (default MySQL-only installs still get the transient).
- * Resolve it from the container: $container->get( Cache_Service::class ).
+ * A thin cache with one backend chosen at call time:
+ *   - a persistent object cache (Redis/Memcached via a drop-in), when the
+ *     site has one — reads/writes go through wp_cache_* in a dedicated group;
+ *   - otherwise transients, which persist in the options table.
+ *
+ * `set_transient()` already routes to the object cache when one is present,
+ * so writing to both would just store every value twice on a Redis site —
+ * this picks one. Resolve from the container:
+ * $container->get( Cache_Service::class ).
  */
 class Cache_Service implements Service_Provider {
 
@@ -60,20 +65,20 @@ class Cache_Service implements Service_Provider {
 	 * @return mixed
 	 */
 	public function get( string $key, $fallback = null ) {
-		$found = false;
-		$value = wp_cache_get( $key, self::GROUP, false, $found );
+		if ( $this->has_object_cache() ) {
+			$found = false;
+			$value = wp_cache_get( $key, self::GROUP, false, $found );
 
-		if ( $found ) {
-			return $value;
+			return $found ? $value : $fallback;
 		}
 
-		$transient = get_transient( $this->transient_key( $key ) );
+		$value = get_transient( $this->transient_key( $key ) );
 
-		return false !== $transient ? $transient : $fallback;
+		return false !== $value ? $value : $fallback;
 	}
 
 	/**
-	 * Store a value in both the object cache and a transient.
+	 * Store a value in the active backend.
 	 *
 	 * @param string $key   Cache key (unprefixed; scoped by the plugin's own group).
 	 * @param mixed  $value Value to store.
@@ -81,18 +86,28 @@ class Cache_Service implements Service_Provider {
 	 * @return void
 	 */
 	public function set( string $key, $value, int $ttl = HOUR_IN_SECONDS ): void {
-		wp_cache_set( $key, $value, self::GROUP, $ttl );
+		if ( $this->has_object_cache() ) {
+			wp_cache_set( $key, $value, self::GROUP, $ttl );
+
+			return;
+		}
+
 		set_transient( $this->transient_key( $key ), $value, $ttl );
 	}
 
 	/**
-	 * Remove a cached value from both the object cache and its transient.
+	 * Remove a cached value from the active backend.
 	 *
 	 * @param string $key Cache key (unprefixed; scoped by the plugin's own group).
 	 * @return void
 	 */
 	public function delete( string $key ): void {
-		wp_cache_delete( $key, self::GROUP );
+		if ( $this->has_object_cache() ) {
+			wp_cache_delete( $key, self::GROUP );
+
+			return;
+		}
+
 		delete_transient( $this->transient_key( $key ) );
 	}
 
@@ -116,6 +131,15 @@ class Cache_Service implements Service_Provider {
 		$this->set( $key, $value, $ttl );
 
 		return $value;
+	}
+
+	/**
+	 * Whether the site has a persistent object cache (Redis/Memcached drop-in).
+	 *
+	 * @return bool
+	 */
+	private function has_object_cache(): bool {
+		return function_exists( 'wp_using_ext_object_cache' ) && wp_using_ext_object_cache();
 	}
 
 	/**

@@ -36,33 +36,26 @@ class Cache_Service_Test extends TestCase {
 	}
 
 	/**
-	 * Test get falls back to provided default on cache miss.
+	 * get() returns the fallback on a miss — no persistent object cache branch.
 	 */
-	public function test_get_fallback_on_cache_miss(): void {
-		Functions\stubs(
-			array(
-				'wp_cache_get'  => false,
-				'get_transient' => false,
-			)
-		);
+	public function test_get_fallback_on_transient_miss(): void {
+		Functions\when( 'wp_using_ext_object_cache' )->justReturn( false );
+		Functions\stubs( array( 'get_transient' => false ) );
 
 		$service = new Cache_Service();
-		$value   = $service->get( 'my_key', 'fallback_value' );
 
-		$this->assertEquals( 'fallback_value', $value );
+		$this->assertSame( 'fallback_value', $service->get( 'my_key', 'fallback_value' ) );
 	}
 
 	/**
-	 * Test set writes both object cache and transient.
+	 * With a persistent object cache, set() writes to wp_cache_* only —
+	 * set_transient() would just store the value in the same backend twice.
 	 */
-	public function test_set_writes_cache_and_transient(): void {
-		Functions\expect( 'wp_cache_set' )
-			->once()
-			->with( 'my_key', 'my_val', '{{PREFIX}}', 3600 );
+	public function test_set_uses_object_cache_when_available(): void {
+		Functions\when( 'wp_using_ext_object_cache' )->justReturn( true );
 
-		Functions\expect( 'set_transient' )
-			->once()
-			->with( '{{PREFIX}}_my_key', 'my_val', 3600 );
+		Functions\expect( 'wp_cache_set' )->once()->with( 'my_key', 'my_val', '{{PREFIX}}', 3600 );
+		Functions\expect( 'set_transient' )->never();
 
 		$service = new Cache_Service();
 		$service->set( 'my_key', 'my_val', 3600 );
@@ -71,16 +64,28 @@ class Cache_Service_Test extends TestCase {
 	}
 
 	/**
-	 * Test delete clears both object cache and transient.
+	 * Without one, set() persists via a transient instead.
 	 */
-	public function test_delete_clears_cache_and_transient(): void {
-		Functions\expect( 'wp_cache_delete' )
-			->once()
-			->with( 'my_key', '{{PREFIX}}' );
+	public function test_set_falls_back_to_transient(): void {
+		Functions\when( 'wp_using_ext_object_cache' )->justReturn( false );
 
-		Functions\expect( 'delete_transient' )
-			->once()
-			->with( '{{PREFIX}}_my_key' );
+		Functions\expect( 'set_transient' )->once()->with( '{{PREFIX}}_my_key', 'my_val', 3600 );
+		Functions\expect( 'wp_cache_set' )->never();
+
+		$service = new Cache_Service();
+		$service->set( 'my_key', 'my_val', 3600 );
+
+		$this->assertTrue( true );
+	}
+
+	/**
+	 * delete() clears whichever backend is in use — here, the transient.
+	 */
+	public function test_delete_clears_the_active_backend(): void {
+		Functions\when( 'wp_using_ext_object_cache' )->justReturn( false );
+
+		Functions\expect( 'delete_transient' )->once()->with( '{{PREFIX}}_my_key' );
+		Functions\expect( 'wp_cache_delete' )->never();
 
 		$service = new Cache_Service();
 		$service->delete( 'my_key' );
