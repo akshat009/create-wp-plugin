@@ -64,9 +64,17 @@ class Schema {
 	/**
 	 * Run create_table() again if the stored schema version is behind VERSION.
 	 *
+	 * Only in admin / cron / WP-CLI: dbDelta() is a heavy DESCRIBE + ALTER,
+	 * and there's no reason to pay for it on a cached front-end request. A
+	 * plugin update always lands via one of those contexts anyway.
+	 *
 	 * @return void
 	 */
 	public function maybe_upgrade(): void {
+		if ( ! is_admin() && ! wp_doing_cron() && ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+			return;
+		}
+
 		if ( get_option( self::VERSION_OPTION ) === self::VERSION ) {
 			return;
 		}
