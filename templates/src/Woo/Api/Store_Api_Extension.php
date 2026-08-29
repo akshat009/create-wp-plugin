@@ -40,8 +40,8 @@ class Store_Api_Extension {
 			array(
 				'endpoint'        => 'cart',
 				'namespace'       => self::IDENTIFIER,
-				'data_callback'   => array( $this, 'get_cart_data' ),
-				'schema_callback' => array( $this, 'get_cart_schema' ),
+				'data_callback'   => $this->get_cart_data(...),
+				'schema_callback' => $this->get_cart_schema(...),
 				'schema_type'     => ARRAY_A,
 			)
 		);

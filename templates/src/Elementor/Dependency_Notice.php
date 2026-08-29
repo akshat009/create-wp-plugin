@@ -37,7 +37,7 @@ class Dependency_Notice implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'admin_notices', array( $this, 'render_notice' ) );
+		add_action( 'admin_notices', $this->render_notice(...) );
 	}
 
 	/**

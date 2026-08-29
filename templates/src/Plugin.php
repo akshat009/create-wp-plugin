@@ -26,28 +26,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 final class Plugin {
 
 	/**
-	 * Application container.
-	 *
-	 * @var Container
-	 */
-	private Container $container;
-
-	/**
-	 * Registered Service_Provider instances (unfiltered, unconditioned).
-	 *
-	 * @var array<int, Contracts\Service_Provider>
-	 */
-	private array $providers;
-
-	/**
-	 * Constructor.
+	 * Hold the container and the (unfiltered, unconditioned) provider list.
 	 *
 	 * @param Container $container Application container.
 	 * @param array     $providers Service_Provider instances to run.
 	 */
-	public function __construct( Container $container, array $providers ) {
-		$this->container = $container;
-		$this->providers = $providers;
+	public function __construct(
+		private readonly Container $container,
+		private readonly array $providers
+	) {
 	}
 
 	/**

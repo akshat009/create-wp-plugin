@@ -49,8 +49,8 @@ class Blocks_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( 'init', array( Cart_Summary_Block::class, 'register' ) );
-		add_action( 'woocommerce_blocks_loaded', array( $this, 'register_blocks_integration' ) );
+		add_action( 'init', Cart_Summary_Block::register(...) );
+		add_action( 'woocommerce_blocks_loaded', $this->register_blocks_integration(...) );
 	}
 
 	/**
@@ -60,7 +60,7 @@ class Blocks_Provider implements Service_Provider, Conditional {
 	 * @return void
 	 */
 	public function register_blocks_integration(): void {
-		$register_integration = array( $this, 'register_integration' );
+		$register_integration = $this->register_integration(...);
 		add_action( 'woocommerce_blocks_cart_block_registration', $register_integration );
 		add_action( 'woocommerce_blocks_checkout_block_registration', $register_integration );
 	}

@@ -12,11 +12,10 @@ import {
 	validatePrefix,
 	validateNamespace,
 	validateEmail,
-	validateMinPhp,
 	validateOutputDir,
 	validateModules,
 	validateAll,
-	requiredPhpFor,
+	MIN_PHP,
 	runGenerator
 } from '../index.js';
 
@@ -71,12 +70,6 @@ test('Group 2 Validators', () => {
 	assert.equal(validateEmail('test@example.com'), true);
 	assert.equal(typeof validateEmail('invalid-email'), 'string');
 
-	assert.equal(validateMinPhp('7.4'), true);
-	assert.equal(validateMinPhp('8.0'), true);
-	assert.equal(validateMinPhp('8.2'), true);
-	assert.equal(typeof validateMinPhp('invalid'), 'string');
-	assert.equal(typeof validateMinPhp('7.3'), 'string', 'templates use 7.4 syntax — sub-7.4 is rejected');
-
 	assert.equal(validateOutputDir('./some-dir'), true);
 	assert.equal(typeof validateOutputDir(''), 'string');
 
@@ -86,7 +79,6 @@ test('Group 2 Validators', () => {
 		prefix: 'tplg',
 		namespace: 'TestPlugin',
 		authorEmail: 'author@example.com',
-		minPhp: '8.0',
 		outputDir: './tmp-test'
 	}), true);
 });
@@ -104,7 +96,6 @@ test('Group 3 $& pattern replacement bug fix regression test', () => {
 		authorEmail: 'test@example.com',
 		authorUri: 'https://example.com',
 		description: 'Description with $& and $1',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -133,7 +124,6 @@ test('Non-interactive scaffolding for zero-module minimal variant', () => {
 		authorEmail: 'test@example.com',
 		authorUri: 'https://example.com',
 		description: 'Minimal',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -162,7 +152,6 @@ test('Non-interactive scaffolding for Elementor variant includes php-elementor.c
 		authorEmail: 'test@example.com',
 		authorUri: 'https://example.com',
 		description: 'Elementor',
-		minPhp: '8.2',
 		modules: ['elementor_widget', 'editor_config'],
 		useReact: false,
 		out: outDir
@@ -208,39 +197,45 @@ test('validateModules rejects unknown module names but allows empty/known lists'
 	assert.equal(typeof validateModules(['admin_settings', 'not_a_real_module']), 'string');
 });
 
-test('requiredPhpFor floors at 7.4 and no module raises it today', () => {
-	assert.equal(requiredPhpFor([]), '7.4');
-	assert.equal(requiredPhpFor(['admin_settings', 'woo:gateway', 'block:dynamic', 'cli']), '7.4');
-});
+test('every scaffold pins PHP 8.3 and emits modern PHP (promotion, readonly, first-class callables)', () => {
+	assert.equal(MIN_PHP, '8.3');
 
-test('min-php 7.4 gates out the PHP 8.0 `: mixed` return type; 8.0 keeps it', () => {
-	const base = {
-		name: 'Php Floor', slug: 'php-floor', prefix: 'pflr', namespace: 'PhpFloor',
+	const outDir = path.join(__dirname, '../tmp-test-php83');
+	fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+
+	runGenerator({
+		name: 'Modern Php', slug: 'modern-php', prefix: 'mphp', namespace: 'ModernPhp',
 		authorName: 'Author', authorEmail: 'test@example.com', authorUri: 'https://example.com',
-		description: 'php floor', modules: [], useReact: false
-	};
+		description: 'modern php', modules: ['woo:store-api', 'admin_settings'], useReact: false, out: outDir
+	});
 
-	const dir74 = path.join(__dirname, '../tmp-test-php74');
-	const dir80 = path.join(__dirname, '../tmp-test-php80');
-	fs.rmSync(dir74, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-	fs.rmSync(dir80, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	const requires = ['modern-php.php', 'composer.json', 'readme.txt'].map(
+		(f) => fs.readFileSync(path.join(outDir, f), 'utf8')
+	);
+	assert.match(requires[0], /Requires PHP:\s+8\.3/);
+	assert.match(requires[1], /"php":\s*">=8\.3"/);
+	assert.match(requires[2], /Requires PHP: 8\.3/);
 
-	runGenerator({ ...base, minPhp: '7.4', out: dir74 });
-	runGenerator({ ...base, minPhp: '8.0', out: dir80 });
+	const ci = fs.readFileSync(path.join(outDir, '.github/workflows/ci.yml'), 'utf8');
+	assert.match(ci, /php-version:\s*\['8\.3', '8\.4'\]/);
 
-	const container74 = fs.readFileSync(path.join(dir74, 'src/Core/Container.php'), 'utf8');
-	const container80 = fs.readFileSync(path.join(dir80, 'src/Core/Container.php'), 'utf8');
+	const plugin = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
+	assert.match(plugin, /private readonly Container \$container/, 'constructor property promotion');
+	assert.doesNotMatch(plugin, /\$this->container = \$container;/, 'no hand-written assignment');
 
-	assert.match(container74, /public function get\( string \$id \) \{/, '7.4 signature carries no return type');
-	assert.doesNotMatch(container74, /: mixed/);
-	assert.doesNotMatch(container74, /\{\{[#/]?if/, 'no leftover conditional tags');
-	assert.match(container80, /public function get\( string \$id \): mixed \{/, '8.0 signature keeps `: mixed`');
+	const container = fs.readFileSync(path.join(outDir, 'src/Core/Container.php'), 'utf8');
+	assert.match(container, /public function get\( string \$id \): mixed \{/, '`: mixed` is unconditional');
 
-	const ci74 = fs.readFileSync(path.join(dir74, '.github/workflows/ci.yml'), 'utf8');
-	assert.match(ci74, /'7\.4'/, 'the 7.4 leg is in the generated PHPUnit matrix');
+	const settings = fs.readFileSync(path.join(outDir, 'src/Admin/Settings_Registrar.php'), 'utf8');
+	assert.match(settings, /add_action\( '[^']+', \$this->[a-z_]+\(\.\.\.\) \)/, 'first-class callable hook');
+	assert.doesNotMatch(settings, /array\( \$this, '/, 'no array-style callbacks');
 
-	fs.rmSync(dir74, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-	fs.rmSync(dir80, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	const storeApiProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Store_Api_Provider.php'), 'utf8');
+	assert.match(storeApiProvider, /public function __construct\( private readonly \?Store_Api_Extension \$service = null \)/);
+
+	assert.doesNotMatch(plugin + container, /\{\{[#/]?if/, 'no leftover conditional tags');
+
+	fs.rmSync(outDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 });
 
 test('validateEmail rejects garbage that merely contains "@"', () => {
@@ -261,7 +256,6 @@ test('runGenerator throws (does not process.exit) when the output directory is n
 			slug: 'conflict-plugin',
 			prefix: 'cp',
 			namespace: 'ConflictPlugin',
-			minPhp: '8.0',
 			modules: [],
 			useReact: false,
 			out: outDir
@@ -286,7 +280,7 @@ test('B1.3 a mid-scaffold failure rolls back a directory it created', () => {
 	try {
 		assert.throws(() => runGenerator({
 			name: 'Rollback', slug: 'rollback', prefix: 'rbk', namespace: 'Rollback',
-			minPhp: '8.0', modules: [], useReact: false, out: created
+			modules: [], useReact: false, out: created
 		}), /simulated disk failure/);
 	} finally {
 		fs.writeFileSync = realWrite;
@@ -307,7 +301,7 @@ test('B1.3 a mid-scaffold failure rolls back a directory it created', () => {
 	try {
 		assert.throws(() => runGenerator({
 			name: 'Keep', slug: 'keep', prefix: 'keep', namespace: 'Keep',
-			minPhp: '8.0', modules: [], useReact: false, out: preExisting
+			modules: [], useReact: false, out: preExisting
 		}), /simulated disk failure/);
 	} finally {
 		fs.writeFileSync = realWrite;
@@ -323,7 +317,6 @@ test('React pipeline: package.json build/start scripts point wp-scripts at asset
 		slug: 'react-plugin',
 		prefix: 'rp',
 		namespace: 'ReactPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: true,
 		out: outDir
@@ -349,7 +342,6 @@ test('composer.json omits the "version" field (composer validate --strict discou
 		slug: 'version-plugin',
 		prefix: 'vp',
 		namespace: 'VersionPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -368,7 +360,6 @@ test('phpcs.xml has no unreplaced {{TOKENS}} and includes trailing-underscore pr
 		slug: 'phpcs-plugin',
 		prefix: 'pcp',
 		namespace: 'PhpcsPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -394,7 +385,6 @@ test('lintTarget "vip" generates only the WordPress-VIP-Go ruleset and adds auto
 		slug: 'vip-plugin',
 		prefix: 'vpg',
 		namespace: 'VipPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		lintTarget: 'vip',
@@ -420,7 +410,6 @@ test('lintTarget "both" generates both wp.org and VIP-Go rulesets', () => {
 		slug: 'both-standards-plugin',
 		prefix: 'bsp',
 		namespace: 'BothStandardsPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		lintTarget: 'both',
@@ -445,7 +434,6 @@ test('generated plugin version defaults to 1.0.0', () => {
 		slug: 'version-default-plugin',
 		prefix: 'vdp',
 		namespace: 'VersionDefaultPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -470,7 +458,6 @@ test('foundational contracts and container are always scaffolded with no leftove
 		slug: 'foundation-plugin',
 		prefix: 'fdp',
 		namespace: 'FoundationPlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -508,7 +495,6 @@ test('Plugin.php is a pure composition root (no hooks registered directly), and 
 		slug: 'elementor-boot-plugin',
 		prefix: 'ebp',
 		namespace: 'ElementorBootPlugin',
-		minPhp: '8.0',
 		modules: ['elementor_widget'],
 		useReact: false,
 		out: outDir
@@ -516,7 +502,8 @@ test('Plugin.php is a pure composition root (no hooks registered directly), and 
 
 	const pluginPhp = fs.readFileSync(path.join(outDir, 'src/Plugin.php'), 'utf8');
 	assert.ok(!pluginPhp.includes('add_action'), 'Plugin.php itself should never register WordPress hooks directly');
-	assert.ok(pluginPhp.includes('public function __construct( Container $container, array $providers )'));
+	assert.ok(pluginPhp.includes('private readonly Container $container'));
+	assert.ok(pluginPhp.includes('private readonly array $providers'));
 	assert.ok(pluginPhp.includes('public static function create(): self'));
 	assert.ok(pluginPhp.includes('new Elementor\\Widget_Registrar();'));
 	assert.ok(pluginPhp.includes('new Elementor\\Dependency_Notice();'));
@@ -537,7 +524,6 @@ test('React admin app + admin_settings: root div mounted, Assets.php scoped to t
 		slug: 'react-admin-plugin',
 		prefix: 'rap',
 		namespace: 'ReactAdminPlugin',
-		minPhp: '8.0',
 		modules: ['admin_settings'],
 		useReact: true,
 		out: outDir
@@ -574,7 +560,6 @@ test('React admin app without admin_settings: Assets.php falls back to a TODO sc
 		slug: 'react-bare-plugin',
 		prefix: 'rbp',
 		namespace: 'ReactBarePlugin',
-		minPhp: '8.0',
 		modules: [],
 		useReact: true,
 		out: outDir
@@ -595,7 +580,6 @@ test('Frontend Interactivity module: view.js is hand-written ESM served as a scr
 		slug: 'interactivity-plugin',
 		prefix: 'ip',
 		namespace: 'InteractivityPlugin',
-		minPhp: '8.0',
 		modules: ['interactivity'],
 		useReact: false,
 		out: outDir
@@ -631,7 +615,6 @@ test('React admin app + Frontend Interactivity together: no webpack.config.js (s
 		slug: 'both-plugin',
 		prefix: 'bp',
 		namespace: 'BothPlugin',
-		minPhp: '8.0',
 		modules: ['interactivity'],
 		useReact: true,
 		out: outDir
@@ -648,7 +631,7 @@ test('block module: native block.json + edit + server render, wired via Block_Re
 	const outDir = path.join(__dirname, '../tmp-test-block');
 	runGenerator({
 		name: 'Block Plugin', slug: 'block-plugin', prefix: 'blkp', namespace: 'BlockPlugin',
-		minPhp: '8.0', modules: ['block'], useReact: false, out: outDir
+		modules: ['block'], useReact: false, out: outDir
 	});
 
 	for (const f of [
@@ -681,7 +664,7 @@ test('block module: native block.json + edit + server render, wired via Block_Re
 
 	const registrar = fs.readFileSync(path.join(outDir, 'src/Blocks/Block_Registrar.php'), 'utf8');
 	assert.ok(registrar.includes('implements Service_Provider'));
-	assert.ok(registrar.includes("add_action( 'init', array( $this, 'register_blocks' ) )"));
+	assert.ok(registrar.includes("add_action( 'init', $this->register_blocks(...) )"));
 	assert.ok(registrar.includes("glob( $build_dir . '/*', GLOB_ONLYDIR )"), 'discovers every built block dir, so new blocks need no PHP change');
 	assert.ok(registrar.includes('register_block_type( $block_dir )'));
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(registrar), 'no unreplaced tokens');
@@ -706,7 +689,7 @@ test('block + React together: webpack.config.js keeps the admin entry alongside 
 	const outDir = path.join(__dirname, '../tmp-test-block-react');
 	runGenerator({
 		name: 'Block React', slug: 'block-react', prefix: 'blkr', namespace: 'BlockReact',
-		minPhp: '8.0', modules: ['block'], useReact: true, out: outDir
+		modules: ['block'], useReact: true, out: outDir
 	});
 
 	const webpackConfig = fs.readFileSync(path.join(outDir, 'webpack.config.js'), 'utf8');
@@ -720,7 +703,7 @@ test('block sub-modules: block:dynamic and block:static scaffold independently',
 	const dyn = path.join(__dirname, '../tmp-test-block-dyn');
 	runGenerator({
 		name: 'Block Dyn', slug: 'block-dyn', prefix: 'bdyn', namespace: 'BlockDyn',
-		minPhp: '8.0', modules: ['block:dynamic'], useReact: false, out: dyn
+		modules: ['block:dynamic'], useReact: false, out: dyn
 	});
 	assert.ok(fs.existsSync(path.join(dyn, 'assets/src/blocks/example/render.php')));
 	assert.ok(!fs.existsSync(path.join(dyn, 'assets/src/blocks/example-static')), 'static block not scaffolded');
@@ -732,7 +715,7 @@ test('block sub-modules: block:dynamic and block:static scaffold independently',
 	const stat = path.join(__dirname, '../tmp-test-block-stat');
 	runGenerator({
 		name: 'Block Stat', slug: 'block-stat', prefix: 'bsta', namespace: 'BlockStat',
-		minPhp: '8.0', modules: ['block:static'], useReact: false, out: stat
+		modules: ['block:static'], useReact: false, out: stat
 	});
 	assert.ok(fs.existsSync(path.join(stat, 'assets/src/blocks/example-static/save.js')));
 	assert.ok(!fs.existsSync(path.join(stat, 'assets/src/blocks/example')), 'dynamic block not scaffolded');
@@ -745,7 +728,7 @@ test('block bundle alias: plain "block" expands to both sub-modules', () => {
 	const outDir = path.join(__dirname, '../tmp-test-block-all');
 	runGenerator({
 		name: 'Block All', slug: 'block-all', prefix: 'blka', namespace: 'BlockAll',
-		minPhp: '8.0', modules: ['block'], useReact: false, out: outDir
+		modules: ['block'], useReact: false, out: outDir
 	});
 	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/blocks/example/render.php')));
 	assert.ok(fs.existsSync(path.join(outDir, 'assets/src/blocks/example-static/save.js')));
@@ -759,7 +742,6 @@ test('WooCommerce module: gateway, shipping, email, product type, blocks payment
 		slug: 'woo-full-plugin',
 		prefix: 'wfp',
 		namespace: 'WooFullPlugin',
-		minPhp: '8.0',
 		modules: ['woocommerce_hooks', 'editor_config'],
 		useReact: false,
 		out: outDir
@@ -845,7 +827,6 @@ test('WooCommerce Cart block: native cart-summary block + Blocks Integration sca
 		slug: 'cart-block-plugin',
 		prefix: 'cbp',
 		namespace: 'CartBlockPlugin',
-		minPhp: '8.0',
 		modules: ['woocommerce_hooks'],
 		useReact: false,
 		out: outDir
@@ -867,7 +848,7 @@ test('WooCommerce Cart block: native cart-summary block + Blocks Integration sca
 	assert.ok(!/\{\{[A-Z_]+\}\}/.test(integration));
 
 	const blocksProvider = fs.readFileSync(path.join(outDir, 'src/Woo/Providers/Blocks_Provider.php'), 'utf8');
-	assert.ok(blocksProvider.includes('Cart_Summary_Block::class'));
+	assert.ok(blocksProvider.includes('Cart_Summary_Block::register(...)'));
 	assert.ok(blocksProvider.includes('woocommerce_blocks_cart_block_registration'));
 	assert.ok(blocksProvider.includes('woocommerce_blocks_checkout_block_registration'));
 
@@ -893,7 +874,6 @@ test('composer.json package name derives from the author, not a literal "vendor/
 		prefix: 'vtpl',
 		namespace: 'VendorTestPlugin',
 		authorName: 'Jane Doe',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -912,7 +892,6 @@ test('cpt_taxonomy Activator resolves Post_Types through the container with a fu
 		slug: 'cpt-activator-plugin',
 		prefix: 'cap',
 		namespace: 'CptActivatorPlugin',
-		minPhp: '8.0',
 		modules: ['cpt_taxonomy'],
 		useReact: false,
 		out: outDir
@@ -938,7 +917,7 @@ test('B6.19 a VIP lint target drops flush_rewrite_rules() entirely rather than s
 	const outDir = path.join(__dirname, '../tmp-test-frr-vip');
 	runGenerator({
 		name: 'Frr Vip', slug: 'frr-vip', prefix: 'frrv', namespace: 'FrrVip',
-		minPhp: '8.0', modules: ['cpt_taxonomy'], lintTarget: 'vip', useReact: false, out: outDir
+		modules: ['cpt_taxonomy'], lintTarget: 'vip', useReact: false, out: outDir
 	});
 	const activatorPhp = fs.readFileSync(path.join(outDir, 'src/Core/Activator.php'), 'utf8');
 	assert.ok(!/^\s*flush_rewrite_rules\(/m.test(activatorPhp), 'no flush_rewrite_rules() call under a VIP target');
@@ -953,7 +932,7 @@ test('0.8 the WP integration suite is an integration_tests module, not baseline'
 	const off = path.join(__dirname, '../tmp-test-integration-off');
 	runGenerator({
 		name: 'Int Off', slug: 'int-off', prefix: 'inof', namespace: 'IntOff',
-		minPhp: '8.0', modules: ['admin_settings'], useReact: false, out: off
+		modules: ['admin_settings'], useReact: false, out: off
 	});
 	for (const f of ['tests/bootstrap-integration.php', 'phpunit-integration.xml.dist', 'tests/Integration/Plugin_Boot_Test.php', '.wp-env.json']) {
 		assert.ok(!fs.existsSync(path.join(off, f)), `${f} must not ship without the module`);
@@ -968,7 +947,7 @@ test('0.8 the WP integration suite is an integration_tests module, not baseline'
 	const on = path.join(__dirname, '../tmp-test-integration-on');
 	runGenerator({
 		name: 'Int On', slug: 'int-on', prefix: 'inon', namespace: 'IntOn',
-		minPhp: '8.0', modules: ['integration_tests'], useReact: false, out: on
+		modules: ['integration_tests'], useReact: false, out: on
 	});
 	for (const f of ['tests/bootstrap-integration.php', 'phpunit-integration.xml.dist', 'tests/Integration/Plugin_Boot_Test.php', '.wp-env.json']) {
 		const content = fs.readFileSync(path.join(on, f), 'utf8');
@@ -989,7 +968,6 @@ test('pure-PHP scaffold gets a packaging-only package.json — no build pipeline
 		slug: 'no-js-pipeline-plugin',
 		prefix: 'njpp',
 		namespace: 'NoJsPipelinePlugin',
-		minPhp: '8.0',
 		modules: ['admin_settings', 'cpt_taxonomy'],
 		useReact: false,
 		out: outDir
@@ -1024,7 +1002,6 @@ test('Playwright E2E ships alongside any JS pipeline (here: Interactivity only, 
 		slug: 'e2e-interactivity-plugin',
 		prefix: 'eip',
 		namespace: 'E2eInteractivityPlugin',
-		minPhp: '8.0',
 		modules: ['interactivity'],
 		useReact: false,
 		out: outDir
@@ -1053,7 +1030,6 @@ test('Jest unit tests + admin_settings-aware E2E spec ship with React admin app'
 		slug: 'jest-react-plugin',
 		prefix: 'jrp',
 		namespace: 'JestReactPlugin',
-		minPhp: '8.0',
 		modules: ['admin_settings'],
 		useReact: true,
 		out: outDir
@@ -1081,7 +1057,6 @@ test('caching module scaffolds Cache_Service as a container-resolvable provider'
 		slug: 'caching-plugin',
 		prefix: 'cchp',
 		namespace: 'CachingPlugin',
-		minPhp: '8.0',
 		modules: ['caching'],
 		useReact: false,
 		out: outDir
@@ -1106,7 +1081,6 @@ test('custom_table module scaffolds a dbDelta Schema + Item_Repository, wired in
 		slug: 'custom-table-plugin',
 		prefix: 'ctbp',
 		namespace: 'CustomTablePlugin',
-		minPhp: '8.0',
 		modules: ['custom_table'],
 		useReact: false,
 		out: outDir
@@ -1140,7 +1114,7 @@ test('B6.16 cache cleanup goes through the {{PREFIX}}_cache_keys filter, not har
 	const bare = path.join(__dirname, '../tmp-test-cache-bare');
 	runGenerator({
 		name: 'Cache Bare', slug: 'cache-bare', prefix: 'cbre', namespace: 'CacheBare',
-		minPhp: '8.0', modules: ['cli', 'cron'], useReact: false, out: bare
+		modules: ['cli', 'cron'], useReact: false, out: bare
 	});
 	const commandsBare = fs.readFileSync(path.join(bare, 'src/CLI/Commands.php'), 'utf8');
 	assert.ok(commandsBare.includes("apply_filters( 'cbre_cache_keys'"), 'cache_clear iterates the filter');
@@ -1153,7 +1127,7 @@ test('B6.16 cache cleanup goes through the {{PREFIX}}_cache_keys filter, not har
 	const ele = path.join(__dirname, '../tmp-test-cache-elementor');
 	runGenerator({
 		name: 'Cache Ele', slug: 'cache-ele', prefix: 'cele', namespace: 'CacheEle',
-		minPhp: '8.0', modules: ['elementor_widget'], useReact: false, out: ele
+		modules: ['elementor_widget'], useReact: false, out: ele
 	});
 	const registrar = fs.readFileSync(path.join(ele, 'src/Elementor/Widget_Registrar.php'), 'utf8');
 	assert.ok(registrar.includes("add_filter( 'cele_cache_keys'"), 'the Elementor module registers its own key via the filter');
@@ -1167,7 +1141,7 @@ test('0.10 editor_config module owns every .vscode file', () => {
 	const without = path.join(__dirname, '../tmp-test-editorcfg-off');
 	runGenerator({
 		name: 'Ecfg Off', slug: 'ecfg-off', prefix: 'ecof', namespace: 'EcfgOff',
-		minPhp: '8.0', modules: ['elementor_widget'], useReact: false, out: without
+		modules: ['elementor_widget'], useReact: false, out: without
 	});
 	assert.ok(!fs.existsSync(path.join(without, '.vscode')), 'no .vscode dir at all without editor_config, even with elementor_widget');
 	fs.rmSync(without, { recursive: true, force: true });
@@ -1175,7 +1149,7 @@ test('0.10 editor_config module owns every .vscode file', () => {
 	const withCfg = path.join(__dirname, '../tmp-test-editorcfg-on');
 	runGenerator({
 		name: 'Ecfg On', slug: 'ecfg-on', prefix: 'econ', namespace: 'EcfgOn',
-		minPhp: '8.0', modules: ['editor_config', 'elementor_widget'], useReact: false, out: withCfg
+		modules: ['editor_config', 'elementor_widget'], useReact: false, out: withCfg
 	});
 	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/php.code-snippets')));
 	assert.ok(fs.existsSync(path.join(withCfg, '.vscode/extensions.json')));
@@ -1188,7 +1162,7 @@ test('0.6 cli module owns src/CLI/Commands.php and its Plugin.php wiring', () =>
 	const off = path.join(__dirname, '../tmp-test-cli-off');
 	runGenerator({
 		name: 'Cli Off', slug: 'cli-off', prefix: 'clof', namespace: 'CliOff',
-		minPhp: '8.0', modules: [], useReact: false, out: off
+		modules: [], useReact: false, out: off
 	});
 	assert.ok(!fs.existsSync(path.join(off, 'src/CLI/Commands.php')), 'no Commands.php without the cli module');
 	assert.ok(!fs.existsSync(path.join(off, 'tests/Unit/Commands_Test.php')));
@@ -1201,7 +1175,7 @@ test('0.6 cli module owns src/CLI/Commands.php and its Plugin.php wiring', () =>
 	const on = path.join(__dirname, '../tmp-test-cli-on');
 	runGenerator({
 		name: 'Cli On', slug: 'cli-on', prefix: 'clon', namespace: 'CliOn',
-		minPhp: '8.0', modules: ['cli'], useReact: false, out: on
+		modules: ['cli'], useReact: false, out: on
 	});
 	const commands = fs.readFileSync(path.join(on, 'src/CLI/Commands.php'), 'utf8');
 	assert.ok(!/^\s*if \( ! defined\( 'WP_CLI' \) \|\| ! WP_CLI \) \{\s*$/m.test(commands.split('class Commands')[0]), 'no top-level return guard before the class (B6.17)');
@@ -1217,7 +1191,7 @@ test('0.9 assets/js/main.js rides with ajax_handler; assets/css/main.css is gone
 	const bare = path.join(__dirname, '../tmp-test-fa-bare');
 	runGenerator({
 		name: 'FA Bare', slug: 'fa-bare', prefix: 'fabr', namespace: 'FaBare',
-		minPhp: '8.0', modules: ['shortcode'], useReact: false, out: bare
+		modules: ['shortcode'], useReact: false, out: bare
 	});
 	assert.ok(!fs.existsSync(path.join(bare, 'assets/js/main.js')), 'no main.js without ajax_handler');
 	assert.ok(!fs.existsSync(path.join(bare, 'assets/css/main.css')), 'main.css is removed entirely (nothing ever enqueued it)');
@@ -1226,7 +1200,7 @@ test('0.9 assets/js/main.js rides with ajax_handler; assets/css/main.css is gone
 	const ajax = path.join(__dirname, '../tmp-test-fa-ajax');
 	runGenerator({
 		name: 'FA Ajax', slug: 'fa-ajax', prefix: 'faaj', namespace: 'FaAjax',
-		minPhp: '8.0', modules: ['ajax_handler'], useReact: false, out: ajax
+		modules: ['ajax_handler'], useReact: false, out: ajax
 	});
 	assert.ok(fs.existsSync(path.join(ajax, 'assets/js/main.js')));
 	assert.ok(!fs.existsSync(path.join(ajax, 'assets/css/main.css')));
@@ -1239,7 +1213,7 @@ test('0.7 uninstall.php + Uninstaller are derived from modules that persist stat
 	const none = path.join(__dirname, '../tmp-test-uninstall-none');
 	runGenerator({
 		name: 'Uni None', slug: 'uni-none', prefix: 'unin', namespace: 'UniNone',
-		minPhp: '8.0', modules: ['shortcode', 'rest_api'], useReact: false, out: none
+		modules: ['shortcode', 'rest_api'], useReact: false, out: none
 	});
 	assert.ok(!fs.existsSync(path.join(none, 'uninstall.php')), 'presentational modules persist nothing to clean');
 	assert.ok(!fs.existsSync(path.join(none, 'src/Core/Uninstaller.php')));
@@ -1248,7 +1222,7 @@ test('0.7 uninstall.php + Uninstaller are derived from modules that persist stat
 	const opt = path.join(__dirname, '../tmp-test-uninstall-opt');
 	runGenerator({
 		name: 'Uni Opt', slug: 'uni-opt', prefix: 'unop', namespace: 'UniOpt',
-		minPhp: '8.0', modules: ['admin_settings'], useReact: false, out: opt
+		modules: ['admin_settings'], useReact: false, out: opt
 	});
 	assert.ok(fs.existsSync(path.join(opt, 'uninstall.php')), 'admin_settings persists an option, so cleanup ships');
 	const uninstaller = fs.readFileSync(path.join(opt, 'src/Core/Uninstaller.php'), 'utf8');
@@ -1266,7 +1240,6 @@ test('composer.json package name falls back to "vendor/" when no author name is 
 		prefix: 'napl',
 		namespace: 'NoAuthorPlugin',
 		authorName: '',
-		minPhp: '8.0',
 		modules: [],
 		useReact: false,
 		out: outDir
@@ -1287,7 +1260,6 @@ test('quotes and apostrophes in plugin name and description are safely escaped i
 		namespace: 'DavesAwesomePlugin',
 		authorName: "Dave O'Connor",
 		description: 'A plugin with "fast" checkout & \'cool\' features.',
-		minPhp: '8.0',
 		modules: ['admin_settings'],
 		useReact: false,
 		out: outDir
@@ -1312,7 +1284,6 @@ test('module selection scaffolds corresponding PHP & JS unit tests and .wp-env.j
 		prefix: 'amp',
 		namespace: 'AllModulesPlugin',
 		authorName: 'Test Author',
-		minPhp: '8.0',
 		modules: ['cpt_taxonomy', 'custom_table', 'admin_settings', 'rest_api', 'ajax_handler', 'caching', 'elementor_widget', 'shortcode', 'cron', 'woocommerce_hooks', 'interactivity', 'integration_tests'],
 		useReact: true,
 		out: outDir
@@ -1351,7 +1322,6 @@ test('WooCommerce granular sub-modules: pure-PHP (e.g. woo:shipping + woo:email)
 		slug: 'woo-pure-php-plugin',
 		prefix: 'wppp',
 		namespace: 'WooPurePhpPlugin',
-		minPhp: '8.0',
 		modules: ['woo:shipping', 'woo:email'],
 		useReact: false,
 		out: outDir
@@ -1382,7 +1352,6 @@ test('WooCommerce granular sub-modules: woo:gateway alone emits Gateway.php, wc-
 		slug: 'woo-gateway-plugin',
 		prefix: 'wgp',
 		namespace: 'WooGatewayPlugin',
-		minPhp: '8.0',
 		modules: ['woo:gateway'],
 		useReact: false,
 		out: outDir
@@ -1407,7 +1376,6 @@ test('WooCommerce granular sub-modules: order-status, action-scheduler, store-ap
 		slug: 'woo-misc-plugin',
 		prefix: 'wmp',
 		namespace: 'WooMiscPlugin',
-		minPhp: '8.0',
 		modules: ['woo:order-status', 'woo:action-scheduler', 'woo:store-api', 'woo:my-account'],
 		useReact: false,
 		out: outDir
@@ -1440,7 +1408,6 @@ test('WooCommerce bundle alias "woo:all" and "woocommerce" expand to all 9 sub-m
 		slug: 'woo-alias-plugin',
 		prefix: 'wap',
 		namespace: 'WooAliasPlugin',
-		minPhp: '8.0',
 		modules: ['woo:all'],
 		useReact: false,
 		out: outDir

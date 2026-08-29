@@ -99,7 +99,7 @@ final class Container {
 	 *
 	 * @throws Not_Found_Exception When no instance or binding is registered for $id.
 	 */
-	public function get( string $id ){{#if php_8_0}}: mixed{{/if}} {
+	public function get( string $id ): mixed {
 		// array_key_exists, not isset: a resolved singleton may be null, and
 		// isset() would re-run its factory on every call.
 		if ( array_key_exists( $id, $this->instances ) ) {

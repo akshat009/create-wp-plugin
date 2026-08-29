@@ -24,19 +24,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Action_Scheduler_Provider implements Service_Provider, Conditional {
 
 	/**
-	 * Service instance.
-	 *
-	 * @var Action_Scheduler_Service|null
-	 */
-	private ?Action_Scheduler_Service $service = null;
-
-	/**
-	 * Constructor.
+	 * Accept an optional service override; the container builds a default
+	 * lazily when one isn't injected.
 	 *
 	 * @param Action_Scheduler_Service|null $service Service instance.
 	 */
-	public function __construct( ?Action_Scheduler_Service $service = null ) {
-		$this->service = $service;
+	public function __construct( private readonly ?Action_Scheduler_Service $service = null ) {
 	}
 
 	/**

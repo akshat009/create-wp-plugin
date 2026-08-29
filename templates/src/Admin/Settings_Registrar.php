@@ -53,8 +53,8 @@ class Settings_Registrar implements Service_Provider {
 	public function boot( Container $container ): void {
 		$this->container = $container;
 
-		add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
-		add_action( 'admin_init', array( $this, 'register_settings' ) );
+		add_action( 'admin_menu', $this->add_menu_page(...) );
+		add_action( 'admin_init', $this->register_settings(...) );
 	}
 
 	/**
@@ -68,7 +68,7 @@ class Settings_Registrar implements Service_Provider {
 			__( '{{PLUGIN_NAME_ESC}}', '{{SLUG}}' ),
 			'manage_options',
 			'{{SLUG}}',
-			array( $this, 'render_page' )
+			$this->render_page(...)
 		);
 	}
 
@@ -91,7 +91,7 @@ class Settings_Registrar implements Service_Provider {
 		add_settings_field(
 			$repository->get_option_name(),
 			__( 'Sample Setting', '{{SLUG}}' ),
-			array( $this, 'render_sample_field' ),
+			$this->render_sample_field(...),
 			'{{SLUG}}',
 			'{{PREFIX}}_main_section'
 		);

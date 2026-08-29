@@ -24,19 +24,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Order_Status_Provider implements Service_Provider, Conditional {
 
 	/**
-	 * Order status service instance.
-	 *
-	 * @var Order_Status_Service|null
-	 */
-	private ?Order_Status_Service $service = null;
-
-	/**
-	 * Constructor.
+	 * Accept an optional service override; the container builds a default
+	 * lazily when one isn't injected.
 	 *
 	 * @param Order_Status_Service|null $service Order status service.
 	 */
-	public function __construct( ?Order_Status_Service $service = null ) {
-		$this->service = $service;
+	public function __construct( private readonly ?Order_Status_Service $service = null ) {
 	}
 
 	/**

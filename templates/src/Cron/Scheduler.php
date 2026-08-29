@@ -37,7 +37,7 @@ class Scheduler implements Service_Provider {
 	 * @return void
 	 */
 	public function boot( Container $container ): void { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.Found
-		add_action( '{{PREFIX}}_cron_event', array( $this, 'execute_cron_job' ) );
+		add_action( '{{PREFIX}}_cron_event', $this->execute_cron_job(...) );
 	}
 
 	/**

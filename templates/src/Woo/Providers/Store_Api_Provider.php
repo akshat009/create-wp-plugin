@@ -24,19 +24,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Store_Api_Provider implements Service_Provider, Conditional {
 
 	/**
-	 * Extension instance.
-	 *
-	 * @var Store_Api_Extension|null
-	 */
-	private ?Store_Api_Extension $service = null;
-
-	/**
-	 * Constructor.
+	 * Accept an optional service override; the container builds a default
+	 * lazily when one isn't injected.
 	 *
 	 * @param Store_Api_Extension|null $service Extension instance.
 	 */
-	public function __construct( ?Store_Api_Extension $service = null ) {
-		$this->service = $service;
+	public function __construct( private readonly ?Store_Api_Extension $service = null ) {
 	}
 
 	/**
