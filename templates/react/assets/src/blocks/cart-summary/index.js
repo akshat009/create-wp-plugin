@@ -3,17 +3,23 @@ import { useBlockProps } from '@wordpress/block-editor';
 import { __ } from '@wordpress/i18n';
 import metadata from './block.json';
 
+const PLACEHOLDER = __( 'Cart summary', '{{SLUG}}' );
+
 /**
- * Dynamic block — save() stays empty, actual output comes from render.php.
+ * Editor placeholder — the real frontend markup is produced by render.php,
+ * so the output stays filterable and translatable server-side.
+ *
+ * @return {Element} Editor markup.
+ */
+function Edit() {
+	const blockProps = useBlockProps();
+	return <div { ...blockProps }>{ PLACEHOLDER }</div>;
+}
+
+/**
+ * Dynamic block — save() stays empty, real output comes from render.php.
  */
 registerBlockType( metadata.name, {
-	edit: () => {
-		const blockProps = useBlockProps();
-		return (
-			<div { ...blockProps }>
-				{ __( 'Cart Summary (live on the frontend)', '{{SLUG}}' ) }
-			</div>
-		);
-	},
+	edit: Edit,
 	save: () => null,
 } );

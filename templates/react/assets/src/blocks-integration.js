@@ -11,12 +11,13 @@
 	const { ExperimentalOrderMeta } = window.wc.blocksCheckout;
 
 	const data = getSetting( '{{PREFIX}}-blocks-integration_data', {} );
+	const cls = '{{SLUG}}-order-meta';
 
 	const CustomOrderMetaContent = () =>
 		createElement(
 			ExperimentalOrderMeta,
 			null,
-			createElement( 'div', { className: '{{SLUG}}-order-meta' }, data.message || '' )
+			createElement( 'div', { className: cls }, data.message || '' )
 		);
 
 	registerPlugin( '{{PREFIX}}-blocks-integration', {
