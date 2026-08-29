@@ -1464,10 +1464,12 @@ test('test isolation: Plugin_TestCase base always ships; Services_Test only with
 		}
 	}
 
-	// Commands_Test is process-isolated so its define('WP_CLI') can't leak.
+	// Commands_Test no longer defines WP_CLI (the internal guard moved to
+	// Plugin::boot()), so there's no constant to leak into later tests.
 	const commandsTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Commands_Test.php'), 'utf8');
-	assert.match(commandsTest, /@runInSeparateProcess/);
-	assert.match(commandsTest, /@preserveGlobalState disabled/);
+	assert.ok(!/^\s*define\( 'WP_CLI', true \);/m.test(commandsTest), 'the test does not define WP_CLI');
+	const commandsSrc = fs.readFileSync(path.join(withSvc, 'src/CLI/Commands.php'), 'utf8');
+	assert.ok(!/init_hooks\(\): void \{\s*if \( ! defined\( 'WP_CLI' \)/.test(commandsSrc), 'init_hooks() carries no WP_CLI guard');
 
 	// Schema_Test's front-end gate test no longer has to skip on a leaked WP_CLI.
 	const schemaTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Schema_Test.php'), 'utf8');

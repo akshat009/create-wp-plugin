@@ -21,16 +21,14 @@ class Commands {
 	/**
 	 * Register WP-CLI commands.
 	 *
-	 * The bootloader only instantiates this class behind a WP_CLI guard; the
-	 * repeat check here keeps the class safe to call directly (e.g. in tests).
+	 * Plugin::boot() only instantiates this class when WP_CLI is defined and
+	 * truthy, so there is no constant check here — keeping it out means unit
+	 * tests don't have to define( 'WP_CLI' ) (which they can't undo, and which
+	 * leaks into every test that runs afterwards).
 	 *
 	 * @return void
 	 */
 	public function init_hooks(): void {
-		if ( ! defined( 'WP_CLI' ) || ! WP_CLI ) {
-			return;
-		}
-
 		\WP_CLI::add_command( '{{PREFIX}} status', $this->status( ... ) );
 		\WP_CLI::add_command( '{{PREFIX}} cache clear', $this->cache_clear( ... ) );
 	}

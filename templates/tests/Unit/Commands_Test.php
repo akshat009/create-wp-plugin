@@ -15,13 +15,6 @@ use {{NS}}\CLI\Commands;
 
 /**
  * Class Commands_Test.
- *
- * Runs in a separate process: it defines the WP_CLI constant, and define()
- * cannot be undone — without isolation that would leak into every test that
- * ran afterwards (e.g. Schema_Test's front-end-context check).
- *
- * @runInSeparateProcess
- * @preserveGlobalState disabled
  */
 class Commands_Test extends Plugin_TestCase {
 
@@ -43,13 +36,12 @@ class Commands_Test extends Plugin_TestCase {
 	}
 
 	/**
-	 * Both WP-CLI commands are registered by init_hooks() when WP_CLI is defined.
+	 * init_hooks() registers both WP-CLI commands.
+	 *
+	 * No define( 'WP_CLI' ) here: Plugin::boot() owns that guard, so
+	 * init_hooks() runs unconditionally and this test stays isolated.
 	 */
-	public function test_init_hooks_registers_commands_under_wp_cli(): void {
-		if ( ! defined( 'WP_CLI' ) ) {
-			define( 'WP_CLI', true );
-		}
-
+	public function test_init_hooks_registers_both_commands(): void {
 		( new Commands() )->init_hooks();
 
 		$this->assertArrayHasKey( '{{PREFIX}} status', \WP_CLI::$commands );
