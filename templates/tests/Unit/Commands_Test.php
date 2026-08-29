@@ -36,7 +36,7 @@ class Commands_Test extends Plugin_TestCase {
 	}
 
 	/**
-	 * init_hooks() registers both WP-CLI commands.
+	 * Both WP-CLI commands are registered by init_hooks().
 	 *
 	 * No define( 'WP_CLI' ) here: Plugin::boot() owns that guard, so
 	 * init_hooks() runs unconditionally and this test stays isolated.
