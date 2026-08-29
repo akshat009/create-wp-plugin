@@ -1489,3 +1489,40 @@ test('test isolation: Plugin_TestCase base always ships; Services_Test only with
 		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 	}
 });
+
+test('phpcs.xml lints templates/ (with two narrow sniff excludes) only when a WC override module ships it (#11 revised)', () => {
+	const withTpl = path.join(__dirname, '../tmp-test-phpcs-tpl');
+	const noTpl = path.join(__dirname, '../tmp-test-phpcs-notpl');
+	for (const d of [withTpl, noTpl]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+
+	runGenerator({
+		name: 'Tpl', slug: 'tpl', prefix: 'tplp', namespace: 'Tpl',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: ['woo:email', 'woo:my-account'], lintTarget: 'both', useReact: false, out: withTpl
+	});
+	runGenerator({
+		name: 'No Tpl', slug: 'no-tpl', prefix: 'ntpl', namespace: 'NoTpl',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: ['woo:gateway'], lintTarget: 'both', useReact: false, out: noTpl
+	});
+
+	const withXml = fs.readFileSync(path.join(withTpl, 'phpcs.xml'), 'utf8');
+	assert.match(withXml, /<file>\.\/templates<\/file>/);
+	assert.match(withXml, /<rule ref="WordPress\.NamingConventions\.PrefixAllGlobals">[\s\S]*?<exclude-pattern>\*\/templates\/\*<\/exclude-pattern>/);
+	assert.match(withXml, /<rule ref="WordPress\.Security\.EscapeOutput">\s*<exclude-pattern>\*\/templates\/emails\/plain\/\*<\/exclude-pattern>/);
+	assert.ok(!/\{\{[#/]?[A-Za-z]/.test(withXml), 'no leftover template tags');
+
+	const noXml = fs.readFileSync(path.join(noTpl, 'phpcs.xml'), 'utf8');
+	assert.ok(!noXml.includes('templates'), 'no templates/ references when no override module ships one');
+	assert.ok(!/\{\{[#/]?[A-Za-z]/.test(noXml), 'no leftover template tags');
+
+	// The dist-prep helper is present so plugin-zip does not depend on README discipline (#12 revised).
+	const composer = JSON.parse(fs.readFileSync(path.join(withTpl, 'composer.json'), 'utf8'));
+	assert.equal(composer.scripts['prepare-dist'], 'composer install --no-dev --optimize-autoloader');
+
+	for (const d of [withTpl, noTpl]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+});

@@ -82,7 +82,7 @@ created:
 {{#if needs_build_pipeline}}
 npm install && npm run build
 {{/if}}
-composer install --no-dev --optimize-autoloader
+composer prepare-dist   # composer install --no-dev --optimize-autoloader
 npm run plugin-zip
 ```
 

@@ -823,6 +823,8 @@ function scaffoldInto(answers, targetDir) {
 		// + Core\Uninstaller only ship when one of these modules persists state.
 		has_uninstall: ['admin_settings', 'cron', 'custom_table', 'elementor_widget'].some(m => selectedModules.includes(m)),
 		has_woo: hasAnyWoo,
+		// The only modules that write a templates/ directory (WC template overrides).
+		has_wc_template_overrides: hasWooEmail || hasWooMyAccount,
 		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
 		lint_vip: needsVip
 	};
