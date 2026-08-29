@@ -57,6 +57,77 @@ export function normalizeModules(modules = []) {
 	return Array.from(set);
 }
 
+/**
+ * Minimal conditional-block support for the template engine.
+ *
+ * Deliberately tiny — just enough that a template can carry its own
+ * optional sections instead of the generator pre-building every variation
+ * as a string and injecting it through a bespoke placeholder token.
+ * Supported syntax (blocks may nest):
+ *
+ *   {{#if flag}}...{{/if}}
+ *   {{#if flag}}...{{else}}...{{/if}}
+ *   {{#unless flag}}...{{/if}}
+ *
+ * `flag` is a bare identifier looked up in `flags`; any truthy value keeps
+ * the block. Unknown flags are falsy. A control tag alone on its own line
+ * (leading indentation aside) is treated as "standalone" — the whole line
+ * including its newline is removed, so block tags don't leave blank lines
+ * behind in whitespace-sensitive output (YAML, PHP, JSON).
+ *
+ * Value substitution ({{TOKEN}}) is a separate later pass, so tokens
+ * inside a kept block are still replaced normally afterwards.
+ *
+ * @param {string} content Raw template text.
+ * @param {Object<string, unknown>} [flags] Flag lookup table.
+ * @return {string} Text with every conditional block resolved.
+ */
+export function applyConditionals(content, flags = {}) {
+	// Collapse "standalone" control tags (alone on their line) down to just
+	// the tag itself, dropping the line's indentation and trailing newline.
+	let out = content.replace(
+		/^[ \t]*(\{\{#(?:if|unless)\s+[A-Za-z_][A-Za-z0-9_]*\}\}|\{\{else\}\}|\{\{\/(?:if|unless)\}\})[ \t]*\r?\n/gm,
+		'$1'
+	);
+
+	// Resolve the innermost block (one whose body holds no further opening
+	// tag) repeatedly until none remain. Every pass removes at least one
+	// block, so this terminates; the guard just turns an unbalanced
+	// template into a loud error instead of a hang.
+	const innermost = /\{\{#(if|unless)\s+([A-Za-z_][A-Za-z0-9_]*)\}\}((?:(?!\{\{#(?:if|unless)\s)[\s\S])*?)\{\{\/(?:if|unless)\}\}/;
+
+	let guard = 0;
+	while (innermost.test(out)) {
+		out = out.replace(innermost, (match, kind, flag, body) => {
+			let keep = Boolean(flags[flag]);
+			if (kind === 'unless') {
+				keep = ! keep;
+			}
+
+			const elseIdx = body.indexOf('{{else}}');
+			if (elseIdx === -1) {
+				return keep ? body : '';
+			}
+			return keep
+				? body.slice(0, elseIdx)
+				: body.slice(elseIdx + '{{else}}'.length);
+		});
+
+		if (++guard > 1000) {
+			throw new Error('applyConditionals: runaway expansion — unbalanced {{#if}}/{{/if}} in a template?');
+		}
+	}
+
+	// A leftover control tag means the template was malformed (an unbalanced
+	// {{#if}} with no {{/if}}, or a stray {{else}}/{{/if}}). Fail loudly
+	// rather than ship a literal tag into generated output.
+	if (/\{\{#(?:if|unless)\s|\{\{\/(?:if|unless)\}\}|\{\{else\}\}/.test(out)) {
+		throw new Error('applyConditionals: unbalanced or stray conditional tag in a template');
+	}
+
+	return out;
+}
+
 export function slugify(text) {
 	if (!text) return '';
 	return text
@@ -606,27 +677,6 @@ export function runGenerator(answers) {
 	const composerExtraRequireDev = composerExtraRequireDevEntries.length > 0
 		? ',\n\t\t' + composerExtraRequireDevEntries.join(',\n\t\t')
 		: '';
-	const vscodeExtraStubPath = hasAnyWoo ? ',\n\t\t"vendor/php-stubs/woocommerce-stubs/woocommerce-stubs.php"' : '';
-
-	// phpcs.xml ruleset(s): WordPress-Extra/-Docs for wp.org-hosted plugins,
-	// WordPress-VIP-Go for VIP hosting (which already carries WordPress-Extra/-Docs
-	// -equivalent coverage itself), or both together for teams who want maximum,
-	// possibly-overlapping coverage.
-	const wpOrgRuleset = '\t<rule ref="WordPress-Extra">\n' +
-		'\t\t<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>\n' +
-		'\t\t<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>\n' +
-		'\t\t<exclude name="Generic.CodeAnalysis.UnusedFunctionParameter"/>\n' +
-		'\t\t<exclude name="Generic.Formatting.MultipleStatementAlignment"/>\n' +
-		'\t</rule>\n' +
-		'\t<rule ref="WordPress-Docs"/>\n';
-	const vipRuleset = '\t<rule ref="WordPress-VIP-Go">\n' +
-		'\t\t<exclude name="WordPressVIPMinimum.Security.Mustache.OutputNotation"/>\n' +
-		'\t</rule>\n';
-	const phpcsRulesets = lintTarget === 'vip'
-		? vipRuleset
-		: lintTarget === 'both'
-			? wpOrgRuleset + vipRuleset
-			: wpOrgRuleset;
 
 	let woocommerceHpos = '';
 	if (hasAnyWoo) {
@@ -654,20 +704,21 @@ export function runGenerator(answers) {
 );\n\n`;
 	}
 
-	const hasElementor = selectedModules.includes('elementor_widget');
-	const readmeElementorDocs = hasElementor
-		? `## Elementor Widgets Convention
-Concrete widget classes placed in \`src/Widgets/\` are automatically discovered:
-- **Class Extension**: Custom widgets extend \`\\Elementor\\Widget_Base\` directly.
-- **Naming & Asset Handles**: Underscores in class names convert to hyphens (e.g. \`Sample_Widget\` in \`src/Widgets/Sample_Widget.php\` maps to handle \`{{PREFIX}}-sample-widget\`).
-- **Asset Auto-Discovery**: If \`assets/css/widgets/sample-widget.css\` or \`assets/js/widgets/sample-widget.js\` exist, they are auto-registered for elementor on-demand enqueueing.
-\n`
-		: '';
-
-	const readmeCliDocs = `## WP-CLI Commands
-- \`wp {{PREFIX}} status\` — Display plugin version and cache backend.
-- \`wp {{PREFIX}} cache clear\` — Clear plugin cache.
-\n`;
+	// Flag table for the template engine's {{#if flag}} / {{#unless flag}}
+	// conditionals. This is where a template's optional sections are driven
+	// from — adding an optional block to a template means adding a
+	// {{#if my_flag}} to it and (if new) one entry here, never a new
+	// pre-built string token + placeholder.
+	const templateFlags = {
+		use_react: Boolean(answers.useReact),
+		interactivity: hasInteractivity,
+		needs_build_pipeline: Boolean(answers.useReact) || hasInteractivity || hasWooJs,
+		admin_settings: selectedModules.includes('admin_settings'),
+		elementor_widget: selectedModules.includes('elementor_widget'),
+		has_woo: hasAnyWoo,
+		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
+		lint_vip: needsVip
+	};
 
 	const replacements = {
 		'{{PLUGIN_NAME}}': answers.name,
@@ -688,15 +739,13 @@ Concrete widget classes placed in \`src/Widgets/\` are automatically discovered:
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,
 		'{{WOOCOMMERCE_HPOS}}': woocommerceHpos,
-		'{{COMPOSER_EXTRA_REQUIRE_DEV}}': composerExtraRequireDev,
-		'{{VSCODE_EXTRA_STUB_PATH}}': vscodeExtraStubPath,
-		'{{PHPCS_RULESETS}}': phpcsRulesets,
-		'{{README_ELEMENTOR_DOCS}}': readmeElementorDocs,
-		'{{README_CLI_DOCS}}': readmeCliDocs
+		'{{COMPOSER_EXTRA_REQUIRE_DEV}}': composerExtraRequireDev
 	};
 
 	function processTemplateContent(content, destRelativePath = '') {
-		let result = content;
+		// Conditionals first, so {{TOKEN}}s inside a kept block still get
+		// substituted by the loop below and dropped blocks cost nothing.
+		let result = applyConditionals(content, templateFlags);
 		const isJson = destRelativePath.endsWith('.json');
 		const isPhp = destRelativePath.endsWith('.php');
 
@@ -777,14 +826,8 @@ Concrete widget classes placed in \`src/Widgets/\` are automatically discovered:
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Registrar.php'), 'src/Admin/Settings_Registrar.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/views/sample-field.php'), 'src/Admin/views/sample-field.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Settings_Repository_Test.php'), 'tests/Unit/Settings_Repository_Test.php');
-
-		let settingsPageViewContent = fs.readFileSync(path.join(templatesDir, 'src/Admin/views/settings-page.php'), 'utf8');
-		const reactAdminRoot = answers.useReact ? '\t<div id="{{PREFIX}}-app-root"></div>\n' : '';
-		settingsPageViewContent = settingsPageViewContent.replace('{{REACT_ADMIN_ROOT}}', () => reactAdminRoot);
-		settingsPageViewContent = processTemplateContent(settingsPageViewContent, 'src/Admin/views/settings-page.php');
-		const settingsPageViewDest = path.join(targetDir, 'src/Admin/views/settings-page.php');
-		fs.mkdirSync(path.dirname(settingsPageViewDest), { recursive: true });
-		fs.writeFileSync(settingsPageViewDest, settingsPageViewContent, 'utf8');
+		// The React mount point is a {{#if use_react}} block inside the view now.
+		writeTemplateFile(path.join(templatesDir, 'src/Admin/views/settings-page.php'), 'src/Admin/views/settings-page.php');
 
 		providerRegistrations.push('\n\t\t$providers[] = new Admin\\Settings_Registrar();');
 	}
@@ -915,25 +958,12 @@ Concrete widget classes placed in \`src/Widgets/\` are automatically discovered:
 	// woo:blocks     -> assets/src/blocks-integration.js + assets/src/blocks/cart-summary
 	const needsBuildPipeline = answers.useReact || hasInteractivity || hasWooJs;
 
-	let reactAssetsRegistration = '';
-	let readmeReactInstall = '';
-	let readmeReactScripts = '';
 	let ciNodeJob = '';
 
 	if (answers.useReact) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/index.js'), 'assets/src/index.js');
-
-		let assetsContent = fs.readFileSync(path.join(templatesDir, 'src/Admin/Assets.php'), 'utf8');
-		const reactAdminHookGuard = selectedModules.includes('admin_settings')
-			? '\t\tif ( \'settings_page_{{SLUG}}\' !== $hook_suffix ) {\n\t\t\treturn;\n\t\t}\n\n'
-			: '\t\t// TODO: narrow this to your plugin\'s own admin screen(s), e.g. compare $hook_suffix.\n';
-		assetsContent = assetsContent.replace('{{REACT_ADMIN_HOOK_GUARD}}', () => reactAdminHookGuard);
-		assetsContent = processTemplateContent(assetsContent, 'src/Admin/Assets.php');
-		const assetsDestPath = path.join(targetDir, 'src/Admin/Assets.php');
-		fs.mkdirSync(path.dirname(assetsDestPath), { recursive: true });
-		fs.writeFileSync(assetsDestPath, assetsContent, 'utf8');
-
-		reactAssetsRegistration = '\n\t\t$providers[] = new Admin\\Assets();\n';
+		// Assets.php scopes its enqueue via a {{#if admin_settings}}/{{else}} block.
+		writeTemplateFile(path.join(templatesDir, 'src/Admin/Assets.php'), 'src/Admin/Assets.php');
 	}
 
 	if (needsBuildPipeline) {
@@ -1023,9 +1053,6 @@ ${entries.join('\n')}
 			fs.writeFileSync(path.join(targetDir, 'webpack.config.js'), webpackConfig, 'utf8');
 		}
 
-		readmeReactInstall = '3. Run `npm install` and `npm run build` to compile JS assets.\n   > Note: `assets/build` is gitignored and generated during build.';
-		readmeReactScripts = '- `npm run build` — Build JS assets for production.\n- `npm run start` — Start JS asset dev server in watch mode.\n- `npm run test:e2e` — Run Playwright E2E tests against a running WordPress site (`WP_BASE_URL`, defaults to `http://localhost:8889` — e.g. `wp-env start`).' + (answers.useReact ? '\n- `npm run test:js` — Run Jest unit tests for the JS admin app.' : '');
-
 		const hasJsTests = answers.useReact || hasInteractivity;
 		ciNodeJob = `
   node-build:
@@ -1061,9 +1088,11 @@ ${entries.join('\n')}
 	}
 
 
-	// Process Plugin.php template with dynamic registrations
+	// Process Plugin.php template with dynamic registrations. The React
+	// Assets provider is a {{#if use_react}} block in the template itself;
+	// the per-module $providers[] lines are accumulated here because that's
+	// where each module's file-copy branch already lives.
 	let pluginContent = fs.readFileSync(path.join(templatesDir, 'src/Plugin.php'), 'utf8');
-	pluginContent = pluginContent.replace('{{REACT_ASSETS_REGISTRATION}}', () => reactAssetsRegistration);
 	pluginContent = pluginContent.replace('{{PROVIDER_REGISTRATIONS}}', () => providerRegistrations.length > 0 ? providerRegistrations.join('\n') + '\n' : '');
 	pluginContent = processTemplateContent(pluginContent, 'src/Plugin.php');
 	const pluginDestPath = path.join(targetDir, 'src/Plugin.php');
@@ -1161,13 +1190,9 @@ ${entries.join('\n')}
 	fs.mkdirSync(path.dirname(uninstallerDestPath), { recursive: true });
 	fs.writeFileSync(uninstallerDestPath, uninstallerContent, 'utf8');
 
-	// Process README.md with dynamic React sections
-	let readmeContent = fs.readFileSync(path.join(templatesDir, 'README.md'), 'utf8');
-	readmeContent = readmeContent.replace('{{README_REACT_INSTALL}}', () => readmeReactInstall);
-	readmeContent = readmeContent.replace('{{README_REACT_SCRIPTS}}', () => readmeReactScripts);
-	readmeContent = processTemplateContent(readmeContent, 'README.md');
-	const readmeDestPath = path.join(targetDir, 'README.md');
-	fs.writeFileSync(readmeDestPath, readmeContent, 'utf8');
+	// README.md carries its own optional sections as {{#if ...}} blocks
+	// (React install step, build/test scripts, Elementor conventions).
+	writeTemplateFile(path.join(templatesDir, 'README.md'), 'README.md');
 
 	console.log(`\n✅ Successfully scaffolded plugin "${answers.name}" in ${answers.outputDir}!\n`);
 	console.log('Next steps:');

@@ -53,7 +53,12 @@ class Assets implements Service_Provider {
 	 * @return void
 	 */
 	public function enqueue_assets( $hook_suffix = '' ) {
-{{REACT_ADMIN_HOOK_GUARD}}		$asset_file = {{PREFIX_UPPER}}_PATH . 'assets/build/index.asset.php';
+{{#if admin_settings}}		if ( 'settings_page_{{SLUG}}' !== $hook_suffix ) {
+			return;
+		}
+
+{{else}}		// TODO: narrow this to your plugin's own admin screen(s), e.g. compare $hook_suffix.
+{{/if}}		$asset_file = {{PREFIX_UPPER}}_PATH . 'assets/build/index.asset.php';
 
 		if ( ! file_exists( $asset_file ) ) {
 			return;

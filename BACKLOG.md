@@ -382,10 +382,23 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
   Split into `TemplateEngine`, `FileWriter`, `ModuleRegistry`, and `Generator`.
 - [ ] **B2.2 [P0] Adding a module violates Open-Closed Principle (OCP)**  
   Module logic is scattered across 4+ files. Convert modules into self-describing objects: `{ id, prompt, files[], services[], requiresBuild }`.
-- [ ] **B2.3 [P0] Move Elementor PHP string generation to real `.php` template files**  
-  Eliminate escaped template literals in `index.js`.
-- [ ] **B2.4 [P1] Enhance template engine beyond naive `replaceAll`**  
-  Support conditional blocks (`{{#if USE_REACT}}`) to avoid template string concatenation hacks.
+- [x] ~~**B2.3 [P0] Move Elementor PHP string generation to real `.php` template files**~~  
+  Done in v2: the Elementor registrar/notice live in `templates/src/Elementor/*.php`.
+  What remains in `index.js` is single-line `$providers[] = new …()` accumulation
+  (shared across every module), not escaped PHP literals.
+- [x] ~~**B2.4 [P1] Enhance template engine beyond naive `replaceAll`**~~  
+  `applyConditionals()` adds `{{#if flag}}` / `{{#unless flag}}` / `{{else}}` (nesting +
+  standalone-line trimming), driven by a `templateFlags` table. Eight variation-only
+  tokens (`REACT_ADMIN_ROOT`, `REACT_ADMIN_HOOK_GUARD`, `REACT_ASSETS_REGISTRATION`,
+  `PHPCS_RULESETS`, `VSCODE_EXTRA_STUB_PATH`, `README_ELEMENTOR_DOCS`,
+  `README_REACT_INSTALL`, `README_REACT_SCRIPTS`) plus `README_CLI_DOCS` are gone —
+  templates now carry their own optional sections. The remaining generator-built tokens
+  (`PROVIDER_REGISTRATIONS`, `ACTIVATOR_BODY`/`DEACTIVATOR_BODY`/`UNINSTALL_BODY`,
+  `CI_NODE_JOB`, `CI_PHP_MATRIX`, `PLUGIN_HEADER_EXTRA`, `WOOCOMMERCE_HPOS`,
+  `COMPOSER_EXTRA_REQUIRE_DEV`, `PACKAGE_EXTRA_*`) are data-driven codegen / structured-file
+  fragment assembly, not on/off toggles, and are left as-is on purpose — a new module
+  extends an existing accumulator there, it does not invent a token. Engine unit tests:
+  `tests/engine.test.js`.
 - [ ] **B2.5 [P1] Split 950-line `index.js` into ES modules**  
   `src/validators.js`, `src/modules/`, `src/templating.js`, `bin/cli.js`.
 - [ ] **B2.6 [P2] Add JSDoc types & `jsconfig.json` (`checkJs: true`)**

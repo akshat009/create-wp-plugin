@@ -63,7 +63,9 @@ final class Plugin {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			$providers[] = new CLI\Commands();
 		}
-{{REACT_ASSETS_REGISTRATION}}{{PROVIDER_REGISTRATIONS}}
+{{#if use_react}}
+		$providers[] = new Admin\Assets();
+{{/if}}{{PROVIDER_REGISTRATIONS}}
 		return new self( $container, $providers );
 	}
 

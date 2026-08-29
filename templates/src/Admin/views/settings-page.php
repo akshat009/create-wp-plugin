@@ -16,7 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 ?>
 <div class="wrap">
 	<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-{{REACT_ADMIN_ROOT}}	<form method="post" action="options.php">
+{{#if use_react}}	<div id="{{PREFIX}}-app-root"></div>
+{{/if}}	<form method="post" action="options.php">
 		<?php
 		settings_fields( $repository->get_options_group() );
 		do_settings_sections( '{{SLUG}}' );
