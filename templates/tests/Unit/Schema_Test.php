@@ -70,6 +70,10 @@ class Schema_Test extends TestCase {
 	 * front-end request — dbDelta() is admin/cron/CLI-only.
 	 */
 	public function test_maybe_upgrade_skips_on_a_frontend_request(): void {
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			$this->markTestSkipped( 'WP_CLI is defined in this test process; the front-end gate cannot be exercised.' );
+		}
+
 		Functions\when( 'is_admin' )->justReturn( false );
 		Functions\when( 'wp_doing_cron' )->justReturn( false );
 		Functions\expect( 'get_option' )->never();
