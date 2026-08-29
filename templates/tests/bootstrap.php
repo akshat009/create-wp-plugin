@@ -96,12 +96,12 @@ if ( ! class_exists( 'WP_CLI' ) ) {
 		/**
 		 * Record a command registration.
 		 *
-		 * @param string   $name     Command name.
-		 * @param callable $callable Command handler.
+		 * @param string   $name    Command name.
+		 * @param callable $handler Command handler.
 		 * @return void
 		 */
-		public static function add_command( $name, $callable ) {
-			self::$commands[ $name ] = $callable;
+		public static function add_command( $name, $handler ) {
+			self::$commands[ $name ] = $handler;
 		}
 
 		/**

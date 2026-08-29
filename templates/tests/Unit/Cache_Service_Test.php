@@ -36,7 +36,7 @@ class Cache_Service_Test extends TestCase {
 	}
 
 	/**
-	 * get() returns the fallback on a miss — no persistent object cache branch.
+	 * A miss returns the fallback (transient branch, no persistent object cache).
 	 */
 	public function test_get_fallback_on_transient_miss(): void {
 		Functions\when( 'wp_using_ext_object_cache' )->justReturn( false );
@@ -79,7 +79,7 @@ class Cache_Service_Test extends TestCase {
 	}
 
 	/**
-	 * delete() clears whichever backend is in use — here, the transient.
+	 * Whichever backend is in use is cleared by delete() — here, the transient.
 	 */
 	public function test_delete_clears_the_active_backend(): void {
 		Functions\when( 'wp_using_ext_object_cache' )->justReturn( false );

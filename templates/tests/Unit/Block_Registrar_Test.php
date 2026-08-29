@@ -38,7 +38,7 @@ class Block_Registrar_Test extends TestCase {
 	}
 
 	/**
-	 * boot() defers block registration to the `init` hook.
+	 * Block registration is deferred to the `init` hook by boot().
 	 */
 	public function test_boot_hooks_init(): void {
 		Actions\expectAdded( 'init' )->once();
@@ -49,8 +49,8 @@ class Block_Registrar_Test extends TestCase {
 	}
 
 	/**
-	 * register_blocks() is a no-op until `npm run build` has produced the
-	 * compiled block metadata, so a fresh checkout never fatals.
+	 * Registration is a no-op until `npm run build` has produced the compiled
+	 * block metadata, so a fresh checkout never fatals.
 	 */
 	public function test_register_blocks_is_noop_when_unbuilt(): void {
 		Functions\expect( 'register_block_type' )->never();

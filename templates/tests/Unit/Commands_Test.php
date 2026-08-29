@@ -38,7 +38,7 @@ class Commands_Test extends TestCase {
 	}
 
 	/**
-	 * boot() registers the two WP-CLI commands when WP_CLI is defined.
+	 * Both WP-CLI commands are registered by boot() when WP_CLI is defined.
 	 */
 	public function test_boot_registers_commands_under_wp_cli(): void {
 		if ( ! defined( 'WP_CLI' ) ) {
@@ -52,9 +52,8 @@ class Commands_Test extends TestCase {
 	}
 
 	/**
-	 * cache_clear() purges every transient advertised through the
-	 * {{PREFIX}}_cache_keys filter and does not name any single module's key
-	 * itself.
+	 * Every transient advertised through the {{PREFIX}}_cache_keys filter is
+	 * purged by cache_clear(), which names no single module's key itself.
 	 */
 	public function test_cache_clear_purges_keys_from_the_filter(): void {
 		Functions\when( 'wp_cache_flush_group' )->justReturn( true );
