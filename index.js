@@ -1105,11 +1105,11 @@ function scaffoldInto(answers, targetDir) {
 		const packageExtraScriptsEntries = ['"test:e2e": "playwright test"'];
 		const packageExtraDevDependenciesEntries = [
 			'"@playwright/test": "^1.47.0"',
-			'"@wordpress/e2e-test-utils-playwright": "^1.4.0"'
+			'"@wordpress/e2e-test-utils-playwright": "^1.13.0"'
 		];
 		if (answers.useReact || hasInteractivity) {
 			packageExtraScriptsEntries.push('"test:js": "wp-scripts test-unit-js"');
-			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^20.0.0"');
+			packageExtraDevDependenciesEntries.push('"@wordpress/jest-preset-default": "^21.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/react": "^16.0.0"');
 			packageExtraDevDependenciesEntries.push('"@testing-library/jest-dom": "^6.0.0"');
 		}
