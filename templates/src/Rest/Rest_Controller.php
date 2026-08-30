@@ -44,23 +44,31 @@ class Rest_Controller extends \WP_REST_Controller {
 	 * @return void
 	 */
 	public function register_routes() {
+		// The endpoint definition is nested one level deeper than 'schema':
+		// register_rest_route() checks for a top-level 'callback' key and, if
+		// present, wraps the *whole* array as a single numerically-indexed
+		// endpoint -- 'schema' included, if it were a sibling of 'callback'
+		// here instead of one level up. Nesting keeps 'schema' a route-level
+		// option core can actually find.
 		register_rest_route(
 			$this->namespace,
 			'/' . $this->rest_base,
 			array(
-				'methods'             => \WP_REST_Server::READABLE,
-				'callback'            => $this->get_items( ... ),
-				'permission_callback' => $this->get_items_permissions_check( ... ),
-				'args'                => array(
-					'param' => array(
-						'required'          => false,
-						'sanitize_callback' => 'sanitize_text_field',
-						'validate_callback' => function ( $param ) {
-							return is_string( $param );
-						},
+				array(
+					'methods'             => \WP_REST_Server::READABLE,
+					'callback'            => $this->get_items( ... ),
+					'permission_callback' => $this->get_items_permissions_check( ... ),
+					'args'                => array(
+						'param' => array(
+							'required'          => false,
+							'sanitize_callback' => 'sanitize_text_field',
+							'validate_callback' => function ( $param ) {
+								return is_string( $param );
+							},
+						),
 					),
 				),
-				'schema'              => $this->get_public_item_schema( ... ),
+				'schema' => $this->get_public_item_schema( ... ),
 			)
 		);
 	}
