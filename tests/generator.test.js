@@ -451,7 +451,7 @@ test('generated plugin version defaults to 1.0.0', () => {
 	fs.rmSync(outDir, { recursive: true, force: true });
 });
 
-test('foundational classes (Plugin bootloader + Services locator) always scaffold with no leftover tokens', () => {
+test('foundational classes (Plugin bootloader) always scaffold with no leftover tokens; Services locator is accessor-conditional (#16)', () => {
 	const outDir = path.join(__dirname, '../tmp-test-foundation');
 	runGenerator({
 		name: 'Foundation Plugin',
@@ -465,7 +465,6 @@ test('foundational classes (Plugin bootloader + Services locator) always scaffol
 
 	const files = [
 		'src/Plugin.php',
-		'src/Services.php',
 		'src/Contracts/Activatable.php',
 		'src/Contracts/Deactivatable.php'
 	];
@@ -474,6 +473,9 @@ test('foundational classes (Plugin bootloader + Services locator) always scaffol
 		const content = fs.readFileSync(path.join(outDir, f), 'utf8');
 		assert.ok(!/\{\{[A-Z_]+\}\}/.test(content), `no unreplaced template tokens should remain in ${f}`);
 	}
+	// A zero-module scaffold registers no Services accessor, so the locator
+	// itself doesn't ship -- it would be a dead class (#16).
+	assert.ok(!fs.existsSync(path.join(outDir, 'src/Services.php')), 'no Services.php with zero accessors (#16)');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Core/Container.php')), 'the DI container is gone: static bootloader + Services locator');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Contracts/Service_Provider.php')), 'no Service_Provider contract');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Core/Uninstaller.php')), 'no Uninstaller without a module that persists cleanup-worthy state (0.7)');
@@ -1447,13 +1449,20 @@ test('test isolation: Plugin_TestCase base always ships; Services_Test only with
 		description: 'x', modules: [], useReact: false, out: bare
 	});
 
-	// Plugin_TestCase ships in every scaffold and resets both globals.
+	// Plugin_TestCase ships in every scaffold and always resets the Plugin
+	// singleton; it resets Services too, but only where the locator itself
+	// ships -- a zero-accessor scaffold has no Services.php to reset (#16).
 	for (const d of [withSvc, bare]) {
 		const base = fs.readFileSync(path.join(d, 'tests/Unit/Plugin_TestCase.php'), 'utf8');
 		assert.match(base, /abstract class Plugin_TestCase extends TestCase/);
-		assert.match(base, /Services::reset\(\);/);
 		assert.match(base, /Plugin::set_instance\( null \);/);
 	}
+	const baseWithSvc = fs.readFileSync(path.join(withSvc, 'tests/Unit/Plugin_TestCase.php'), 'utf8');
+	assert.match(baseWithSvc, /use IsoSvc\\Services;/);
+	assert.match(baseWithSvc, /Services::reset\(\);/);
+	const baseBare = fs.readFileSync(path.join(bare, 'tests/Unit/Plugin_TestCase.php'), 'utf8');
+	assert.ok(!baseBare.includes('Services'), 'no Services import or reset() when the locator itself does not ship (#16)');
+	assert.ok(!fs.existsSync(path.join(bare, 'src/Services.php')), 'no Services.php in a scaffold with zero accessors (#16)');
 
 	// Every generated *_Test.php extends the base, not PHPUnit's TestCase directly.
 	for (const d of [withSvc, bare]) {
@@ -1477,12 +1486,15 @@ test('test isolation: Plugin_TestCase base always ships; Services_Test only with
 	assert.ok(!schemaTest.includes('markTestSkipped'));
 
 	// Services_Test ships only when there's an accessor, and drives it through
-	// createMock() + the public accessor (no reflection).
+	// the public accessor (no reflection) -- default construction, memoisation,
+	// the set() override, and reset() clearing it (#17).
 	const svcTest = fs.readFileSync(path.join(withSvc, 'tests/Unit/Services_Test.php'), 'utf8');
 	assert.match(svcTest, /public function test_cache_is_a_memoised_singleton\(\): void/);
+	assert.ok(svcTest.includes('$this->assertInstanceOf( \\IsoSvc\\Cache\\Cache_Service::class, Services::cache() )'), 'default construction asserted (#17)');
+	assert.ok(svcTest.includes("$this->assertSame( Services::cache(), Services::cache(), 'built once' )"), 'memoisation asserted');
 	assert.ok(svcTest.includes('$this->createMock( \\IsoSvc\\Cache\\Cache_Service::class )'));
-	assert.ok(svcTest.includes('$this->assertSame( $a, Services::cache() )'));
-	assert.ok(svcTest.includes('$this->assertSame( Services::cache(), Services::cache() )'), 'memoisation asserted');
+	assert.ok(svcTest.includes("$this->assertSame( $double, Services::cache(), 'set() overrides' )"));
+	assert.ok(svcTest.includes("$this->assertNotSame( $double, Services::cache(), 'reset() cleared the override' )"));
 	assert.ok(!svcTest.includes('ReflectionProperty'), 'no reflection — public API only');
 	assert.ok(!fs.existsSync(path.join(bare, 'tests/Unit/Services_Test.php')), 'no Services_Test in a scaffold with zero accessors');
 	assert.ok(!fs.existsSync(path.join(withSvc, 'tests/Unit/Container_Test.php')));

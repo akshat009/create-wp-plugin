@@ -825,6 +825,10 @@ function scaffoldInto(answers, targetDir) {
 		has_woo: hasAnyWoo,
 		// The only modules that write a templates/ directory (WC template overrides).
 		has_wc_template_overrides: hasWooEmail || hasWooMyAccount,
+		// Set from servicesAccessors after the module loop: when no module
+		// registers an accessor, Services.php (and its reset() wiring in
+		// Plugin_TestCase) is not generated.
+		has_services: false,
 		lint_wp_org: lintTarget === 'wp-org' || lintTarget === 'both',
 		lint_vip: needsVip
 	};
@@ -958,7 +962,7 @@ function scaffoldInto(answers, targetDir) {
 	writeTemplateFile(path.join(templatesDir, 'phpcs.xml'), 'phpcs.xml');
 	writeTemplateFile(path.join(templatesDir, 'tests/bootstrap.php'), 'tests/bootstrap.php');
 	writeTemplateFile(path.join(templatesDir, 'phpunit.xml.dist'), 'phpunit.xml.dist');
-	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Plugin_TestCase.php'), 'tests/Unit/Plugin_TestCase.php');
+	// Plugin_TestCase.php is written further down, once has_services is known.
 	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Example_Test.php'), 'tests/Unit/Example_Test.php');
 	writeTemplateFile(path.join(templatesDir, 'gitignore.tpl'), '.gitignore');
 	writeTemplateFile(path.join(templatesDir, 'editorconfig.tpl'), '.editorconfig');
@@ -1014,22 +1018,22 @@ function scaffoldInto(answers, targetDir) {
 		].join('\n'));
 		servicesAccessorTests.push([
 			'\t/**',
-			`\t * Services::${name}() is a memoised singleton, overridable via set()/reset().`,
+			`\t * Services::${name}() builds the real ${type} once, then hands back a`,
+			'\t * double after set(), and forgets it on reset().',
 			'\t *',
 			'\t * @return void',
 			'\t */',
 			`\tpublic function test_${name}_is_a_memoised_singleton(): void {`,
-			`\t\t$a = $this->createMock( \\{{NS}}\\${short}::class );`,
-			`\t\tServices::set( '${name}', $a );`,
-			'',
-			`\t\t$this->assertSame( $a, Services::${name}() );`,
-			`\t\t$this->assertSame( Services::${name}(), Services::${name}() );`,
+			`\t\t$this->assertInstanceOf( \\{{NS}}\\${short}::class, Services::${name}() );`,
+			`\t\t$this->assertSame( Services::${name}(), Services::${name}(), 'built once' );`,
 			'',
 			'\t\tServices::reset();',
-			`\t\t$b = $this->createMock( \\{{NS}}\\${short}::class );`,
-			`\t\tServices::set( '${name}', $b );`,
+			`\t\t$double = $this->createMock( \\{{NS}}\\${short}::class );`,
+			`\t\tServices::set( '${name}', $double );`,
+			`\t\t$this->assertSame( $double, Services::${name}(), 'set() overrides' );`,
 			'',
-			`\t\t$this->assertSame( $b, Services::${name}(), 'reset() cleared the previous override' );`,
+			'\t\tServices::reset();',
+			`\t\t$this->assertNotSame( $double, Services::${name}(), 'reset() cleared the override' );`,
 			'\t}',
 			'',
 		].join('\n'));
@@ -1379,6 +1383,12 @@ ${entries.join('\n')}
 	writeTemplateFile(path.join(templatesDir, 'package.json'), 'package.json');
 
 
+	// Now that every module block has run, we know whether any Services
+	// accessor exists. Plugin_TestCase's Services::reset() wiring, Services.php
+	// itself, and Services_Test are all gated on this.
+	templateFlags.has_services = servicesAccessors.length > 0;
+	writeTemplateFile(path.join(templatesDir, 'tests/Unit/Plugin_TestCase.php'), 'tests/Unit/Plugin_TestCase.php');
+
 	// Assemble Plugin::boot()'s body: non-woo module lines, then every woo
 	// line inside one class_exists( 'WooCommerce' ) guard.
 	const allBootLines = [...bootLines];
@@ -1394,13 +1404,16 @@ ${entries.join('\n')}
 	fs.mkdirSync(path.dirname(pluginDestPath), { recursive: true });
 	fs.writeFileSync(pluginDestPath, pluginContent, 'utf8');
 
-	// Services.php: the memoised accessors for this module set (or none).
-	let servicesContent = fs.readFileSync(path.join(templatesDir, 'src/Services.php'), 'utf8');
-	servicesContent = servicesContent.replace('{{SERVICES_ACCESSORS}}', () => servicesAccessors.join('\n'));
-	servicesContent = processTemplateContent(servicesContent, 'src/Services.php');
-	const servicesDestPath = path.join(targetDir, 'src/Services.php');
-	fs.mkdirSync(path.dirname(servicesDestPath), { recursive: true });
-	fs.writeFileSync(servicesDestPath, servicesContent, 'utf8');
+	// Services.php ships only when a module registers an accessor — otherwise
+	// it's a dead class (just set()/reset() over a permanently empty array).
+	if (templateFlags.has_services) {
+		let servicesContent = fs.readFileSync(path.join(templatesDir, 'src/Services.php'), 'utf8');
+		servicesContent = servicesContent.replace('{{SERVICES_ACCESSORS}}', () => servicesAccessors.join('\n'));
+		servicesContent = processTemplateContent(servicesContent, 'src/Services.php');
+		const servicesDestPath = path.join(targetDir, 'src/Services.php');
+		fs.mkdirSync(path.dirname(servicesDestPath), { recursive: true });
+		fs.writeFileSync(servicesDestPath, servicesContent, 'utf8');
+	}
 
 	// Services_Test.php only ships when there's at least one accessor to
 	// exercise — with none, the class has nothing behavioural to test.

@@ -11,15 +11,17 @@ namespace {{NS}}\Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
 use {{NS}}\Plugin;
+{{#if has_services}}
 use {{NS}}\Services;
+{{/if}}
 
 /**
  * Class Plugin_TestCase.
  *
- * Clears the two pieces of process-global state the plugin keeps -- the
- * Plugin singleton and the Services locator's memoised instances -- after
- * every test, so nothing a test builds leaks into the next one. Every unit
- * test extends this instead of PHPUnit's TestCase directly.
+ * Clears the plugin's process-global state -- the Plugin singleton{{#if has_services}} and the
+ * Services locator's memoised instances{{/if}} -- after every test, so nothing a test
+ * builds leaks into the next one. Every unit test extends this instead of
+ * PHPUnit's TestCase directly.
  */
 abstract class Plugin_TestCase extends TestCase {
 
@@ -29,7 +31,9 @@ abstract class Plugin_TestCase extends TestCase {
 	 * @return void
 	 */
 	protected function tearDown(): void {
+{{#if has_services}}
 		Services::reset();
+{{/if}}
 		Plugin::set_instance( null );
 		parent::tearDown();
 	}
