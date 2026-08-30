@@ -1060,10 +1060,82 @@ function scaffoldInto(answers, targetDir) {
 		].join('\n'));
 	}
 
+	// One data-provider case per module class that implements init_hooks(),
+	// for the generated Module_Hooks_Test.php ({{MODULE_HOOK_CASES}}) --
+	// verifies each module actually registers the hooks it claims to,
+	// instead of only ever being constructed inside a single-assertion test
+	// for one of its other methods. Collected as structured data rather than
+	// pre-rendered PHP text, because WordPress-Extra requires every `=>` in
+	// this array to align to its widest key -- unknowable until every module
+	// block below has run, so rendering is deferred to renderModuleHookCases().
+	const moduleHookCases = [];
+
+	/**
+	 * Register one module's init_hooks() contract.
+	 *
+	 * @param {string} short PHP class path relative to {{NS}} (e.g.
+	 *   'Admin\\Assets') -- also the data-provider key, unique since each
+	 *   module contributes at most one entry.
+	 * @param {string} ctorExpr A `new \{{NS}}\...( ... )` PHP expression,
+	 *   wrapped in a factory closure so a constructor-injected service can be
+	 *   a fresh Mockery double built when the test runs, not when this
+	 *   provider is collected.
+	 * @param {{type: 'action'|'filter'|'shortcode'|'cli_command', hook: string, raw?: boolean}[]} hooks
+	 *   The hooks init_hooks() is expected to register. `hook` is emitted as
+	 *   a single-quoted PHP string unless `raw` is set, for the two hooks
+	 *   built from a class constant at runtime rather than a literal.
+	 */
+	function addModuleHookCase(short, ctorExpr, hooks) {
+		moduleHookCases.push({ short, ctorExpr, hooks });
+	}
+
+	/**
+	 * Render the collected module-hook cases as one `module_hook_provider()`
+	 * array body ({{MODULE_HOOK_CASES}}), WPCS-formatted: every top-level
+	 * `=>` aligned to the widest data-provider key (WordPress.Arrays.
+	 * MultipleStatementAlignment), and every multi-item associative array --
+	 * the provider entries themselves, and each hook's { type, hook } pair --
+	 * one key per line (WordPress.Arrays.ArrayDeclarationSpacing).
+	 *
+	 * @param {{short: string, ctorExpr: string, hooks: {type: string, hook: string, raw?: boolean}[]}[]} cases
+	 * @return {string}
+	 */
+	function renderModuleHookCases(cases) {
+		const maxKeyLen = Math.max(...cases.map(({ short }) => `'${short}'`.length));
+		return cases
+			.map(({ short, ctorExpr, hooks }) => {
+				const key = `'${short}'`.padEnd(maxKeyLen, ' ');
+				const phpHooks = hooks
+					.map(({ type, hook, raw }) => {
+						const hookExpr = raw ? hook : `'${hook.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+						return [
+							'\t\t\t\t\tarray(',
+							`\t\t\t\t\t\t'type' => '${type}',`,
+							`\t\t\t\t\t\t'hook' => ${hookExpr},`,
+							'\t\t\t\t\t),',
+						].join('\n');
+					})
+					.join('\n');
+				return [
+					`\t\t\t${key} => array(`,
+					`\t\t\t\tstatic fn () => ${ctorExpr},`,
+					'\t\t\t\tarray(',
+					phpHooks,
+					'\t\t\t\t),',
+					'\t\t\t),',
+				].join('\n');
+			})
+			.join('\n');
+	}
+
 	if (selectedModules.includes('cli')) {
 		writeTemplateFile(path.join(templatesDir, 'src/CLI/Commands.php'), 'src/CLI/Commands.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Commands_Test.php'), 'tests/Unit/Commands_Test.php');
 		bootLines.push("\t\tif ( defined( 'WP_CLI' ) && WP_CLI ) {\n\t\t\t( new CLI\\Commands() )->init_hooks();\n\t\t}");
+		addModuleHookCase('CLI\\Commands', 'new \\{{NS}}\\CLI\\Commands()', [
+			{ type: 'cli_command', hook: '{{PREFIX}} status' },
+			{ type: 'cli_command', hook: '{{PREFIX}} cache clear' },
+		]);
 	}
 	if (selectedModules.includes('admin_settings')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Settings_Repository.php'), 'src/Admin/Settings_Repository.php');
@@ -1075,16 +1147,30 @@ function scaffoldInto(answers, targetDir) {
 
 		bootLines.push('\t\t( new Admin\\Settings_Registrar( Services::settings_repository() ) )->init_hooks();');
 		addService('settings_repository', 'Admin\\Settings_Repository');
+		addModuleHookCase(
+			'Admin\\Settings_Registrar',
+			'new \\{{NS}}\\Admin\\Settings_Registrar( \\Mockery::mock( \\{{NS}}\\Admin\\Settings_Repository::class ) )',
+			[
+				{ type: 'action', hook: 'admin_menu' },
+				{ type: 'action', hook: 'admin_init' },
+			]
+		);
 	}
 	if (selectedModules.includes('shortcode')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Shortcode.php'), 'src/Frontend/Shortcode.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Shortcode_Test.php'), 'tests/Unit/Shortcode_Test.php');
 		bootLines.push('\t\t( new Frontend\\Shortcode() )->init_hooks();');
+		addModuleHookCase('Frontend\\Shortcode', 'new \\{{NS}}\\Frontend\\Shortcode()', [
+			{ type: 'shortcode', hook: '{{PREFIX}}_display' },
+		]);
 	}
 	if (selectedModules.includes('rest_api')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Rest/Rest_Controller.php'), 'src/Rest/Rest_Controller.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Rest_Controller_Test.php'), 'tests/Unit/Rest_Controller_Test.php');
 		bootLines.push('\t\t( new Rest\\Rest_Controller() )->init_hooks();');
+		addModuleHookCase('Rest\\Rest_Controller', 'new \\{{NS}}\\Rest\\Rest_Controller()', [
+			{ type: 'action', hook: 'rest_api_init' },
+		]);
 	}
 	if (selectedModules.includes('ajax_handler')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Ajax/Ajax_Handler.php'), 'src/Ajax/Ajax_Handler.php');
@@ -1094,16 +1180,28 @@ function scaffoldInto(answers, targetDir) {
 		// file rides along with the module instead of the baseline.
 		writeTemplateFile(path.join(templatesDir, 'assets/js/main.js'), 'assets/js/main.js');
 		bootLines.push('\t\t( new Ajax\\Ajax_Handler() )->init_hooks();');
+		// allow_nopriv defaults to false, so the wp_ajax_nopriv_ variant isn't
+		// registered on a bare `new Ajax_Handler()` -- only the two below are.
+		addModuleHookCase('Ajax\\Ajax_Handler', 'new \\{{NS}}\\Ajax\\Ajax_Handler()', [
+			{ type: 'action', hook: 'wp_ajax_{{PREFIX}}_action' },
+			{ type: 'action', hook: 'wp_enqueue_scripts' },
+		]);
 	}
 	if (selectedModules.includes('cpt_taxonomy')) {
 		writeTemplateFile(path.join(templatesDir, 'src/PostTypes/Post_Types.php'), 'src/PostTypes/Post_Types.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Post_Types_Test.php'), 'tests/Unit/Post_Types_Test.php');
 		bootLines.push('\t\t( new PostTypes\\Post_Types() )->init_hooks();');
+		addModuleHookCase('PostTypes\\Post_Types', 'new \\{{NS}}\\PostTypes\\Post_Types()', [
+			{ type: 'action', hook: 'init' },
+		]);
 	}
 	if (selectedModules.includes('cron')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cron/Scheduler.php'), 'src/Cron/Scheduler.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Scheduler_Test.php'), 'tests/Unit/Scheduler_Test.php');
 		bootLines.push('\t\t( new Cron\\Scheduler() )->init_hooks();');
+		addModuleHookCase('Cron\\Scheduler', 'new \\{{NS}}\\Cron\\Scheduler()', [
+			{ type: 'action', hook: '{{PREFIX}}_cron_event' },
+		]);
 	}
 	if (selectedModules.includes('caching')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Cache/Cache_Service.php'), 'src/Cache/Cache_Service.php');
@@ -1117,6 +1215,9 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Item_Repository_Test.php'), 'tests/Unit/Item_Repository_Test.php');
 		bootLines.push('\t\t( new Database\\Schema() )->init_hooks();');
 		addService('item_repository', 'Database\\Item_Repository');
+		addModuleHookCase('Database\\Schema', 'new \\{{NS}}\\Database\\Schema()', [
+			{ type: 'action', hook: 'plugins_loaded' },
+		]);
 	}
 	if (selectedModules.includes('elementor_widget')) {
 		if (selectedModules.includes('editor_config')) {
@@ -1130,6 +1231,15 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Widget_Registrar_Test.php'), 'tests/Unit/Widget_Registrar_Test.php');
 		bootLines.push('\t\t( new Elementor\\Dependency_Notice() )->init_hooks();');
 		bootLines.push('\t\t( new Elementor\\Widget_Registrar() )->init_hooks();');
+		addModuleHookCase('Elementor\\Dependency_Notice', 'new \\{{NS}}\\Elementor\\Dependency_Notice()', [
+			{ type: 'action', hook: 'admin_notices' },
+		]);
+		addModuleHookCase('Elementor\\Widget_Registrar', 'new \\{{NS}}\\Elementor\\Widget_Registrar()', [
+			{ type: 'filter', hook: '{{PREFIX}}_cache_keys' },
+			{ type: 'action', hook: 'wp_enqueue_scripts' },
+			{ type: 'action', hook: 'elementor/editor/after_enqueue_styles' },
+			{ type: 'action', hook: 'elementor/widgets/register' },
+		]);
 	}
 	if (hasWooGateway) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Gateway_Provider.php'), 'src/Woo/Providers/Gateway_Provider.php');
@@ -1138,12 +1248,19 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/wc-gateway-block.js'), 'assets/src/wc-gateway-block.js');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Gateway_Test.php'), 'tests/Unit/Gateway_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Gateway_Provider() )->init_hooks();');
+		addModuleHookCase('Woo\\Providers\\Gateway_Provider', 'new \\{{NS}}\\Woo\\Providers\\Gateway_Provider()', [
+			{ type: 'filter', hook: 'woocommerce_payment_gateways' },
+			{ type: 'action', hook: 'woocommerce_blocks_loaded' },
+		]);
 	}
 	if (hasWooShipping) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Shipping_Provider.php'), 'src/Woo/Providers/Shipping_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Shipping/Shipping_Method.php'), 'src/Woo/Shipping/Shipping_Method.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Shipping_Method_Test.php'), 'tests/Unit/Shipping_Method_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Shipping_Provider() )->init_hooks();');
+		addModuleHookCase('Woo\\Providers\\Shipping_Provider', 'new \\{{NS}}\\Woo\\Providers\\Shipping_Provider()', [
+			{ type: 'filter', hook: 'woocommerce_shipping_methods' },
+		]);
 	}
 	if (hasWooEmail) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Email_Provider.php'), 'src/Woo/Providers/Email_Provider.php');
@@ -1152,12 +1269,20 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'woo-email-templates/emails/plain/custom-email.php'), `templates/emails/plain/${answers.prefix.toLowerCase()}-custom-email.php`);
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Custom_Email_Test.php'), 'tests/Unit/Custom_Email_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Email_Provider() )->init_hooks();');
+		addModuleHookCase('Woo\\Providers\\Email_Provider', 'new \\{{NS}}\\Woo\\Providers\\Email_Provider()', [
+			{ type: 'filter', hook: 'woocommerce_email_classes' },
+		]);
 	}
 	if (hasWooProductType) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Product_Type_Provider.php'), 'src/Woo/Providers/Product_Type_Provider.php');
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Products/Custom_Product.php'), 'src/Woo/Products/Custom_Product.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Custom_Product_Test.php'), 'tests/Unit/Custom_Product_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Product_Type_Provider() )->init_hooks();');
+		addModuleHookCase('Woo\\Providers\\Product_Type_Provider', 'new \\{{NS}}\\Woo\\Providers\\Product_Type_Provider()', [
+			{ type: 'filter', hook: 'woocommerce_product_class' },
+			{ type: 'filter', hook: 'product_type_selector' },
+			{ type: 'action', hook: 'woocommerce_single_product_summary' },
+		]);
 	}
 	if (hasWooBlocks) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Blocks_Provider.php'), 'src/Woo/Providers/Blocks_Provider.php');
@@ -1169,6 +1294,10 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'react/assets/src/blocks/cart-summary/render.php'), 'assets/src/blocks/cart-summary/render.php');
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Cart_Summary_Block_Test.php'), 'tests/Unit/Cart_Summary_Block_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Blocks_Provider() )->init_hooks();');
+		addModuleHookCase('Woo\\Providers\\Blocks_Provider', 'new \\{{NS}}\\Woo\\Providers\\Blocks_Provider()', [
+			{ type: 'action', hook: 'init' },
+			{ type: 'action', hook: 'woocommerce_blocks_loaded' },
+		]);
 	}
 	if (hasWooOrderStatus) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Order_Status_Provider.php'), 'src/Woo/Providers/Order_Status_Provider.php');
@@ -1176,6 +1305,14 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Order_Status_Service_Test.php'), 'tests/Unit/Order_Status_Service_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Order_Status_Provider( Services::order_status_service() ) )->init_hooks();');
 		addService('order_status_service', 'Woo\\Orders\\Order_Status_Service');
+		addModuleHookCase(
+			'Woo\\Providers\\Order_Status_Provider',
+			'new \\{{NS}}\\Woo\\Providers\\Order_Status_Provider( \\Mockery::mock( \\{{NS}}\\Woo\\Orders\\Order_Status_Service::class ) )',
+			[
+				{ type: 'action', hook: 'init' },
+				{ type: 'filter', hook: 'wc_order_statuses' },
+			]
+		);
 	}
 	if (hasWooActionScheduler) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Action_Scheduler_Provider.php'), 'src/Woo/Providers/Action_Scheduler_Provider.php');
@@ -1183,6 +1320,16 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Action_Scheduler_Service_Test.php'), 'tests/Unit/Action_Scheduler_Service_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Action_Scheduler_Provider( Services::action_scheduler_service() ) )->init_hooks();');
 		addService('action_scheduler_service', 'Woo\\Tasks\\Action_Scheduler_Service');
+		addModuleHookCase(
+			'Woo\\Providers\\Action_Scheduler_Provider',
+			'new \\{{NS}}\\Woo\\Providers\\Action_Scheduler_Provider( \\Mockery::mock( \\{{NS}}\\Woo\\Tasks\\Action_Scheduler_Service::class ) )',
+			[
+				{ type: 'action', hook: 'init' },
+				// A class constant, not a literal -- built the same way at
+				// test-run time instead of duplicating its value here.
+				{ type: 'action', hook: '\\{{NS}}\\Woo\\Tasks\\Action_Scheduler_Service::HOOK', raw: true },
+			]
+		);
 	}
 	if (hasWooStoreApi) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Store_Api_Provider.php'), 'src/Woo/Providers/Store_Api_Provider.php');
@@ -1190,6 +1337,11 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Store_Api_Extension_Test.php'), 'tests/Unit/Store_Api_Extension_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Store_Api_Provider( Services::store_api_extension() ) )->init_hooks();');
 		addService('store_api_extension', 'Woo\\Api\\Store_Api_Extension');
+		addModuleHookCase(
+			'Woo\\Providers\\Store_Api_Provider',
+			'new \\{{NS}}\\Woo\\Providers\\Store_Api_Provider( \\Mockery::mock( \\{{NS}}\\Woo\\Api\\Store_Api_Extension::class ) )',
+			[{ type: 'action', hook: 'woocommerce_blocks_loaded' }]
+		);
 	}
 	if (hasWooMyAccount) {
 		writeTemplateFile(path.join(templatesDir, 'src/Woo/Providers/Account_Endpoint_Provider.php'), 'src/Woo/Providers/Account_Endpoint_Provider.php');
@@ -1198,12 +1350,30 @@ function scaffoldInto(answers, targetDir) {
 		writeTemplateFile(path.join(templatesDir, 'tests/Unit/Account_Endpoint_Service_Test.php'), 'tests/Unit/Account_Endpoint_Service_Test.php');
 		wooBootLines.push('\t\t\t( new Woo\\Providers\\Account_Endpoint_Provider( Services::account_endpoint_service() ) )->init_hooks();');
 		addService('account_endpoint_service', 'Woo\\Account\\Account_Endpoint_Service');
+		addModuleHookCase(
+			'Woo\\Providers\\Account_Endpoint_Provider',
+			'new \\{{NS}}\\Woo\\Providers\\Account_Endpoint_Provider( \\Mockery::mock( \\{{NS}}\\Woo\\Account\\Account_Endpoint_Service::class ) )',
+			[
+				{ type: 'action', hook: 'init' },
+				{ type: 'filter', hook: 'woocommerce_account_menu_items' },
+				// Built from a class constant at runtime, same as above.
+				{
+					type: 'action',
+					hook: "'woocommerce_account_' . \\{{NS}}\\Woo\\Account\\Account_Endpoint_Service::ENDPOINT . '_endpoint'",
+					raw: true,
+				},
+			]
+		);
 	}
 	if (selectedModules.includes('interactivity')) {
 		writeTemplateFile(path.join(templatesDir, 'src/Frontend/Interactivity.php'), 'src/Frontend/Interactivity.php');
 		// Hand-written ESM served directly as a script module — no build step.
 		writeTemplateFile(path.join(templatesDir, 'interactivity/view.js'), 'assets/js/view.js');
 		bootLines.push('\t\t( new Frontend\\Interactivity() )->init_hooks();');
+		addModuleHookCase('Frontend\\Interactivity', 'new \\{{NS}}\\Frontend\\Interactivity()', [
+			{ type: 'action', hook: 'init' },
+			{ type: 'shortcode', hook: '{{PREFIX}}_interactivity_demo' },
+		]);
 	}
 	if (hasBlock) {
 		// Block_Registrar globs assets/build/blocks/*, so it's variant-agnostic;
@@ -1224,6 +1394,9 @@ function scaffoldInto(answers, targetDir) {
 			writeTemplateFile(path.join(templatesDir, 'blocks/example-static/save.js'), 'assets/src/blocks/example-static/save.js');
 		}
 		bootLines.push('\t\t( new Blocks\\Block_Registrar() )->init_hooks();');
+		addModuleHookCase('Blocks\\Block_Registrar', 'new \\{{NS}}\\Blocks\\Block_Registrar()', [
+			{ type: 'action', hook: 'init' },
+		]);
 	}
 
 	// React admin app (wp-admin only) + WooCommerce Blocks/Gateway + native
@@ -1249,6 +1422,9 @@ function scaffoldInto(answers, targetDir) {
 		// Assets.php scopes its enqueue via a {{#if admin_settings}}/{{else}} block.
 		writeTemplateFile(path.join(templatesDir, 'src/Admin/Assets.php'), 'src/Admin/Assets.php');
 		bootLines.push('\t\t( new Admin\\Assets() )->init_hooks();');
+		addModuleHookCase('Admin\\Assets', 'new \\{{NS}}\\Admin\\Assets()', [
+			{ type: 'action', hook: 'admin_enqueue_scripts' },
+		]);
 	}
 
 	if (needsBuildPipeline) {
@@ -1445,6 +1621,19 @@ ${entries.join('\n')}
 		const servicesTestDest = path.join(targetDir, 'tests/Unit/Services_Test.php');
 		fs.mkdirSync(path.dirname(servicesTestDest), { recursive: true });
 		fs.writeFileSync(servicesTestDest, servicesTest, 'utf8');
+	}
+
+	// Module_Hooks_Test.php: one data-provider test asserting every selected
+	// module's init_hooks() registers exactly the hooks it claims to. Only
+	// ships when at least one module contributed a case (a zero-module,
+	// non-React build has none).
+	if (moduleHookCases.length > 0) {
+		let moduleHooksTest = fs.readFileSync(path.join(templatesDir, 'tests/Unit/Module_Hooks_Test.php'), 'utf8');
+		moduleHooksTest = moduleHooksTest.replace('{{MODULE_HOOK_CASES}}', () => renderModuleHookCases(moduleHookCases));
+		moduleHooksTest = processTemplateContent(moduleHooksTest, 'tests/Unit/Module_Hooks_Test.php');
+		const moduleHooksTestDest = path.join(targetDir, 'tests/Unit/Module_Hooks_Test.php');
+		fs.mkdirSync(path.dirname(moduleHooksTestDest), { recursive: true });
+		fs.writeFileSync(moduleHooksTestDest, moduleHooksTest, 'utf8');
 	}
 
 	// Single supported PHP line — see MIN_PHP. The matrix also runs the next

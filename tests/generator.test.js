@@ -1540,3 +1540,70 @@ test('phpcs.xml lints templates/ (with two narrow sniff excludes) only when a WC
 		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 	}
 });
+
+test('Module_Hooks_Test.php: one init_hooks() contract case per selected module, only when at least one exists (D)', () => {
+	const withMods = path.join(__dirname, '../tmp-test-hooks-with');
+	const bare = path.join(__dirname, '../tmp-test-hooks-bare');
+	for (const d of [withMods, bare]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+
+	runGenerator({
+		name: 'Hooks Mods', slug: 'hooks-mods', prefix: 'hkmd', namespace: 'HooksMods',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x',
+		modules: ['cron', 'shortcode', 'cli', 'admin_settings', 'woo:action-scheduler', 'woo:my-account'],
+		useReact: false, out: withMods
+	});
+	runGenerator({
+		name: 'Hooks Bare', slug: 'hooks-bare', prefix: 'hkbr', namespace: 'HooksBare',
+		authorName: 'A', authorEmail: 'a@example.com', authorUri: 'https://e.com',
+		description: 'x', modules: [], useReact: false, out: bare
+	});
+
+	// No modules, no React: nothing has an init_hooks() contract to assert.
+	assert.ok(!fs.existsSync(path.join(bare, 'tests/Unit/Module_Hooks_Test.php')), 'no Module_Hooks_Test.php with zero modules');
+
+	const hooksTest = fs.readFileSync(path.join(withMods, 'tests/Unit/Module_Hooks_Test.php'), 'utf8');
+	assert.ok(!/\{\{[#/]?[A-Za-z]/.test(hooksTest), 'no leftover template tags');
+
+	// A plain no-dependency module.
+	assert.match(hooksTest, /'Cron\\Scheduler'\s+=> array\(/);
+	assert.ok(hooksTest.includes("static fn () => new \\HooksMods\\Cron\\Scheduler(),"));
+	assert.ok(hooksTest.includes("'hook' => 'hkmd_cron_event',"));
+
+	// A shortcode-type registration (not add_action/add_filter).
+	assert.ok(hooksTest.includes("'type' => 'shortcode',"));
+	assert.ok(hooksTest.includes("'hook' => 'hkmd_display',"));
+
+	// A WP-CLI command registration, verified through \WP_CLI::$commands rather
+	// than a Brain Monkey function mock.
+	assert.ok(hooksTest.includes("'type' => 'cli_command',"));
+	assert.ok(hooksTest.includes("'hook' => 'hkmd status',"));
+
+	// A constructor-injected module: built via a Mockery double of the real
+	// service, not a bare `new`.
+	assert.ok(hooksTest.includes(
+		"static fn () => new \\HooksMods\\Admin\\Settings_Registrar( \\Mockery::mock( \\HooksMods\\Admin\\Settings_Repository::class ) ),"
+	));
+
+	// Hooks built from a class constant at runtime render as a raw PHP
+	// expression, not a quoted literal duplicating the constant's value.
+	assert.ok(hooksTest.includes("'hook' => \\HooksMods\\Woo\\Tasks\\Action_Scheduler_Service::HOOK,"));
+	assert.ok(hooksTest.includes(
+		"'hook' => 'woocommerce_account_' . \\HooksMods\\Woo\\Account\\Account_Endpoint_Service::ENDPOINT . '_endpoint',"
+	));
+
+	// Every top-level data-provider key's `=>` aligns to the widest key
+	// (WordPress.Arrays.MultipleStatementAlignment) -- spot-check two entries
+	// of very different label lengths land their arrows in the same column.
+	const arrowColumn = (label) => {
+		const line = hooksTest.split('\n').find((l) => l.includes(`'${label}'`) && l.includes('=> array('));
+		return line.indexOf('=>');
+	};
+	assert.equal(arrowColumn('CLI\\Commands'), arrowColumn('Woo\\Providers\\Account_Endpoint_Provider'));
+
+	for (const d of [withMods, bare]) {
+		fs.rmSync(d, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+	}
+});
