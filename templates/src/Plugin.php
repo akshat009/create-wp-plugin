@@ -19,8 +19,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Singleton bootloader for {{PLUGIN_NAME}}.
  *
  * Not a service container: modules are plain classes with an init_hooks()
- * method, and shared services come from {@see Services}. One instance per
- * request, reached with instance(); boot() is idempotent.
+ * method.{{#if has_services}} Shared services come from {@see Services}.{{/if}}
+ * One instance per request, reached with instance(); boot() is idempotent.
  */
 final class Plugin {
 

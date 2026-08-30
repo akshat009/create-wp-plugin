@@ -64,4 +64,19 @@ class Rest_Controller_Test extends Plugin_TestCase {
 
 		$this->assertFalse( $controller->get_items_permissions_check( $request ) );
 	}
+
+	/**
+	 * The item schema describes get_items()'s response shape, so the
+	 * endpoint is self-describing over OPTIONS rather than an empty default.
+	 */
+	public function test_get_item_schema_describes_the_response_shape(): void {
+		Functions\when( '__' )->returnArg();
+
+		$controller = new Rest_Controller();
+		$schema     = $controller->get_item_schema();
+
+		$this->assertSame( 'object', $schema['type'] );
+		$this->assertArrayHasKey( 'message', $schema['properties'] );
+		$this->assertArrayHasKey( 'param', $schema['properties'] );
+	}
 }
