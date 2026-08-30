@@ -61,6 +61,44 @@ if ( ! class_exists( 'WP_REST_Controller' ) ) {
 		 * @var string
 		 */
 		protected $rest_base;
+
+		/**
+		 * The controller's cached item schema.
+		 *
+		 * @var array|null
+		 */
+		protected $schema;
+
+		/**
+		 * Stub: real core strips arg-only properties before exposing a schema
+		 * over OPTIONS; there are none to strip in this minimal stub.
+		 *
+		 * @return array
+		 */
+		public function get_public_item_schema() {
+			return $this->get_item_schema();
+		}
+
+		/**
+		 * Stub: real core merges in schema for fields added via
+		 * register_rest_field(); none are registered in this stub.
+		 *
+		 * @param array $schema Item schema.
+		 * @return array
+		 */
+		protected function add_additional_fields_schema( $schema ) {
+			return $schema;
+		}
+
+		/**
+		 * Stub default; a subclass implementing get_item_schema() overrides
+		 * this.
+		 *
+		 * @return array
+		 */
+		public function get_item_schema() {
+			return array();
+		}
 	}
 }
 

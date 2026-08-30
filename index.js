@@ -321,6 +321,27 @@ export function validateModules(modules) {
 // still getting security fixes, and matches the widest install base.
 export const MIN_PHP = '8.2';
 
+// readme.txt "Tested up to" seed — a generated scaffold can't know the WP
+// release it'll actually be tested against, so this is a recent stable floor
+// the developer bumps per release, never a claim of real testing. Bump this
+// one line as WordPress releases; wp.org shows an "untested with your version"
+// warning once a plugin's declared value trails current by much.
+export const TESTED_UP_TO = '7.1';
+
+// Dot-separated numeric version compare (WordPress/PHP-style "x.y" or
+// "x.y.z" strings only — no pre-release suffixes). `parseFloat` on a version
+// string mis-parses two-digit segments (parseFloat('6.10') === 6.1), so this
+// compares each segment as its own integer instead.
+export function versionGte(a, b) {
+	const as = a.split('.').map(Number);
+	const bs = b.split('.').map(Number);
+	for (let i = 0; i < Math.max(as.length, bs.length); i++) {
+		const diff = (as[i] || 0) - (bs[i] || 0);
+		if (diff !== 0) return diff > 0;
+	}
+	return true;
+}
+
 export function validateOutputDir(val) {
 	if (!val || typeof val !== 'string' || val.trim().length === 0) {
 		return 'Output directory is required.';
@@ -884,10 +905,10 @@ function scaffoldInto(answers, targetDir) {
 		'{{DESCRIPTION}}': answers.description,
 		'{{MIN_PHP}}': MIN_PHP,
 		'{{REQUIRES_AT_LEAST}}': requiredWpVersion,
-		// readme.txt "Tested up to". A generated scaffold can't know the WP
-		// release it'll be tested against, so seed a recent stable floor the
-		// developer bumps per release — never below what the plugin requires.
-		'{{TESTED_UP_TO}}': parseFloat(requiredWpVersion) > 6.9 ? requiredWpVersion : '6.9',
+		// readme.txt "Tested up to" — see TESTED_UP_TO. Never below what the
+		// plugin requires (a block-editor module can push requiredWpVersion
+		// past the seed).
+		'{{TESTED_UP_TO}}': versionGte(requiredWpVersion, TESTED_UP_TO) ? requiredWpVersion : TESTED_UP_TO,
 		'{{VERSION}}': '1.0.0',
 		'{{YEAR}}': new Date().getFullYear().toString(),
 		'{{PLUGIN_HEADER_EXTRA}}': pluginHeaderExtra,

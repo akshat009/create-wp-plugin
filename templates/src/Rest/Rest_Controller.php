@@ -60,6 +60,7 @@ class Rest_Controller extends \WP_REST_Controller {
 						},
 					),
 				),
+				'schema'              => $this->get_public_item_schema( ... ),
 			)
 		);
 	}
@@ -90,5 +91,41 @@ class Rest_Controller extends \WP_REST_Controller {
 		);
 
 		return rest_ensure_response( $data );
+	}
+
+	/**
+	 * Item schema, describing the shape of get_items()'s response. Backs the
+	 * endpoint's OPTIONS response and any schema-driven API tooling (the
+	 * block editor's data layer included) -- without it the endpoint isn't
+	 * self-describing.
+	 *
+	 * @return array
+	 */
+	public function get_item_schema() {
+		if ( $this->schema ) {
+			return $this->add_additional_fields_schema( $this->schema );
+		}
+
+		$this->schema = array(
+			'$schema'    => 'http://json-schema.org/draft-04/schema#',
+			'title'      => '{{PREFIX}}_item',
+			'type'       => 'object',
+			'properties' => array(
+				'message' => array(
+					'description' => __( 'Response message.', '{{SLUG}}' ),
+					'type'        => 'string',
+					'context'     => array( 'view' ),
+					'readonly'    => true,
+				),
+				'param'   => array(
+					'description' => __( 'Echoed request parameter.', '{{SLUG}}' ),
+					'type'        => array( 'string', 'null' ),
+					'context'     => array( 'view' ),
+					'readonly'    => true,
+				),
+			),
+		);
+
+		return $this->add_additional_fields_schema( $this->schema );
 	}
 }
