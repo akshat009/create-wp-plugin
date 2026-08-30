@@ -53,6 +53,29 @@ class Rest_Controller_Test extends Plugin_TestCase {
 	}
 
 	/**
+	 * The schema must be a route-level option, not a key inside the endpoint
+	 * definition -- register_rest_route() only upgrades a flat array to
+	 * multiple endpoints when it sees a top-level 'callback' key, and
+	 * otherwise swallows 'schema' into that same numerically-indexed entry,
+	 * where core never looks for it (C).
+	 */
+	public function test_register_routes_exposes_schema_as_a_route_option(): void {
+		Functions\when( '__' )->returnArg();
+
+		Functions\expect( 'register_rest_route' )
+			->once()
+			->andReturnUsing(
+				function ( $route_namespace, $route, $args ) {
+					$this->assertArrayHasKey( 'schema', $args, 'schema must be a route option, not inside the endpoint' );
+					$this->assertArrayHasKey( 0, $args, 'the endpoint must be nested so core does not swallow schema' );
+					return true;
+				}
+			);
+
+		( new Rest_Controller() )->register_routes();
+	}
+
+	/**
 	 * The permission callback fails closed — it gates on a capability, it does
 	 * not blanket-allow.
 	 */
