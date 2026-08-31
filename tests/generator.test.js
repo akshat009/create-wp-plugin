@@ -978,9 +978,10 @@ test('pure-PHP scaffold gets a packaging-only package.json — no build pipeline
 	// B6.14: package.json always ships for `npm run plugin-zip` + JS/CSS lint...
 	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
 	assert.equal(pkg.private, true);
-	assert.equal(pkg.scripts['plugin-zip'], 'wp-scripts plugin-zip');
+	assert.equal(pkg.scripts['plugin-zip'], 'composer prepare-dist && wp-scripts plugin-zip');
 	assert.ok(pkg.scripts['lint:js'] && pkg.scripts['lint:style']);
-	assert.ok(Array.isArray(pkg.files) && pkg.files.includes('vendor') && pkg.files.includes('assets/src'), 'B6.14a: vendor/ and assets/src/ ship in the zip');
+	assert.ok(Array.isArray(pkg.files) && pkg.files.includes('vendor'), 'B6.14a: vendor/ ships in the zip');
+	assert.ok(!pkg.files.includes('assets/src'), 'B6.14a: unbuilt assets/src/ does not ship');
 	// ...but nothing build-pipeline-ish.
 	assert.equal(pkg.scripts.build, undefined);
 	assert.equal(pkg.scripts.start, undefined);
@@ -1337,7 +1338,7 @@ test('WooCommerce granular sub-modules: pure-PHP (e.g. woo:shipping + woo:email)
 
 	const pkg = JSON.parse(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8'));
 	assert.equal(pkg.scripts.build, undefined, 'pure-PHP WooCommerce gets no build script');
-	assert.equal(pkg.scripts['plugin-zip'], 'wp-scripts plugin-zip', 'but still the packaging script');
+	assert.equal(pkg.scripts['plugin-zip'], 'composer prepare-dist && wp-scripts plugin-zip', 'but still the packaging script');
 	assert.ok(!fs.existsSync(path.join(outDir, 'webpack.config.js')), 'pure-PHP WooCommerce must not emit webpack.config.js');
 	assert.ok(!fs.existsSync(path.join(outDir, 'src/Woo/Gateways/Gateway.php')), 'unselected sub-module should not exist');
 

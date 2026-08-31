@@ -1,9 +1,10 @@
 # create-wp-plugin
 
 Interactive scaffold generator for modern, production-ready WordPress plugins — a
-SOLID/DI architecture (Container + Service Providers), PSR-4 autoloading,
-selectable WPCS/VIP coding standards, a Brain Monkey unit suite, a
-`wp-scripts plugin-zip` distribution pipeline, and a set of opt-in modules
+modular bootloader architecture (one `Plugin` composition root wiring plain
+`init_hooks()` modules), PSR-4 autoloading, selectable WPCS/VIP coding standards,
+a Brain Monkey unit suite, a `wp-scripts plugin-zip` distribution pipeline, and a
+set of opt-in modules
 (REST, CPT, Cron, Caching, custom DB table, native Gutenberg blocks, Elementor,
 WooCommerce, the Interactivity API, WP-CLI commands, a real-WordPress integration
 suite, …) that stay freely combinable.
@@ -61,7 +62,7 @@ interactive multiselect. Nothing here depends on anything else.
 | Module | What you get |
 | --- | --- |
 | `admin_settings` | Settings API page split into `Settings_Registrar` / `Settings_Repository` / a view |
-| `shortcode` | A `Shortcode` provider |
+| `shortcode` | A `Frontend\Shortcode` class registering one shortcode |
 | `rest_api` | A `WP_REST_Controller` subclass with a permission callback |
 | `ajax_handler` | Nonce + capability-guarded `admin-ajax` handler, plus the `assets/js/main.js` it enqueues |
 | `cpt_taxonomy` | `Post_Types` (CPT + taxonomy), wired into activation |
@@ -71,7 +72,7 @@ interactive multiselect. Nothing here depends on anything else.
 | `elementor_widget` | `Widget_Registrar` auto-discovery of `src/Widgets/*`, convention-based CSS/JS |
 | `block` | Native Gutenberg block(s). Opens a sub-choice — `block:dynamic` (server-rendered via `render.php`) and/or `block:static` (`save()`-serialized). `block` / `block:all` = both. `Block_Registrar` globs `assets/build/blocks/*`, so adding more blocks later needs no PHP change |
 | `interactivity` | WordPress Interactivity API store (`view.js` + Script Module, WP 6.5+) |
-| `woocommerce_hooks` | Opens a sub-choice of `woo:` components: `woo:gateway`, `woo:shipping`, `woo:email`, `woo:order-status`, `woo:product-type`, `woo:blocks`, `woo:action-scheduler`, `woo:store-api`, `woo:my-account`. `woocommerce` / `woo:all` = all. Each is its own `Service_Provider` that self-excludes when WooCommerce isn't active |
+| `woocommerce_hooks` | Opens a sub-choice of `woo:` components: `woo:gateway`, `woo:shipping`, `woo:email`, `woo:order-status`, `woo:product-type`, `woo:blocks`, `woo:action-scheduler`, `woo:store-api`, `woo:my-account`. `woocommerce` / `woo:all` = all. Each is a `Woo\Providers\*` class wired inside a single `class_exists( 'WooCommerce' )` guard in `boot()` |
 | `cli` | `wp <prefix> status` / `wp <prefix> cache clear` (the latter iterates a `<prefix>_cache_keys` filter — no module names another's cache keys) |
 | `editor_config` | `.vscode/` snippets, settings, recommended extensions |
 | `integration_tests` | `wp-phpunit` suite (`composer test:integration`), `phpunit-integration.xml.dist`, a boot test, the `.wp-env.json`, and the CI integration job |
@@ -115,13 +116,17 @@ composer test:integration
 ### Releasing
 
 Every scaffold gets a `package.json` whose `files` field is the single source of
-truth for what ships (there is no `.distignore`). Order matters:
+truth for what ships (there is no `.distignore`). `npm run plugin-zip` runs
+`composer prepare-dist` (`composer install --no-dev --optimize-autoloader`)
+itself, so the production autoloader always exists before the archive is built:
 
 ```bash
-npm install && npm run build          # only if there's a JS pipeline
-composer install --no-dev --optimize-autoloader
-npm run plugin-zip                     # -> <slug>.zip, via @wordpress/scripts
+npm install && npm run build   # only if there's a JS pipeline — must run first
+npm run plugin-zip             # -> <slug>.zip, via @wordpress/scripts
 ```
+
+Unbuilt sources under `assets/src/` are not shipped; the generated `readme.txt`
+points to the repository for them.
 
 ### Adding another block
 
@@ -139,16 +144,20 @@ npm run build
 
 ## Architecture (generated plugin)
 
-- `Plugin::create()` builds a `Core\Container` and a list of providers;
-  `Plugin::boot()` runs each one. Not a singleton — construct one directly with
-  fakes in a test.
-- Providers implement `Contracts\Service_Provider`: `register()` for container
-  bindings only, `boot()` for WordPress hooks.
-- `Contracts\Conditional::is_needed()` lets a provider self-exclude (every
-  WooCommerce provider skips itself when WooCommerce isn't installed).
+- `Plugin` is a singleton bootloader. `Plugin::instance()->boot()` (fired on
+  `plugins_loaded`) runs once — a re-entry guard makes any later call a no-op.
+- `boot()` is a flat list of `( new Some\Module() )->init_hooks();` lines, one per
+  selected module. A module is a plain class with an `init_hooks()` method that
+  registers its hooks — no base class, no interface, no auto-discovery. A class
+  runs only because `boot()` names it.
+- WooCommerce modules live under `src/Woo/` and are wired inside a single
+  `class_exists( 'WooCommerce' )` guard in `boot()`, so the plugin is inert
+  without WooCommerce. Each `Woo\Providers\*` class is one such module.
+- `Services` (generated only when a module needs a shared collaborator) is a
+  static locator of memoised singletons — `Services::set()` / `reset()` are test
+  seams. A module receives a service by constructor injection from `boot()`.
 - `Core\Activator` / `Deactivator` implement `Contracts\Activatable` /
-  `Deactivatable` and resolve dependencies from the container.
-- Extend without touching core files via the `<prefix>_providers` filter.
+  `Deactivatable` and run from the activation / deactivation hooks in the main file.
 - Cross-cutting cleanup goes through filters, not hard references: `cli` and the
   uninstaller iterate `<prefix>_cache_keys`; modules that cache register their
   own keys.

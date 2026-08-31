@@ -19,6 +19,21 @@ License URI: https://www.gnu.org/licenses/gpl-2.0.html
 1. Upload the plugin files to the `/wp-content/plugins/{{SLUG}}` directory, or install the plugin through the WordPress plugins screen directly.
 2. Activate the plugin through the 'Plugins' screen in WordPress.
 
+{{#if has_webpack_build}}
+== Development ==
+
+The JavaScript in this plugin is compiled. The complete, human-readable source
+for every built asset lives in the `assets/src/` directory of the project's
+public repository, alongside the build tooling (package.json, webpack config)
+used to produce the files shipped in this package:
+
+{{#if has_author_uri}}
+{{AUTHOR_URI}}
+{{else}}
+(add your public repository URL here)
+{{/if}}
+
+{{/if}}
 == Frequently Asked Questions ==
 
 = How do I configure this plugin? =

@@ -846,6 +846,9 @@ function scaffoldInto(answers, targetDir) {
 		has_woo: hasAnyWoo,
 		// The only modules that write a templates/ directory (WC template overrides).
 		has_wc_template_overrides: hasWooEmail || hasWooMyAccount,
+		// readme.txt "== Development ==" links to source when a repo URL is known;
+		// falls back to a fill-in placeholder otherwise.
+		has_author_uri: Boolean(answers.authorUri && answers.authorUri.trim()),
 		// Set from servicesAccessors after the module loop: when no module
 		// registers an accessor, Services.php (and its reset() wiring in
 		// Plugin_TestCase) is not generated.
@@ -1754,6 +1757,8 @@ ${entries.join('\n')}
 	console.log('  composer lint');
 	console.log('  composer test');
 	console.log('  git init && git add -A && git commit -m "scaffold"\n');
+	console.log('To package a release zip, see "Releasing" in README.md');
+	console.log(`  ${templateFlags.has_webpack_build ? 'npm run build && ' : ''}npm run plugin-zip   # plugin-zip runs "composer prepare-dist" itself\n`);
 	console.log('Note: composer install may prompt to allow dealerdirect/phpcodesniffer-composer-installer — answer yes.');
 	console.log('      First run note: "No composer.lock file present" is normal; Composer will generate it automatically.\n');
 }
