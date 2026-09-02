@@ -1,6 +1,6 @@
 {
   "name": "create-wp-plugin-cli",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "description": "Interactive scaffold generator for modern WordPress plugins — static bootloader with a Services locator, PSR-4, selectable WPCS/VIP standards, PHPUnit + Brain Monkey, Jest, Playwright, WP-CLI, WooCommerce, Interactivity API, and CI out of the box",
   "main": "index.js",
   "bin": {
