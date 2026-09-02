@@ -1,4 +1,8 @@
-# create-wp-plugin
+# create-wp-plugin-cli
+
+[![npm version](https://img.shields.io/npm/v/create-wp-plugin-cli)](https://www.npmjs.com/package/create-wp-plugin-cli)
+[![CI](https://github.com/akshat009/create-wp-plugin-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/akshat009/create-wp-plugin-cli/actions)
+[![License: GPL-2.0-or-later](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
 Interactive scaffold generator for modern, production-ready WordPress plugins — a
 modular bootloader architecture (one `Plugin` composition root wiring plain
@@ -18,9 +22,6 @@ npm create wp-plugin-cli                      # npm's create-* shorthand
 npx create-wp-plugin-cli                      # same thing via npx
 npx github:akshat009/create-wp-plugin-cli     # latest main, straight from GitHub
 ```
-
-> Published on npm as [`create-wp-plugin-cli`](https://www.npmjs.com/package/create-wp-plugin-cli)
-> — the shorter `create-wp-plugin` name was already taken.
 
 ### From a clone
 

@@ -238,9 +238,10 @@ When `WooCommerce Integration` is selected in Question 11, the CLI opens a secon
 - [ ] **NEW-55 [P2] Missing `tmp-test*` in Root `.gitignore`**  
   *Location:* `.gitignore`  
   Test temp folders created by `generator.test.js` are not ignored, cluttering git working tree when tests fail.
-- [ ] **NEW-56 [P2] Missing `create-wp-plugin` Alias in `package.json` `"bin"` Field**  
+- [x] ~~**NEW-56 [P2] Missing `create-wp-plugin` Alias in `package.json` `"bin"` Field**~~  
   *Location:* `package.json:6-8`  
-  Only defines `"create-wp-plugin-cli"`. Adding `"create-wp-plugin": "index.js"` ensures standard npm `npm create wp-plugin` alias execution works without error.
+  Only defines `"create-wp-plugin-cli"`. Adding `"create-wp-plugin": "index.js"` ensures standard npm `npm create wp-plugin` alias execution works without error.  
+  *Rejected:* `create-wp-plugin` is a separate, unrelated npm package. A bin by that name shadows it on `PATH` and blurs the two projects — the opposite of the intent. The alias has been removed; `create-wp-plugin-cli` is the sole bin.
 
 ### Iteration 8 Findings
 - [ ] **NEW-57 [P1] `phpcs.xml` Skips Sniffing `./templates/` Directory**  

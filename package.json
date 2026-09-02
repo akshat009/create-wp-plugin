@@ -1,11 +1,10 @@
 {
   "name": "create-wp-plugin-cli",
   "version": "3.1.0",
-  "description": "Interactive scaffold generator for modern WordPress plugins — SOLID/DI architecture (Container + Service Providers), PSR-4, selectable WPCS/VIP standards, PHPUnit unit + integration tests, Jest, Playwright, WP-CLI, WooCommerce, Interactivity API, and CI out of the box",
+  "description": "Interactive scaffold generator for modern WordPress plugins — static bootloader with a Services locator, PSR-4, selectable WPCS/VIP standards, PHPUnit + Brain Monkey, Jest, Playwright, WP-CLI, WooCommerce, Interactivity API, and CI out of the box",
   "main": "index.js",
   "bin": {
-    "create-wp-plugin-cli": "index.js",
-    "create-wp-plugin": "index.js"
+    "create-wp-plugin-cli": "index.js"
   },
   "type": "module",
   "engines": {
@@ -29,7 +28,11 @@
     "wpcs",
     "psr-4",
     "woocommerce",
-    "interactivity-api"
+    "interactivity-api",
+    "wordpress-plugin",
+    "wp-cli",
+    "gutenberg",
+    "phpunit"
   ],
   "author": {
     "name": "Akshat Saxena",
